@@ -1,0 +1,121 @@
+import { useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router';
+import { PageTitle } from '@/components/PageTitle';
+import { Divider } from '@/components/ui/dads/Divider';
+import { Switch } from '@/components/ui/Switch';
+import { APP_TITLE } from '@/constants';
+import { TranslateForm } from '@/features/translate/components/TranslateForm';
+import { TranslateHeader } from '@/features/translate/components/TranslateHeader';
+import { useReset } from '@/features/translate/hooks/useReset';
+import { useSetDefaultValues } from '@/features/translate/hooks/useSetDefaultValues';
+import { useTranslateStore } from '@/features/translate/stores/useTranslateStore';
+import { useChat } from '@/hooks/useChat';
+import { useLiveStatusMessage } from '@/hooks/useLiveStatusMessage';
+import { useLocalStorageBoolean } from '@/hooks/useLocalStorageBoolean';
+import { usePrompter } from '@/hooks/usePrompter';
+import { useTyping } from '@/hooks/useTyping';
+import { LayoutBody } from '@/layout/LayoutBody';
+import { debounce } from '@/utils/debounce';
+
+export const TranslatePage = () => {
+  const { sentence, additionalContext, language, translatedSentence, setTranslatedSentence } =
+    useTranslateStore();
+
+  const { pathname } = useLocation();
+  const { loading, messages, postChat, updateSystemContextByModel } = useChat(pathname);
+
+  const { typingTextOutput } = useTyping(loading, translatedSentence);
+  const [auto, setAuto] = useLocalStorageBoolean('Auto_Translate', false);
+
+  const { prompter } = usePrompter();
+
+  useEffect(() => {
+    updateSystemContextByModel();
+  }, [prompter]);
+
+  useReset();
+
+  // 画面遷移時に出力が残る問題の対応
+  // メッセージが空の時はテキストをクリア
+  useEffect(() => {
+    if (messages.length === 0) {
+      setTranslatedSentence('');
+    }
+  }, [messages, setTranslatedSentence]);
+
+  useSetDefaultValues();
+
+  // 文章の更新時にコメントを更新
+  useEffect(() => {
+    if (auto) {
+      // debounce した後翻訳
+      onSentenceChange(sentence, additionalContext, language, loading);
+    }
+  }, [sentence, language]);
+
+  // debounce した後翻訳
+  // 入力を止めて1秒ほど待ってから翻訳リクエストを送信
+  const onSentenceChange = useCallback(
+    debounce(
+      (_sentence: string, _additionalContext: string, _language: string, _loading: boolean) => {
+        if (_sentence === '') {
+          setTranslatedSentence('');
+        }
+
+        if (_sentence !== '' && !_loading) {
+          getTranslation(_sentence, _language, _additionalContext);
+        }
+      },
+      1000,
+    ),
+    [prompter],
+  );
+
+  // リアルタイムにレスポンスを表示
+  useEffect(() => {
+    if (messages.length === 0) {
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== 'assistant') {
+      return;
+    }
+
+    const response = messages[messages.length - 1].content;
+    setTranslatedSentence(response.trim());
+  }, [messages]);
+
+  const getTranslation = (sentence: string, language: string, context: string) => {
+    postChat(
+      prompter.translatePrompt({
+        sentence,
+        language,
+        context: context === '' ? undefined : context,
+      }),
+      true,
+    );
+  };
+
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const { liveStatusMessage } = useLiveStatusMessage({
+    isAssistant: lastMessage?.role === 'assistant',
+    loading: loading,
+    content: lastMessage?.content,
+  });
+
+  return (
+    <LayoutBody>
+      <PageTitle title={`翻訳 | ${APP_TITLE}`} />
+      <div className='mx-6 max-w-[calc(1120/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
+        <TranslateHeader />
+        <Divider className='my-6' />
+        <Switch label='即時翻訳' checked={auto} onSwitch={setAuto} />
+        <TranslateForm typingTextOutput={typingTextOutput} getTranslation={getTranslation} />
+      </div>
+      <div aria-live='assertive' aria-atomic='true' className='sr-only'>
+        {liveStatusMessage}
+      </div>
+    </LayoutBody>
+  );
+};
