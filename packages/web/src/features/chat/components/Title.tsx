@@ -1,5 +1,5 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PiPencilLine, PiTrash } from 'react-icons/pi';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Button } from '@/components/ui/dads/Button';
@@ -42,38 +42,32 @@ export const Title = (props: Props) => {
   };
 
   const navigate = useNavigate();
-  const onDeleteChat = useCallback(
-    async (_chatId: string) => {
-      setIsDeleting(true);
-      try {
-        if (_chatId !== '') {
-          await deleteChat(_chatId);
-          navigate('/chat');
-        } else {
-          throw new Error('Chat IDが指定されていません');
-        }
-      } catch {
-        console.error('エラーが発生したため会話を削除できませんでした');
-      } finally {
-        setIsDeleting(false);
-        setOpenDeleteDialog(false);
+  const onDeleteChat = async (_chatId: string) => {
+    setIsDeleting(true);
+    try {
+      if (_chatId !== '') {
+        await deleteChat(_chatId);
+        navigate('/chat');
+      } else {
+        throw new Error('Chat IDが指定されていません');
       }
-    },
-    [deleteChat, navigate],
-  );
+    } catch {
+      console.error('エラーが発生したため会話を削除できませんでした');
+    } finally {
+      setIsDeleting(false);
+      setOpenDeleteDialog(false);
+    }
+  };
 
-  const handleUpdateTitle = useCallback(
-    async (title?: string) => {
-      if (!chatId) return;
-      try {
-        await updateChatTitle(chatId, title ?? tempTitle);
-        handleFocusAfterEditing();
-      } catch {
-        handleFocusAfterEditing();
-      }
-    },
-    [chatId, updateChatTitle, tempTitle],
-  );
+  const handleUpdateTitle = async (title?: string) => {
+    if (!chatId) return;
+    try {
+      await updateChatTitle(chatId, title ?? tempTitle);
+      handleFocusAfterEditing();
+    } catch {
+      handleFocusAfterEditing();
+    }
+  };
 
   const handleEditingCancel = () => {
     handleFocusAfterEditing();
@@ -105,7 +99,7 @@ export const Title = (props: Props) => {
                   <TooltipTrigger asChild>
                     <MenuButton
                       id={`${chatId}-menu-button`}
-                      className={`flex size-9 items-center justify-center rounded-4 after:absolute after:-inset-full after:m-auto after:h-[44px] after:w-[44px] hover:bg-solid-gray-50 hover:-outline-offset-[calc(2/16*1rem)] hover:outline-black hover:outline-solid focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset`}
+                      className={`flex size-9 items-center justify-center rounded-4 after:absolute after:-inset-full after:m-auto after:h-11 after:w-11 hover:bg-solid-gray-50 hover:-outline-offset-[calc(2/16*1rem)] hover:outline-black hover:outline-solid focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset`}
                     >
                       <MoreVertIcon aria-label='チャットの操作' role='img' className='mt-0.5' />
                     </MenuButton>

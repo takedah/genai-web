@@ -57,7 +57,7 @@ function CodeBlock(props: CodeBlockProps) {
     return <code>{props.children}</code>;
   }
 
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: #
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized by shiki
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 

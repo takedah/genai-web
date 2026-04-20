@@ -108,6 +108,9 @@ const createInitialState = (): GenerateImageState => ({
 export const useGenerateImageStore = create<GenerateImageStore>((set, get) => {
   const initialState = createInitialState();
 
+  // BACKGROUND_REMOVAL モードから他のモードに戻す際に復元するための imageSample の値
+  let previousImageSample = initialState.imageSample;
+
   return {
     ...initialState,
     setImageGenModelId: (imageGenModelId) => {
@@ -140,7 +143,23 @@ export const useGenerateImageStore = create<GenerateImageStore>((set, get) => {
     setImageStrength: (imageStrength) => set({ imageStrength }),
     setControlStrength: (controlStrength) => set({ controlStrength }),
     setControlMode: (controlMode) => set({ controlMode }),
-    setGenerationMode: (generationMode) => set({ generationMode }),
+    setGenerationMode: (generationMode) => {
+      const currentMode = get().generationMode;
+      if (currentMode === generationMode) {
+        set({ generationMode });
+        return;
+      }
+      if (generationMode === 'BACKGROUND_REMOVAL') {
+        // BACKGROUND_REMOVAL は 1 枚のみ生成可能なため、現在の値を退避して 1 に固定する
+        previousImageSample = get().imageSample;
+        set({ generationMode, imageSample: 1 });
+      } else if (currentMode === 'BACKGROUND_REMOVAL') {
+        // BACKGROUND_REMOVAL から他モードに戻す際は退避していた値に復元する
+        set({ generationMode, imageSample: previousImageSample });
+      } else {
+        set({ generationMode });
+      }
+    },
     setInitImage: (initImage) => set({ initImage }),
     setMaskImage: (maskImage) => set({ maskImage }),
     setMaskPrompt: (maskPrompt) => set({ maskPrompt }),

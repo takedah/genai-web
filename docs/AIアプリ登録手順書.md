@@ -6,18 +6,18 @@
 
 ## 前提条件
 
-- 源内Webアプリの管理者権限を持つユーザーアカウント
+- 源内 Web の管理者権限を持つユーザーアカウント
 - AWSマネジメントコンソールへのアクセス権限
 - AIアプリのデプロイ完了
 
 ## 注意事項
 
-- AIアプリ側で源内Webアプリの外部アプリ利用用IPアドレスを登録する必要がある
-- AIアプリは特定のIPからのリクエストのみ受け付けるよう制限されている
+- AI アプリ側で源内 Web の外部アプリ利用用 IP アドレスを登録する必要がある
+- AI アプリは特定の IP からのリクエストのみ受け付けるよう制限されている
 
-## 1. 源内Webアプリ側で外部アプリ用IPアドレスを確認
+## 1. 源内 Web 側で外部アプリ用 IP アドレスを確認
 
-### 1.1 使用するVPCの種類を判定
+### 1.1 使用する VPC の種類を判定
 
 `packages/cdk/env-parameters/` 配下の使用するパラメーターファイルを確認し、`vpcIdForInvokeExApp` の指定有無を確認します。
 
@@ -35,13 +35,13 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 
 2. [AWS VPCコンソール](https://ap-northeast-1.console.aws.amazon.com/vpcconsole/home?region=ap-northeast-1#Home:)を開く
 3. サイドバーの **[NAT gateways]** に移動
-4. 検索窓に手順1で確認したVPC IDを入力して検索
+4. 検索窓に手順1で確認した VPC ID を入力して検索
 5. 以下の2つのサブネットを確認
    - `SharedVpcStack/InvokeExAppVpc/vpc/public-subnetSubnet1`
    - `SharedVpcStack/InvokeExAppVpc/vpc/public-subnetSubnet2`
 6. 各サブネットの **"Primary public IPv4 address"** 列の値を記録します（計 2 つの IP アドレス）。
 
-> これらのIPアドレスを外部アプリ用IPアドレスとして使用します。
+> これらの IP アドレスを外部アプリ用 IP アドレスとして使用します。
 
 ### 1.3 共有VPCを利用しない場合
 
@@ -61,13 +61,13 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 
 6. `Type` が `AWS::EC2::EIP` の 2 つのリソースの物理 ID を記録します（計 2 つの IP アドレス）。
 
-> これらのIPアドレスを外部アプリ用IPアドレスとして使用します。
+> これらの IP アドレスを外部アプリ用 IP アドレスとして使用します。
 
 ## 2. AIアプリ側でIPアドレスを登録
 
 **各AIアプリごとに以下の作業を実施**
 
-### 2.1. Google Cloud でAIアプリを構成している場合
+### 2.1. Google Cloud で AI アプリを構成している場合
 
 #### 2.1.1. IPアドレスの追加
 
@@ -80,9 +80,9 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 1. AIアプリを再デプロイ
 2. Google Cloud コンソール上で API キーが生成されたら、その API キーをコピー
 
-#### 2.1.3. 源内Webアプリ側での登録
+#### 2.1.3. 源内 Web 側での登録
 
-1. 源内Webアプリにアクセス
+1. 源内 Web にアクセス
 2. **[アカウント]** > **[チーム管理]** > **[チーム一覧]** へ移動
 3. 対象チームを選択
 4. **[アプリの作成]** から AI アプリを登録
@@ -90,13 +90,13 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
    2. エンドポイント URL やアプリ説明などは、すでにアプリが登録されている別の環境からコピーします。
    3. 別の環境からエンドポイント URL をコピーできない場合は、Google Cloud コンソールの API Gateway ページの API 一覧から対象のアプリを選択し、「ゲートウェイ」タブのゲートウェイ URL の末尾に「/invoke」を追加して使用します（例: https://xxxx-0000-gateway-abcd1234.an.gateway.dev/invoke）。
 
-### 2.2. AWS でAIアプリを構成している場合
+### 2.2. AWS で AI アプリを構成している場合
 
-#### 2.2.1. APIエンドポイントとAPIキーの取得
+#### 2.2.1. API エンドポイントと API キーの取得
 
 1. AIアプリをデプロイしている AWS アカウントの CloudFormation コンソールにアクセスします。
 2. 対象のAIアプリのAPIスタックを選択
-3. `Outputs` タブの`ApiEndpoint` の値を控える
+3. `Outputs` タブの `ApiEndpoint` の値を控える
 4. ターミナル上で、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_SESSION_TOKEN` のアクセス情報を設定します。
 
    ```bash
@@ -107,21 +107,21 @@ vpcIdForInvokeExApp: 'vpc-12345678901234567',
 
 5. `ApiKeyValue` の値の CLI コマンドを実行して API キーを取得します。
 
-#### 2.2.2. 源内Webアプリ側での登録
+#### 2.2.2. 源内 Web 側での登録
 
-1. 源内Webアプリにアクセス
+1. 源内 Web にアクセス
 2. **[アカウント]** > **[チーム管理]** > **[チーム一覧]** へ移動
 3. 対象チームを選択
 4. **[アプリの作成]** から AI アプリを登録します（手順2.2.1でコピーした API エンドポイントと API キーを使用します）。
    1. 非同期 API を使う AI アプリでは、API エンドポイントの末尾に `/requests/` を追加する必要があります。
 
-## 3. 源内Webアプリ側で「おすすめアプリ」登録
+## 3. 源内 Web 側で「おすすめアプリ」登録
 
 ### 3.1 アプリIDの取得
 
-1. 源内Webアプリ画面上でAIアプリ画面を表示
+1. 源内 Web 画面上で AI アプリ画面を表示
 2. ブラウザのURLから最後のスラッシュ以降の文字列（UUID）を取得
-   - 例: `https://example.com/exapps/00000000-0000-0000-0000-000000000000/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+   - 例: `https://example.com/apps/00000000-0000-0000-0000-000000000000/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
    - この場合のアプリID: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 
 ### 3.2 パラメーターファイルへの追加

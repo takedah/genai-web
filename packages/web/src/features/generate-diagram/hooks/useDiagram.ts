@@ -1,5 +1,4 @@
 import type { PredictRequest } from 'genai-web';
-import { useCallback } from 'react';
 import { MERMAID_DIAGRAM_TYPES } from '@/features/generate-diagram/constants';
 import { useDiagramStore } from '@/features/generate-diagram/stores/useDiagramStore';
 import type { MermaidDiagramType } from '@/features/generate-diagram/types';
@@ -31,7 +30,7 @@ export const useDiagram = (id: string) => {
   const { predict } = useChatApi();
 
   // ダイアグラムタイプの抽出
-  const extractDiagramType = useCallback((targetText: string): MermaidDiagramType => {
+  const extractDiagramType = (targetText: string): MermaidDiagramType => {
     const defaultType = validTypes[0];
     const match = targetText.match(/<output>(.*?)<\/output>/i);
     if (!match) return defaultType;
@@ -48,73 +47,67 @@ export const useDiagram = (id: string) => {
       (type) => content.includes(type) || type.includes(content),
     );
     return matchingType || defaultType;
-  }, []);
+  };
 
-  const selectDiagram = useCallback(
-    async (content: string) => {
-      try {
-        if (!model) {
-          throw new Error('Model not found');
-        }
+  const selectDiagram = async (content: string) => {
+    try {
+      if (!model) {
+        throw new Error('Model not found');
+      }
 
-        const payload: PredictRequest = {
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: prompter.diagramPrompt({ determineType: true }),
-            },
-            {
-              role: 'user',
-              content: `<content>${content}</content>`,
-            },
-          ],
-          id: id,
-        };
+      const payload: PredictRequest = {
+        model: model,
+        messages: [
+          {
+            role: 'system',
+            content: prompter.diagramPrompt({ determineType: true }),
+          },
+          {
+            role: 'user',
+            content: `<content>${content}</content>`,
+          },
+        ],
+        id: id,
+      };
 
-        const res = await predict(payload);
-        const type = extractDiagramType(res);
+      const res = await predict(payload);
+      const type = extractDiagramType(res);
+      setDiagramType(type);
+      return type;
+    } catch (error: unknown) {
+      throw `${error}`;
+    }
+  };
+
+  const postDiagram = async (content: string, type: MermaidDiagramType | 'AI') => {
+    setDiagramType('');
+    try {
+      let chosenType = type;
+
+      // 1. AIチョイス時はダイアグラムタイプを決定
+      if (type === 'AI') {
+        chosenType = await selectDiagram(content);
+      } else {
         setDiagramType(type);
-        return type;
-      } catch (error: unknown) {
-        throw `${error}`;
       }
-    },
-    [model, prompter, id, predict, extractDiagramType, setDiagramType],
-  );
 
-  const postDiagram = useCallback(
-    async (content: string, type: MermaidDiagramType | 'AI') => {
-      setDiagramType('');
-      try {
-        let chosenType = type;
+      // 2. メッセージの過去の履歴をクリア
+      clear();
 
-        // 1. AIチョイス時はダイアグラムタイプを決定
-        if (type === 'AI') {
-          chosenType = await selectDiagram(content);
-        } else {
-          setDiagramType(type);
-        }
+      // 3. 決定したダイアグラムタイプのシステムプロンプトを設定
+      const systemPrompt = prompter.diagramPrompt({
+        determineType: false,
+        diagramType: chosenType,
+      });
+      updateSystemContext(systemPrompt);
 
-        // 2. メッセージの過去の履歴をクリア
-        clear();
-
-        // 3. 決定したダイアグラムタイプのシステムプロンプトを設定
-        const systemPrompt = prompter.diagramPrompt({
-          determineType: false,
-          diagramType: chosenType,
-        });
-        updateSystemContext(systemPrompt);
-
-        // 4. ダイアグラム生成
-        await postChat(content, true);
-      } catch (error: unknown) {
-        setLoading(false);
-        throw `${error}`;
-      }
-    },
-    [setDiagramType, clear, prompter, updateSystemContext, postChat, selectDiagram, setLoading],
-  );
+      // 4. ダイアグラム生成
+      await postChat(content, { ignoreHistory: true });
+    } catch (error: unknown) {
+      setLoading(false);
+      throw `${error}`;
+    }
+  };
 
   return {
     loading,

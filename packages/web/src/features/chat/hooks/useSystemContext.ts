@@ -1,16 +1,11 @@
-import type { SystemContext } from 'genai-web';
-import { useEffect, useState } from 'react';
 import { useSystemContextApi } from './useSystemContextApi';
 
 export const useSystemContext = () => {
   const { listSystemContexts, createSystemContext, deleteSystemContext, updateSystemContextTitle } =
     useSystemContextApi();
   const { data: systemContextResponse, mutate: mutateSystemContext } = listSystemContexts();
-  const [systemContextList, setSystemContextList] = useState<SystemContext[]>([]);
 
-  useEffect(() => {
-    setSystemContextList(systemContextResponse ?? []);
-  }, [systemContextResponse]);
+  const systemContextList = systemContextResponse ?? [];
 
   const onSaveSystemContext = async (title: string, systemContext: string) => {
     await createSystemContext(title, systemContext);
@@ -19,12 +14,18 @@ export const useSystemContext = () => {
 
   const onDeleteSystemContext = async (systemContextId: string) => {
     try {
-      const idx = systemContextList.findIndex((item) => item.systemContextId === systemContextId);
-      if (idx >= 0) {
-        setSystemContextList(systemContextList.filter((_, i) => i !== idx));
-      }
-      await deleteSystemContext(systemContextId);
-      mutateSystemContext();
+      await mutateSystemContext(
+        async (current) => {
+          await deleteSystemContext(systemContextId);
+          return (current ?? []).filter((item) => item.systemContextId !== systemContextId);
+        },
+        {
+          optimisticData: (current) =>
+            (current ?? []).filter((item) => item.systemContextId !== systemContextId),
+          rollbackOnError: true,
+          revalidate: true,
+        },
+      );
     } catch (e) {
       console.error(e);
     }
@@ -32,19 +33,26 @@ export const useSystemContext = () => {
 
   const onUpdateSystemContext = async (systemContextId: string, title: string) => {
     try {
-      const idx = systemContextList.findIndex((item) => item.systemContextId === systemContextId);
-      if (idx >= 0) {
-        setSystemContextList(
-          systemContextList.map((item, i) => {
-            if (i === idx) {
-              return { ...item, systemContextTitle: title };
-            }
-            return item;
-          }),
-        );
-      }
-      await updateSystemContextTitle(systemContextId, title);
-      mutateSystemContext();
+      await mutateSystemContext(
+        async (current) => {
+          await updateSystemContextTitle(systemContextId, title);
+          return (current ?? []).map((item) =>
+            item.systemContextId === systemContextId
+              ? { ...item, systemContextTitle: title }
+              : item,
+          );
+        },
+        {
+          optimisticData: (current) =>
+            (current ?? []).map((item) =>
+              item.systemContextId === systemContextId
+                ? { ...item, systemContextTitle: title }
+                : item,
+            ),
+          rollbackOnError: true,
+          revalidate: true,
+        },
+      );
     } catch (e) {
       console.error(e);
     }

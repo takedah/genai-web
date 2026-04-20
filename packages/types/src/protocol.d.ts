@@ -61,7 +61,6 @@ export type UpdateTitleResponse = {
 
 export type PredictRequest = {
   model?: Model;
-  idToken?: string;
   messages: UnrecordedMessage[];
   id: string;
 };

@@ -1,9 +1,8 @@
 import { GetArtifactFileResponse } from 'genai-web';
-import { useCallback } from 'react';
 import { teamApi } from '@/lib/fetcher';
 
 export const useGetArtifactFile = () => {
-  const getArtifactFileUrl = useCallback(async (s3Url: string): Promise<string> => {
+  const getArtifactFileUrl = async (s3Url: string): Promise<string> => {
     const params = new URLSearchParams({
       s3Url: encodeURIComponent(s3Url),
     });
@@ -13,7 +12,7 @@ export const useGetArtifactFile = () => {
     );
 
     return response.data.data;
-  }, []);
+  };
 
   return {
     getArtifactFileUrl,

@@ -1,6 +1,6 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import type { SystemContext } from 'genai-web';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PiPencilLine, PiTrash } from 'react-icons/pi';
 import { Button } from '@/components/ui/dads/Button';
 import { Input } from '@/components/ui/dads/Input';
@@ -36,19 +36,19 @@ export const SavedSystemContextItem = (props: Props) => {
     }
   }, [editing]);
 
-  const handleFocusAfterEditing = useCallback(async () => {
+  const handleFocusAfterEditing = async () => {
     setEditing(false);
     focus(`${systemContextId}-menu-button`);
-  }, [systemContextId]);
+  };
 
-  const handleUpdateTitle = useCallback(async () => {
+  const handleUpdateTitle = async () => {
     try {
       onClickUpdateSystemContext(systemContextId, tempTitle);
       handleFocusAfterEditing();
     } catch {
       handleFocusAfterEditing();
     }
-  }, [systemContextId, onClickUpdateSystemContext, tempTitle, handleFocusAfterEditing]);
+  };
 
   const handleEditingCancel = () => {
     handleFocusAfterEditing();
@@ -65,19 +65,16 @@ export const SavedSystemContextItem = (props: Props) => {
     }
   };
 
-  const handleClickPrompt = useCallback(() => {
+  const handleClickPrompt = () => {
     onClick({
       systemContext: systemContext,
     });
-  }, [systemContext, onClick]);
+  };
 
-  const handleDelete = useCallback(
-    async (systemContextId: string) => {
-      await onClickDeleteSystemContext(systemContextId);
-      setShowDeleteDialog(false);
-    },
-    [onClickDeleteSystemContext],
-  );
+  const handleDelete = async (systemContextId: string) => {
+    await onClickDeleteSystemContext(systemContextId);
+    setShowDeleteDialog(false);
+  };
 
   return (
     <>
@@ -134,7 +131,7 @@ export const SavedSystemContextItem = (props: Props) => {
                   <TooltipTrigger asChild>
                     <MenuButton
                       id={`${systemContextId}-menu-button`}
-                      className={`flex size-9 items-center justify-center rounded-4 after:absolute after:-inset-full after:m-auto after:h-[44px] after:w-[44px] hover:bg-solid-gray-50 hover:-outline-offset-[calc(2/16*1rem)] hover:outline-black hover:outline-solid focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset`}
+                      className={`flex size-9 items-center justify-center rounded-4 after:absolute after:-inset-full after:m-auto after:h-11 after:w-11 hover:bg-solid-gray-50 hover:-outline-offset-[calc(2/16*1rem)] hover:outline-black hover:outline-solid focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset`}
                     >
                       <MoreVertIcon aria-label='プロンプトの操作' role='img' className='mt-0.5' />
                     </MenuButton>

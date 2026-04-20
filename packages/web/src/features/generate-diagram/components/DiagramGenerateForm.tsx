@@ -29,15 +29,8 @@ const otherTypeOptions = Object.values(DIAGRAM_DATA).filter(
 );
 
 export const DiagramGenerateForm = () => {
-  const {
-    content,
-    setContent,
-    setDiagramCode,
-    setDiagramSentence,
-    selectedType,
-    setSelectedType,
-    setDiagramGenerationError,
-  } = useDiagramStore();
+  const { content, setContent, selectedType, setSelectedType, setDiagramGenerationError } =
+    useDiagramStore();
 
   const { pathname } = useLocation();
 
@@ -65,8 +58,6 @@ export const DiagramGenerateForm = () => {
     setLoading(true);
 
     setDiagramGenerationError(null);
-    setDiagramCode('');
-    setDiagramSentence('');
 
     try {
       await postDiagram(data.content, data.type);

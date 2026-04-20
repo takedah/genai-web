@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
 import { Divider } from '@/components/ui/dads/Divider';
@@ -14,13 +13,13 @@ import { useTyping } from '@/hooks/useTyping';
 import { LayoutBody } from '@/layout/LayoutBody';
 import { useReset } from './hooks/useReset';
 import { useSetDefaultValues } from './hooks/useSetDefaultValues';
-import { useGenerateTextStore } from './stores/useGenerateTextStore';
 
 export const GenerateTextPage = () => {
-  const { text, setText } = useGenerateTextStore();
-
   const { pathname } = useLocation();
-  const { loading, messages, postChat, updateSystemContextByModel } = useChat(pathname);
+  const { loading, messages, postChat } = useChat(pathname);
+
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const text = lastMessage?.role === 'assistant' ? lastMessage.content.trim() : '';
 
   const { typingTextOutput } = useTyping(loading, text);
   const { scrollableContainer, setFollowing } = useFollow();
@@ -28,18 +27,6 @@ export const GenerateTextPage = () => {
   const { prompter } = usePrompter();
 
   useReset();
-
-  // 画面遷移時に出力が残る問題の対応
-  // メッセージが空の時はテキストをクリア
-  useEffect(() => {
-    if (messages.length === 0) {
-      setText('');
-    }
-  }, [messages, setText]);
-
-  useEffect(() => {
-    updateSystemContextByModel();
-  }, [prompter]);
 
   useSetDefaultValues();
 
@@ -49,26 +36,10 @@ export const GenerateTextPage = () => {
         information,
         context,
       }),
-      true,
+      { ignoreHistory: true },
     );
   };
 
-  // リアルタイムにレスポンスを表示
-  useEffect(() => {
-    if (messages.length === 0) {
-      return;
-    }
-
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== 'assistant') {
-      return;
-    }
-
-    const response = messages[messages.length - 1].content;
-    setText(response.trim());
-  }, [messages]);
-
-  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const { liveStatusMessage } = useLiveStatusMessage({
     isAssistant: lastMessage?.role === 'assistant',
     loading: loading,
@@ -86,6 +57,7 @@ export const GenerateTextPage = () => {
         <GenerateTextResult
           scrollableContainer={scrollableContainer}
           typingTextOutput={typingTextOutput}
+          text={text}
         />
       </div>
       <div aria-live='assertive' aria-atomic='true' className='sr-only'>

@@ -24,6 +24,18 @@ import { useChatList } from './useChatList';
 
 type GenerationMode = 'normal' | 'continue' | 'retry';
 
+export type GenerateOptions = {
+  ignoreHistory?: boolean;
+  preProcessInput?: (messages: ShownMessage[]) => ShownMessage[];
+  postProcessOutput?: (message: string) => string;
+  sessionId?: string;
+  uploadedFiles?: UploadedFileType[];
+  extraData?: ExtraData[];
+  overrideModelType?: Model['type'];
+  setSessionId?: (sessionId: string) => void;
+  base64Cache?: Record<string, string>;
+};
+
 const useChatStore = create<{
   chats: {
     [id: string]: {
@@ -53,44 +65,18 @@ const useChatStore = create<{
     id: string,
     content: string,
     mutateListChat: SWRInfiniteKeyedMutator<ListChatsResponse[]>,
-    ignoreHistory: boolean,
-    preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined,
-    postProcessOutput: ((message: string) => string) | undefined,
-    sessionId: string | undefined,
-    uploadedFiles: UploadedFileType[] | undefined,
-    extraData: ExtraData[] | undefined,
-    overrideModelType: Model['type'] | undefined,
-    setSessionId: (sessionId: string) => void,
-    base64Cache: Record<string, string> | undefined,
-  ) => void;
+    options?: GenerateOptions,
+  ) => Promise<void>;
   continueGeneration: (
-    generationMode: GenerationMode,
     id: string,
     mutateListChat: SWRInfiniteKeyedMutator<ListChatsResponse[]>,
-    ignoreHistory: boolean,
-    preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined,
-    postProcessOutput: ((message: string) => string) | undefined,
-    sessionId: string | undefined,
-    uploadedFiles: UploadedFileType[] | undefined,
-    extraData: ExtraData[] | undefined,
-    overrideModelType: Model['type'] | undefined,
-    setSessionId: (sessionId: string) => void,
-    base64Cache: Record<string, string> | undefined,
-  ) => void;
+    options?: GenerateOptions,
+  ) => Promise<void>;
   retryGeneration: (
-    generationMode: GenerationMode,
     id: string,
     mutateListChat: SWRInfiniteKeyedMutator<ListChatsResponse[]>,
-    ignoreHistory: boolean,
-    preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined,
-    postProcessOutput: ((message: string) => string) | undefined,
-    sessionId: string | undefined,
-    uploadedFiles: UploadedFileType[] | undefined,
-    extraData: ExtraData[] | undefined,
-    overrideModelType: Model['type'] | undefined,
-    setSessionId: (sessionId: string) => void,
-    base64Cache: Record<string, string> | undefined,
-  ) => void;
+    options?: GenerateOptions,
+  ) => Promise<void>;
   getStopReason: (id: string) => string;
 }>((set, get) => {
   const getModelId = (id: string) => {
@@ -104,6 +90,20 @@ const useChatStore = create<{
           ...state.modelIds,
           [id]: newModelId,
         },
+        // モデル変更時は systemContext を新モデル用 prompter に追随させる
+        // ただし登録済みチャット（chat.chat あり）は保存時の systemContext を尊重して更新しない
+        chats: produce(state.chats, (draft) => {
+          const chat = draft[id];
+          if (!chat || chat.chat) {
+            return;
+          }
+          const prompter = getPrompter(newModelId);
+          const systemContext = prompter.systemContext(id);
+          const idx = chat.messages.findIndex((m) => m.role === 'system');
+          if (idx > -1) {
+            chat.messages[idx].content = systemContext;
+          }
+        }),
       };
     });
   };
@@ -349,16 +349,20 @@ const useChatStore = create<{
     generationMode: GenerationMode,
     id: string,
     mutateListChat: SWRInfiniteKeyedMutator<ListChatsResponse[]>,
-    ignoreHistory: boolean,
-    preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined = undefined,
-    postProcessOutput: ((message: string) => string) | undefined = undefined,
-    sessionId: string | undefined = undefined,
-    uploadedFiles: UploadedFileType[] | undefined = undefined,
-    extraData: ExtraData[] | undefined = undefined,
-    overrideModelType: Model['type'] | undefined = undefined,
-    setSessionId: (sessionId: string) => void = () => {},
-    base64Cache: Record<string, string> | undefined = undefined,
+    options: GenerateOptions = {},
   ) => {
+    const {
+      ignoreHistory = false,
+      preProcessInput,
+      postProcessOutput,
+      sessionId,
+      uploadedFiles,
+      extraData,
+      overrideModelType,
+      setSessionId = () => {},
+      base64Cache,
+    } = options;
+
     const { modelIds } = MODELS;
     const modelId = localStorage.getItem('modelId_v20260218') ?? modelIds[0];
     const model = findModelByModelId(modelId);
@@ -620,20 +624,9 @@ const useChatStore = create<{
       });
       return ret;
     },
-    post: async (
-      id: string,
-      content: string,
-      mutateListChat,
-      ignoreHistory: boolean,
-      preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined = undefined,
-      postProcessOutput: ((message: string) => string) | undefined = undefined,
-      sessionId: string | undefined = undefined,
-      uploadedFiles: UploadedFileType[] | undefined = undefined,
-      extraData: ExtraData[] | undefined = undefined,
-      overrideModelType: Model['type'] | undefined = undefined,
-      setSessionId: (sessionId: string) => void = () => {},
-      base64Cache: Record<string, string> | undefined = undefined,
-    ) => {
+    post: async (id: string, content: string, mutateListChat, options: GenerateOptions = {}) => {
+      const { uploadedFiles, extraData } = options;
+
       const userMessage: ShownMessage = {
         role: 'user',
         content,
@@ -674,24 +667,13 @@ const useChatStore = create<{
         };
       });
 
-      await generateMessage(
-        'normal',
-        id,
-        mutateListChat,
-        ignoreHistory,
-        preProcessInput,
-        postProcessOutput,
-        sessionId,
-        uploadedFiles,
-        extraData,
-        overrideModelType,
-        setSessionId,
-        base64Cache,
-      );
+      await generateMessage('normal', id, mutateListChat, options);
     },
 
-    continueGeneration: generateMessage,
-    retryGeneration: generateMessage,
+    continueGeneration: (id, mutateListChat, options) =>
+      generateMessage('continue', id, mutateListChat, options),
+    retryGeneration: (id, mutateListChat, options) =>
+      generateMessage('retry', id, mutateListChat, options),
     getStopReason: getStopReason,
   };
 });
@@ -765,11 +747,6 @@ export const useChat = (id: string, chatId?: string) => {
     updateSystemContext: (systemContext: string) => {
       updateSystemContext(id, systemContext);
     },
-    updateSystemContextByModel: () => {
-      const modelId = getModelId(id);
-      const prompter = getPrompter(modelId);
-      updateSystemContext(id, prompter.systemContext(id));
-    },
     getCurrentSystemContext: () => {
       return getCurrentSystemContext(id);
     },
@@ -778,84 +755,14 @@ export const useChat = (id: string, chatId?: string) => {
     rawMessages: chats[id]?.messages ?? [],
     messages: filteredMessages,
     isEmpty: filteredMessages.length === 0,
-    postChat: (
-      content: string,
-      ignoreHistory: boolean = false,
-      preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined = undefined,
-      postProcessOutput: ((message: string) => string) | undefined = undefined,
-      sessionId: string | undefined = undefined,
-      uploadedFiles: UploadedFileType[] | undefined = undefined,
-      extraData: ExtraData[] | undefined = undefined,
-      overrideModelType: Model['type'] | undefined = undefined,
-      setSessionId: (sessionId: string) => void = () => {},
-      base64Cache: Record<string, string> | undefined = undefined,
-    ) => {
-      post(
-        id,
-        content,
-        mutateChatList,
-        ignoreHistory,
-        preProcessInput,
-        postProcessOutput,
-        sessionId,
-        uploadedFiles,
-        extraData,
-        overrideModelType,
-        setSessionId,
-        base64Cache,
-      );
+    postChat: (content: string, options?: GenerateOptions) => {
+      return post(id, content, mutateChatList, options);
     },
-    continueGeneration: (
-      ignoreHistory: boolean = false,
-      preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined = undefined,
-      postProcessOutput: ((message: string) => string) | undefined = undefined,
-      sessionId: string | undefined = undefined,
-      uploadedFiles: UploadedFileType[] | undefined = undefined,
-      extraData: ExtraData[] | undefined = undefined,
-      overrideModelType: Model['type'] | undefined = undefined,
-      setSessionId: (sessionId: string) => void = () => {},
-      base64Cache: Record<string, string> | undefined = undefined,
-    ) => {
-      continueGeneration(
-        'continue',
-        id,
-        mutateChatList,
-        ignoreHistory,
-        preProcessInput,
-        postProcessOutput,
-        sessionId,
-        uploadedFiles,
-        extraData,
-        overrideModelType,
-        setSessionId,
-        base64Cache,
-      );
+    continueGeneration: (options?: GenerateOptions) => {
+      return continueGeneration(id, mutateChatList, options);
     },
-    retryGeneration: (
-      ignoreHistory: boolean = false,
-      preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined = undefined,
-      postProcessOutput: ((message: string) => string) | undefined = undefined,
-      sessionId: string | undefined = undefined,
-      uploadedFiles: UploadedFileType[] | undefined = undefined,
-      extraData: ExtraData[] | undefined = undefined,
-      overrideModelType: Model['type'] | undefined = undefined,
-      setSessionId: (sessionId: string) => void = () => {},
-      base64Cache: Record<string, string> | undefined = undefined,
-    ) => {
-      retryGeneration(
-        'retry',
-        id,
-        mutateChatList,
-        ignoreHistory,
-        preProcessInput,
-        postProcessOutput,
-        sessionId,
-        uploadedFiles,
-        extraData,
-        overrideModelType,
-        setSessionId,
-        base64Cache,
-      );
+    retryGeneration: (options?: GenerateOptions) => {
+      return retryGeneration(id, mutateChatList, options);
     },
     getStopReason: () => {
       return getStopReason(id);

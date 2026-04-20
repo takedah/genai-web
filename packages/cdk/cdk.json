@@ -38,7 +38,7 @@
     "domainName": null,
     "hostedZoneId": null,
     "crossAccountBedrockRoleArn": "",
-    "exAppInvokeTimeoutSeconds": 180,
+    "exAppInvokeTimeoutSeconds": 29,
     "dataRetentionDays": {
       "dynamoDbTtl": 364,
       "s3FileExpiration": 364

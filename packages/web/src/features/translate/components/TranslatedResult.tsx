@@ -11,12 +11,13 @@ import { LANGUAGES } from '../constants';
 
 type Props = {
   typingTextOutput: string;
+  translatedSentence: string;
 };
 
 export const TranslatedResult = (props: Props) => {
-  const { typingTextOutput } = props;
+  const { typingTextOutput, translatedSentence } = props;
 
-  const { language, setLanguage, translatedSentence } = useTranslateStore();
+  const { language, setLanguage } = useTranslateStore();
 
   const { pathname } = useLocation();
   const { loading, continueGeneration, getStopReason } = useChat(pathname);

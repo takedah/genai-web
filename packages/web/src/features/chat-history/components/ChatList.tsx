@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useAccessibilityAnnouncer } from '@/hooks/useAccessibilityAnnouncer';
 import { useChatList } from '@/hooks/useChatList';
 import { decomposeId } from '@/utils/decomposeId';
@@ -13,16 +13,13 @@ export const ChatList = (props: Props) => {
   const { chats, loading, updateChatTitle, canLoadMore, loadMore } = useChatList();
   const { announceMessage, announce, clearAnnounce } = useAccessibilityAnnouncer();
 
-  const searchedChats = useMemo(() => {
-    if (props.searchWords.length === 0) {
-      return chats;
-    }
-
-    // OR 検索にしています
-    return chats.filter((c) => {
-      return props.searchWords.some((w) => c.title.toLowerCase().includes(w.toLowerCase()));
-    });
-  }, [props.searchWords, chats]);
+  const searchedChats =
+    props.searchWords.length === 0
+      ? chats
+      : // OR 検索にしています
+        chats.filter((c) => {
+          return props.searchWords.some((w) => c.title.toLowerCase().includes(w.toLowerCase()));
+        });
 
   const searchedChatsCount = searchedChats.length;
 

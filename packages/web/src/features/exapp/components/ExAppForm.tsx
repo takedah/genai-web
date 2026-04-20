@@ -1,5 +1,5 @@
 import { ExApp, InvokeExAppHistory } from 'genai-web';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FieldValues, useForm } from 'react-hook-form';
 import { useSWRConfig } from 'swr';
 import { unstable_serialize } from 'swr/infinite';
@@ -39,6 +39,15 @@ export const ExAppForm = (props: Props) => {
 
   const [validationError, setValidationError] = useState('');
 
+  const systemPromptKey =
+    exApp.systemPromptKeyName && exApp.systemPromptKeyName.length > 0
+      ? exApp.systemPromptKeyName
+      : 'system_prompt';
+
+  const formValues = exApp.systemPrompt
+    ? { ...defaultValues, [systemPromptKey]: exApp.systemPrompt }
+    : defaultValues;
+
   const {
     register,
     handleSubmit,
@@ -46,29 +55,24 @@ export const ExAppForm = (props: Props) => {
     trigger,
     clearErrors,
     formState: { errors, submitCount },
-  } = useForm({ mode: 'onSubmit' });
+  } = useForm({
+    mode: 'onSubmit',
+    values: formValues,
+  });
 
   const [invokeHistory, setInvokeHistory] = useState<InvokeExAppHistory | null>(null);
   const [conversationHistory, setConversationHistory] = useState('');
 
-  const setDefaultValues = useCallback(() => {
-    const keys = Object.keys(defaultValues);
-    for (const key of keys) {
-      const defaultValue = defaultValues[key];
-      setValue(key, defaultValue, {
-        shouldValidate: defaultValue.length >= 1,
-      });
-    }
-  }, [defaultValues, setValue]);
-
-  const restoreConversationHistory = useCallback(() => {
+  useEffect(() => {
     const history = localStorage.getItem('history');
-    if (history) {
-      try {
-        const parsedHistory = JSON.parse(history);
-        setInvokeHistory(parsedHistory);
+    if (!history) {
+      return;
+    }
+    try {
+      const parsedHistory = JSON.parse(history);
+      setInvokeHistory(parsedHistory);
 
-        const historyInputs = `
+      const historyInputs = `
 ${parsedHistory.inputs['conversation_histories'] ? formatConversationHistory(parsedHistory.inputs['conversation_histories'] as ConversationHistory[]) + '\n ## 入力' : '## 入力'}
 
 ${Object.keys(parsedHistory.inputs)
@@ -89,19 +93,13 @@ ${parsedHistory.outputs}
 
                 `;
 
-        setConversationHistory(historyInputs);
-      } catch (e) {
-        console.error(e);
-      }
-
-      localStorage.removeItem('history');
+      setConversationHistory(historyInputs);
+    } catch (e) {
+      console.error(e);
     }
-  }, []);
 
-  useEffect(() => {
-    setDefaultValues();
-    restoreConversationHistory();
-  }, [setDefaultValues, restoreConversationHistory]);
+    localStorage.removeItem('history');
+  }, []);
 
   const onSubmit = async (data: FieldValues) => {
     if (requestLoading) {

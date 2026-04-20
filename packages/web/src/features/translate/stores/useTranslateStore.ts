@@ -5,14 +5,12 @@ type TranslateState = {
   sentence: string;
   additionalContext: string;
   language: string;
-  translatedSentence: string;
 };
 
 type TranslateActions = {
   setSentence: (sentence: string) => void;
   setAdditionalContext: (additionalContext: string) => void;
   setLanguage: (language: string) => void;
-  setTranslatedSentence: (translatedSentence: string) => void;
   clear: () => void;
 };
 
@@ -22,7 +20,6 @@ const initialState: TranslateState = {
   sentence: '',
   additionalContext: '',
   language: LANGUAGES[0],
-  translatedSentence: '',
 };
 
 export const useTranslateStore = create<TranslateStore>((set) => ({
@@ -30,6 +27,5 @@ export const useTranslateStore = create<TranslateStore>((set) => ({
   setSentence: (sentence) => set({ sentence }),
   setAdditionalContext: (additionalContext) => set({ additionalContext }),
   setLanguage: (language) => set({ language }),
-  setTranslatedSentence: (translatedSentence) => set({ translatedSentence }),
   clear: () => set(initialState),
 }));

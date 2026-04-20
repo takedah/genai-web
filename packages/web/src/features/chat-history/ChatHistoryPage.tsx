@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { PageTitle } from '@/components/PageTitle';
 import { Input } from '@/components/ui/dads/Input';
 import { Label } from '@/components/ui/dads/Label';
@@ -11,12 +11,10 @@ export const ChatHistoryPage = () => {
   const PAGE_TITLE = '利用履歴';
   const [searchQuery, setSearchQuery] = useState('');
 
-  const searchWords = useMemo(() => {
-    return searchQuery
-      .split(' ')
-      .flatMap((q) => q.split('　'))
-      .filter((q) => q !== '');
-  }, [searchQuery]);
+  const searchWords = searchQuery
+    .split(' ')
+    .flatMap((q) => q.split('　'))
+    .filter((q) => q !== '');
 
   return (
     <LayoutBody>

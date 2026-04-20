@@ -57,7 +57,7 @@ const getAuthHeaders = async (hasBody: boolean): Promise<Record<string, string>>
     headers['Content-Type'] = 'application/json';
   }
   if (token) {
-    headers.Authorization = token;
+    headers.Authorization = `Bearer ${token}`;
   }
   return headers;
 };

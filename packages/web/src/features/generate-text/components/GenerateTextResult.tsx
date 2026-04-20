@@ -4,20 +4,18 @@ import { Markdown } from '@/components/Markdown';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
 import { Button } from '@/components/ui/dads/Button';
 import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
-import { useGenerateTextStore } from '@/features/generate-text/stores/useGenerateTextStore';
 import { useChat } from '@/hooks/useChat';
 
 type Props = {
   scrollableContainer: RefObject<HTMLDivElement | null>;
   typingTextOutput: string;
+  text: string;
 };
 
 export const GenerateTextResult = (props: Props) => {
-  const { scrollableContainer, typingTextOutput } = props;
+  const { scrollableContainer, typingTextOutput, text } = props;
 
   const copyTextRef = useRef<HTMLDivElement>(null);
-
-  const { text } = useGenerateTextStore();
 
   const { pathname } = useLocation();
   const { loading, continueGeneration, getStopReason } = useChat(pathname);

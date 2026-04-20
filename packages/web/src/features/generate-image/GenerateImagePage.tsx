@@ -1,5 +1,4 @@
-import type { AmazonUIImageGenerationMode } from 'genai-web';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
 import { CustomSelect } from '@/components/ui/CustomSelect';
@@ -12,7 +11,6 @@ import { useGenerateImageStore } from '@/features/generate-image/stores/useGener
 import { useChat } from '@/hooks/useChat';
 import { useSelectedModel } from '@/hooks/useSelectedModel';
 import { findModelDisplayNameByModelId, MODELS } from '@/models';
-import { getPrompter } from '@/prompts';
 import { GeneratedImages } from './components/GeneratedImages';
 import { GenerateImageAssistant } from './components/GenerateImageAssistant';
 import { ImageGeneratorForm } from './components/ImageGeneratorForm';
@@ -28,75 +26,48 @@ export const GenerateImagePage = () => {
     resolution,
     stylePreset,
     setStylePreset,
-    generationMode,
     initImage,
     setInitImage,
     maskImage,
     setMaskImage,
-    imageSample,
-    setImageSample,
     chatContent,
     setChatContent,
     clear,
   } = useGenerateImageStore();
 
   const { pathname } = useLocation();
-  const { loading: loadingChat, clear: clearChat, updateSystemContextByModel } = useChat(pathname);
+  const { loading: loadingChat, clear: clearChat } = useChat(pathname);
   const { selectedModelId, setSelectedModelId } = useSelectedModel();
 
   const [generating, setGenerating] = useState(false);
   const [isOpenSketch, setIsOpenSketch] = useState(false);
   const [isOpenMask, setIsOpenMask] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const previousImageSampleRef = useRef(3);
-  const previousGenerationModeRef = useRef<AmazonUIImageGenerationMode>('TEXT_IMAGE');
 
   const { modelIds } = MODELS;
   const { handleGenerateImage, onClickRandomSeed } = useGenerateImageHandler(setGenerating);
-
-  const prompter = getPrompter(selectedModelId);
 
   const [width, height] = resolution.label.split('x').map((v) => Number(v));
 
   useReset();
 
-  useEffect(() => {
-    if (generationMode === 'BACKGROUND_REMOVAL') {
-      previousImageSampleRef.current = imageSample;
-      setImageSample(1);
-    } else if (previousGenerationModeRef.current === 'BACKGROUND_REMOVAL') {
-      setImageSample(previousImageSampleRef.current);
-    }
-    previousGenerationModeRef.current = generationMode;
-  }, [generationMode]);
-
-  useEffect(() => {
-    updateSystemContextByModel();
-  }, [prompter]);
-
   useSetDefaultValues();
 
-  const onChangeInitImageBase64 = useCallback(
-    (s: Canvas) => {
-      setInitImage(s);
-      setIsOpenSketch(false);
-    },
-    [setInitImage],
-  );
+  const onChangeInitImageBase64 = (s: Canvas) => {
+    setInitImage(s);
+    setIsOpenSketch(false);
+  };
 
-  const onChangeMaskImageBase64 = useCallback(
-    (s: Canvas) => {
-      setMaskImage(s);
-      setIsOpenMask(false);
-    },
-    [setMaskImage],
-  );
+  const onChangeMaskImageBase64 = (s: Canvas) => {
+    setMaskImage(s);
+    setIsOpenMask(false);
+  };
 
-  const clearAll = useCallback(() => {
+  const clearAll = () => {
     setSelectedImageIndex(0);
     clear();
     clearChat();
-  }, [clear, clearChat]);
+  };
 
   return (
     <>

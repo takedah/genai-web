@@ -1,7 +1,9 @@
-import { useDiagramStore } from '@/features/generate-diagram/stores/useDiagramStore';
+type Props = {
+  diagramSentence: string;
+};
 
-export const DiagramSentence = () => {
-  const { diagramSentence } = useDiagramStore();
+export const DiagramSentence = (props: Props) => {
+  const { diagramSentence } = props;
 
   if (diagramSentence.length === 0) {
     return null;

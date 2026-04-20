@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type ColorChangeHandler, CompactPicker } from 'react-color';
 import {
   PiArrowClockwise,
@@ -63,17 +63,17 @@ export const SketchPad = (props: Props) => {
     }
   }, [props.image, props.height, props.width]);
 
-  const onChangePenColor = useCallback<ColorChangeHandler>((color) => {
+  const onChangePenColor: ColorChangeHandler = (color) => {
     setIsOpenPalette(false);
     setPenColor(color.hex);
-  }, []);
+  };
 
-  const onChangeBgColor = useCallback<ColorChangeHandler>((color) => {
+  const onChangeBgColor: ColorChangeHandler = (color) => {
     setIsOpenPaletteBg(false);
     setBgColor(color.hex);
-  }, []);
+  };
 
-  const onClickUndo = useCallback(() => {
+  const onClickUndo = () => {
     const data = canvasRef.current?.toData();
     if (data) {
       const undoItem = data.pop();
@@ -82,9 +82,9 @@ export const SketchPad = (props: Props) => {
       }
       canvasRef.current?.fromData(data);
     }
-  }, [undoStack]);
+  };
 
-  const onClickRedo = useCallback(() => {
+  const onClickRedo = () => {
     const data = canvasRef.current?.toData();
     if (data) {
       const redoItem = undoStack.pop();
@@ -93,9 +93,9 @@ export const SketchPad = (props: Props) => {
         canvasRef.current?.fromData(data);
       }
     }
-  }, [undoStack]);
+  };
 
-  const onClickComplete = useCallback(() => {
+  const onClickComplete = () => {
     if (canvasRef.current?.isEmpty()) {
       props.onChange({
         imageBase64: '',
@@ -138,7 +138,7 @@ export const SketchPad = (props: Props) => {
         });
       }
     }
-  }, [bgColor, props]);
+  };
 
   const [imageBase64, setImageBase64] = useState('');
 
@@ -182,17 +182,17 @@ export const SketchPad = (props: Props) => {
       };
     }
   };
-  const onClickUploadComplete = useCallback(() => {
+  const onClickUploadComplete = () => {
     props.onChange({
       imageBase64: imageBase64,
       foregroundBase64: imageBase64,
       backgroundColor: bgColor,
     });
-  }, [imageBase64, bgColor, props]);
+  };
 
-  const onClickClear = useCallback(() => {
+  const onClickClear = () => {
     canvasRef.current?.clear();
-  }, []);
+  };
 
   const hideAllPalette = () => {
     setIsOpenPalette(false);
