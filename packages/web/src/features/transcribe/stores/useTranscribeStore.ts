@@ -1,8 +1,6 @@
-import type { Transcript } from 'genai-web';
 import { createWithEqualityFn as create } from 'zustand/traditional';
 
 type TranscribeState = {
-  content: Transcript[];
   speakerLabel: boolean;
   maxSpeakers: number;
   speakers: string;
@@ -14,7 +12,6 @@ type TranscribeState = {
 };
 
 type TranscribeActions = {
-  setContent: (content: Transcript[]) => void;
   setSpeakerLabel: (speakerLabel: boolean) => void;
   setMaxSpeakers: (maxSpeakers: number) => void;
   setSpeakers: (speakers: string) => void;
@@ -29,7 +26,6 @@ type TranscribeActions = {
 type TranscribeStore = TranscribeState & TranscribeActions;
 
 const initialState: TranscribeState = {
-  content: [],
   speakerLabel: false,
   maxSpeakers: 2,
   speakers: '',
@@ -42,7 +38,6 @@ const initialState: TranscribeState = {
 
 export const useTranscribeStore = create<TranscribeStore>((set) => ({
   ...initialState,
-  setContent: (content) => set({ content }),
   setSpeakerLabel: (speakerLabel) => set({ speakerLabel }),
   setMaxSpeakers: (maxSpeakers) => set({ maxSpeakers }),
   setSpeakers: (speakers) => set({ speakers }),

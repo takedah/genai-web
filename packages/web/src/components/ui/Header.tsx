@@ -1,5 +1,4 @@
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useSWRConfig } from 'swr';
 import { AccountMenu } from '@/components/ui/AccountMenu';
@@ -18,28 +17,23 @@ type Props = {
 
 export const Header = (props: Props) => {
   const { className, isLandingPage, onClickMenuToggleForMobile } = props;
-  const [groups, setGroups] = useState<string[]>([]);
 
   const { data } = useAuth();
-
-  useEffect(() => {
-    if (data != null && data.tokens != null) {
-      setGroups((data.tokens.accessToken.payload['cognito:groups'] as unknown as string[]) ?? []);
-    }
-  }, [data]);
+  const groups =
+    (data?.tokens?.accessToken.payload['cognito:groups'] as unknown as string[] | undefined) ?? [];
 
   const { cache } = useSWRConfig();
   const { signOut } = useAuthenticator();
   const navigate = useNavigate();
 
-  const onClickSignout = useCallback(() => {
+  const onClickSignout = () => {
     // SWRのキャッシュを全て削除する
     for (const key of cache.keys()) {
       cache.delete(key);
     }
     navigate('/signed-out', { replace: true });
     signOut();
-  }, [cache, signOut, navigate]);
+  };
 
   return (
     <header

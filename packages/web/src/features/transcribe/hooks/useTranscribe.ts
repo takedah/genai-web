@@ -1,12 +1,14 @@
 import { useTranscribeStore } from '../stores/useTranscribeStore';
+import { useFetchTranscription } from './useFetchTranscription';
 import { useTranscribeApi } from './useTranscribeApi';
 
 export const useTranscribe = () => {
   const api = useTranscribeApi();
-  const { file, loading, jobName, status, setLoading, setFile, setJobName, setStatus, clear } =
-    useTranscribeStore();
+  const { file, loading, setLoading, setFile, setJobName, clear } = useTranscribeStore();
+  const { transcriptData } = useFetchTranscription();
 
   const transcribe = async (targetFile: File, speakerLabel = false, maxSpeakers = 1) => {
+    setJobName(null);
     setLoading(true);
     setFile(targetFile);
 
@@ -36,8 +38,6 @@ export const useTranscribe = () => {
 
     setJobName(startTranscriptionRes.jobName);
   };
-
-  const { data: transcriptData } = api.getTranscription(jobName, status, setStatus);
 
   return {
     loading,

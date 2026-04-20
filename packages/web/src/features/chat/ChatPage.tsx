@@ -58,7 +58,6 @@ export const ChatPage = () => {
     clear,
     postChat,
     updateSystemContext,
-    updateSystemContextByModel,
     getCurrentSystemContext,
     retryGeneration,
   } = useChat(pathname, chatId);
@@ -76,13 +75,6 @@ export const ChatPage = () => {
     }
   }, [messages, setContent, shouldAutoSubmit, search]);
 
-  useEffect(() => {
-    // 会話履歴のページではモデルを変更してもシステムプロンプトを変更しない
-    if (!chatId) {
-      updateSystemContextByModel();
-    }
-  }, [prompter]);
-
   const { title } = useChatTitle();
 
   const { accept, fileUploadable } = useFileUploadable();
@@ -96,18 +88,10 @@ export const ChatPage = () => {
       updateSystemContext(inputSystemContext);
     }
     setFollowing(true);
-    postChat(
-      prompter.chatPrompt({ content }),
-      false,
-      undefined,
-      undefined,
-      undefined,
-      fileUploadable ? uploadedFiles : undefined,
-      undefined,
-      undefined,
-      undefined,
+    postChat(prompter.chatPrompt({ content }), {
+      uploadedFiles: fileUploadable ? uploadedFiles : undefined,
       base64Cache,
-    );
+    });
     setContent('');
     clearFiles();
   }, [
@@ -132,24 +116,14 @@ export const ChatPage = () => {
     }
   }, [shouldAutoSubmit, content, inputSystemContext, loading, onSend, setShouldAutoSubmit]);
 
-  const onRetry = useCallback(() => {
-    retryGeneration(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      base64Cache,
-    );
-  }, [retryGeneration, base64Cache]);
+  const onRetry = () => {
+    retryGeneration({ base64Cache });
+  };
 
-  const onReset = useCallback(() => {
+  const onReset = () => {
     clear();
     setContent('');
-  }, [clear]);
+  };
 
   useEffect(() => {
     // URLにクエリパラメータがある場合は useSetDefaultValues に任せる
@@ -159,13 +133,10 @@ export const ChatPage = () => {
     setInputSystemContext(currentSystemContext);
   }, [currentSystemContext, setInputSystemContext, search]);
 
-  const onClickSamplePrompt = useCallback(
-    (params: ChatPageQueryParams) => {
-      setContent(params.content ?? '');
-      updateSystemContext(params.systemContext ?? '');
-    },
-    [setContent, updateSystemContext],
-  );
+  const onClickSamplePrompt = (params: ChatPageQueryParams) => {
+    setContent(params.content ?? '');
+    updateSystemContext(params.systemContext ?? '');
+  };
 
   const handleDragOver = (event: React.DragEvent) => {
     // ファイルドラッグ時にオーバーレイを表示

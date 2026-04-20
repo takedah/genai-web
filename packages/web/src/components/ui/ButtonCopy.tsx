@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { PiCheck, PiClipboard } from 'react-icons/pi';
 import { ButtonIcon } from '@/components/ui/ButtonIcon';
 
@@ -14,35 +14,38 @@ export const ButtonCopy = (props: Props) => {
   const { className, text, disabled, targetRef } = props;
   const [isShowsCheck, setIsShowsCheck] = useState(false);
 
-  const copyMessage = useCallback(
-    (message: string) => {
-      if (isShowsCheck) {
-        return;
-      }
+  const copyMessage = async (message: string) => {
+    if (isShowsCheck) {
+      return;
+    }
 
-      if (!message || message === '') {
-        return;
-      }
+    if (!message || message === '') {
+      return;
+    }
 
-      navigator.clipboard.writeText(message);
-      setIsShowsCheck(true);
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました', error);
+      return;
+    }
 
-      if (targetRef?.current) {
-        targetRef.current.classList.add('animate-copy-highlight');
+    setIsShowsCheck(true);
 
-        // アニメーション終了後にクラスを削除
-        setTimeout(() => {
-          targetRef?.current?.classList.remove('animate-copy-highlight');
-          setIsShowsCheck(false);
-        }, 3000);
-      } else {
-        setTimeout(() => {
-          setIsShowsCheck(false);
-        }, 3000);
-      }
-    },
-    [targetRef, isShowsCheck],
-  );
+    if (targetRef?.current) {
+      targetRef.current.classList.add('animate-copy-highlight');
+
+      // アニメーション終了後にクラスを削除
+      setTimeout(() => {
+        targetRef?.current?.classList.remove('animate-copy-highlight');
+        setIsShowsCheck(false);
+      }, 3000);
+    } else {
+      setTimeout(() => {
+        setIsShowsCheck(false);
+      }, 3000);
+    }
+  };
 
   return (
     <ButtonIcon

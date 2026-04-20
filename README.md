@@ -38,14 +38,23 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 - [AI アプリ開発ガイド](./docs/AIアプリ開発ガイド.md)
 - [AI アプリ API 仕様](./docs/AIアプリAPI仕様.md)
 
-### その他
+### 運用
+
+- [ログ設定](./docs/ログ設定.md)
+- [CI/CD 設定](./docs/CI-CD設定.md)
+- [カスタムドメイン設定](./docs/カスタムドメイン設定.md)
+
+### 認証
+
+- [SAML 認証手順](./docs/SAML認証手順.md)
+
+### 開発
 
 - [ローカル開発環境](./docs/ローカル開発環境.md)
+
+### リファレンス
+
 - [チーム管理権限表](./docs/チーム管理権限表.md)
-- [SAML 認証手順](./docs/SAML認証手順.md)
-- [CI/CD 設定](./docs/CI-CD設定.md)
-- [ログ設定](./docs/ログ設定.md)
-- [カスタムドメイン設定](./docs/カスタムドメイン設定.md)
 - [アーキテクチャ](./docs/アーキテクチャ.md)
 
 ## Issue / Pull Request の対応方針

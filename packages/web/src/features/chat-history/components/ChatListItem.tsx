@@ -1,6 +1,6 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import type { Chat, UpdateTitleResponse } from 'genai-web';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PiPencilLine, PiTrash } from 'react-icons/pi';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/dads/Button';
@@ -42,22 +42,19 @@ export const ChatListItem = (props: Props) => {
     }
   }, [isEditing]);
 
-  const handleFocusAfterEditing = useCallback(async () => {
+  const handleFocusAfterEditing = async () => {
     setIsEditing(false);
     focus(`${chatId}-menu-button`);
-  }, [chatId]);
+  };
 
-  const handleUpdateTitle = useCallback(
-    async (title?: string) => {
-      try {
-        await onUpdateTitle(chatId, title ?? tempTitle);
-        handleFocusAfterEditing();
-      } catch {
-        handleFocusAfterEditing();
-      }
-    },
-    [chatId, onUpdateTitle, tempTitle, handleFocusAfterEditing],
-  );
+  const handleUpdateTitle = async (title?: string) => {
+    try {
+      await onUpdateTitle(chatId, title ?? tempTitle);
+      handleFocusAfterEditing();
+    } catch {
+      handleFocusAfterEditing();
+    }
+  };
 
   const handleEditingCancel = () => {
     handleFocusAfterEditing();
@@ -74,25 +71,22 @@ export const ChatListItem = (props: Props) => {
     }
   };
 
-  const onDeleteChat = useCallback(
-    async (_chatId: string) => {
-      setIsDeleting(true);
-      try {
-        if (_chatId !== '') {
-          await deleteChat(_chatId);
-          focus('chat-history-list');
-        } else {
-          throw new Error('Chat IDが指定されていません');
-        }
-      } catch {
-        console.error('エラーが発生したため会話を削除できませんでした');
-      } finally {
-        setIsDeleting(false);
-        setIsOpenDeleteDialog(false);
+  const onDeleteChat = async (_chatId: string) => {
+    setIsDeleting(true);
+    try {
+      if (_chatId !== '') {
+        await deleteChat(_chatId);
+        focus('chat-history-list');
+      } else {
+        throw new Error('Chat IDが指定されていません');
       }
-    },
-    [deleteChat],
-  );
+    } catch {
+      console.error('エラーが発生したため会話を削除できませんでした');
+    } finally {
+      setIsDeleting(false);
+      setIsOpenDeleteDialog(false);
+    }
+  };
 
   return (
     <>

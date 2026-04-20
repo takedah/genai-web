@@ -1,5 +1,4 @@
 import { AmazonUIImageGenerationMode, ControlMode } from 'genai-web';
-import { useCallback, useEffect, useMemo } from 'react';
 import { MdDeleteOutline } from 'react-icons/md';
 import { PiDiceFive } from 'react-icons/pi';
 import { AutoResizeTextarea } from '@/components/ui/AutoResizeTextarea';
@@ -105,20 +104,13 @@ export const ImageGeneratorForm = (props: Props) => {
     imageGenModelId === AMAZON_MODELS.TITAN_V2 ||
     imageGenModelId === AMAZON_MODELS.NOVA_CANVAS;
 
-  const modeOptions = useMemo(() => getModeOptions(imageGenModelId), [imageGenModelId]);
+  const modeOptions = getModeOptions(imageGenModelId);
 
-  useEffect(() => {
-    const availableModes = getModeOptions(imageGenModelId).map((option) => option.value);
-    if (!availableModes.includes(generationMode)) {
-      setGenerationMode(availableModes[0]);
-    }
-  }, [imageGenModelId, generationMode, setGenerationMode]);
-
-  const isImageVariationSupported = getModeOptions(imageGenModelId)
+  const isImageVariationSupported = modeOptions
     .map((option) => option.value)
     .includes(GENERATION_MODES.IMAGE_VARIATION);
 
-  const generateImageVariant = useCallback(() => {
+  const generateImageVariant = () => {
     if (image[selectedImageIndex].base64) {
       if (generationMode === GENERATION_MODES.TEXT_IMAGE) {
         setGenerationMode(GENERATION_MODES.IMAGE_VARIATION);
@@ -130,7 +122,7 @@ export const ImageGeneratorForm = (props: Props) => {
         backgroundColor: '',
       });
     }
-  }, [image, generationMode, selectedImageIndex, setGenerationMode, setInitImage]);
+  };
 
   return (
     <>

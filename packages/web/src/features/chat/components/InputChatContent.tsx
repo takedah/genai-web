@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { FileLimit } from 'genai-web';
 import type React from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { PiArrowsCounterClockwise, PiSpinnerGap } from 'react-icons/pi';
 import { useLocation } from 'react-router';
@@ -69,13 +69,10 @@ export const InputChatContent = (props: Props) => {
     uploadFiles(Array.from(files), props.fileLimit, props.accept);
   };
 
-  const deleteFile = useCallback(
-    async (fileUrl: string) => {
-      await deleteUploadedFile(fileUrl, props.fileLimit, props.accept);
-      focus(props.textareaId);
-    },
-    [deleteUploadedFile, props.fileLimit, props.accept],
-  );
+  const deleteFile = async (fileUrl: string) => {
+    await deleteUploadedFile(fileUrl, props.fileLimit, props.accept);
+    focus(props.textareaId);
+  };
   const handlePaste = async (pasteEvent: React.ClipboardEvent) => {
     const fileList = pasteEvent.clipboardData.items || [];
     const files = Array.from(fileList)

@@ -1,6 +1,9 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
-import { ReactNode, useCallback, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { CloseIcon, HamburgerMenuButton } from '@/components/ui/dads/HamburgerMenuButton';
+
+// NOTE: Headless UI がデフォルトで Light Dismiss なので、それを無効にするため
+const disableLightDismiss = () => {};
 
 type CustomDialogHeaderProps = {
   className?: string;
@@ -12,12 +15,6 @@ type CustomDialogHeaderProps = {
 export const CustomDialogHeader = (props: CustomDialogHeaderProps) => {
   const { className, children, hasClose, onClose } = props;
 
-  const handleExplicitClose = useCallback(() => {
-    if (onClose) {
-      onClose();
-    }
-  }, [onClose]);
-
   return (
     <div
       className={`flex items-center justify-between gap-2 border-b border-b-solid-gray-420 pb-2 ${className ?? ''}`}
@@ -26,7 +23,7 @@ export const CustomDialogHeader = (props: CustomDialogHeaderProps) => {
         {children}
       </DialogTitle>
       {hasClose && (
-        <HamburgerMenuButton className='p-1' onClick={handleExplicitClose}>
+        <HamburgerMenuButton className='p-1' onClick={onClose}>
           <CloseIcon className='flex-none' />
           閉じる
         </HamburgerMenuButton>
@@ -74,26 +71,16 @@ type CustomDialogProps = {
 export const CustomDialog = (props: CustomDialogProps) => {
   const { className, isOpen, position = 'center', children, onClose } = props;
 
-  // NOTE: onClose を無効にしているので、ESC キーで閉じる挙動を自前実装
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose?.();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
-
-  // NOTE: Headless UI がデフォルトで Light Dismiss なので、それを無効にするため
-  const disableLightDismiss = useCallback(() => {}, []);
-
   return (
     <Dialog
       open={isOpen}
       className={`${className ?? ''} relative z-50`}
       onClose={disableLightDismiss}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          onClose?.();
+        }
+      }}
     >
       <DialogBackdrop className='fixed inset-0 bg-black/30 forced-colors:bg-[#000b]' />
 

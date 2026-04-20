@@ -18,30 +18,20 @@ import { LayoutBody } from '@/layout/LayoutBody';
 import { debounce } from '@/utils/debounce';
 
 export const TranslatePage = () => {
-  const { sentence, additionalContext, language, translatedSentence, setTranslatedSentence } =
-    useTranslateStore();
+  const { sentence, additionalContext, language } = useTranslateStore();
 
   const { pathname } = useLocation();
-  const { loading, messages, postChat, updateSystemContextByModel } = useChat(pathname);
+  const { loading, messages, postChat, clear } = useChat(pathname);
+
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const translatedSentence = lastMessage?.role === 'assistant' ? lastMessage.content.trim() : '';
 
   const { typingTextOutput } = useTyping(loading, translatedSentence);
   const [auto, setAuto] = useLocalStorageBoolean('Auto_Translate', false);
 
   const { prompter } = usePrompter();
 
-  useEffect(() => {
-    updateSystemContextByModel();
-  }, [prompter]);
-
   useReset();
-
-  // 画面遷移時に出力が残る問題の対応
-  // メッセージが空の時はテキストをクリア
-  useEffect(() => {
-    if (messages.length === 0) {
-      setTranslatedSentence('');
-    }
-  }, [messages, setTranslatedSentence]);
 
   useSetDefaultValues();
 
@@ -59,7 +49,7 @@ export const TranslatePage = () => {
     debounce(
       (_sentence: string, _additionalContext: string, _language: string, _loading: boolean) => {
         if (_sentence === '') {
-          setTranslatedSentence('');
+          clear();
         }
 
         if (_sentence !== '' && !_loading) {
@@ -71,21 +61,6 @@ export const TranslatePage = () => {
     [prompter],
   );
 
-  // リアルタイムにレスポンスを表示
-  useEffect(() => {
-    if (messages.length === 0) {
-      return;
-    }
-
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== 'assistant') {
-      return;
-    }
-
-    const response = messages[messages.length - 1].content;
-    setTranslatedSentence(response.trim());
-  }, [messages]);
-
   const getTranslation = (sentence: string, language: string, context: string) => {
     postChat(
       prompter.translatePrompt({
@@ -93,11 +68,10 @@ export const TranslatePage = () => {
         language,
         context: context === '' ? undefined : context,
       }),
-      true,
+      { ignoreHistory: true },
     );
   };
 
-  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const { liveStatusMessage } = useLiveStatusMessage({
     isAssistant: lastMessage?.role === 'assistant',
     loading: loading,
@@ -111,7 +85,11 @@ export const TranslatePage = () => {
         <TranslateHeader />
         <Divider className='my-6' />
         <Switch label='即時翻訳' checked={auto} onSwitch={setAuto} />
-        <TranslateForm typingTextOutput={typingTextOutput} getTranslation={getTranslation} />
+        <TranslateForm
+          typingTextOutput={typingTextOutput}
+          translatedSentence={translatedSentence}
+          getTranslation={getTranslation}
+        />
       </div>
       <div aria-live='assertive' aria-atomic='true' className='sr-only'>
         {liveStatusMessage}

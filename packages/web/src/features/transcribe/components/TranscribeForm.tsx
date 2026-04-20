@@ -49,8 +49,7 @@ export const TranscribeForm = (props: Props) => {
 
   const { loading, transcribe } = useTranscribe();
 
-  const { setContent, speakerLabel, setSpeakerLabel, setMaxSpeakers, setSpeakers } =
-    useTranscribeStore();
+  const { speakerLabel, setSpeakerLabel, setMaxSpeakers, setSpeakers } = useTranscribeStore();
 
   // FileUpload 用の ID 生成
   const formId = useId();
@@ -151,7 +150,6 @@ export const TranscribeForm = (props: Props) => {
       setMaxSpeakers(newMaxSpeakers);
       setSpeakers(data.speaker ?? '');
       setFollowing(true);
-      setContent([]);
       transcribe(file, speakerLabel, newMaxSpeakers);
     },
     (formErrors) => {

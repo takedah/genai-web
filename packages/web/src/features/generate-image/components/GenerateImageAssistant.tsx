@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PiLightbulbFilamentBold, PiUserFill, PiWarningFill } from 'react-icons/pi';
 import { useLocation } from 'react-router';
 import { Button } from '@/components/ui/dads/Button';
@@ -30,64 +30,60 @@ export const GenerateImageAssistant = (props: Props) => {
   const { screen, scrollTopAnchorRef, scrollBottomAnchorRef } = useScreen();
   const { scrollableContainer, setFollowing } = useFollow();
 
-  const contents = useMemo<
-    (
-      | {
-          role: 'user';
-          content: string;
-        }
-      | {
-          role: 'assistant';
-          content: {
-            prompt: string | null;
-            negativePrompt: string | null;
-            comment: string;
-            recommendedStylePreset: string[];
-            error?: boolean;
-          };
-        }
-    )[]
-  >(() => {
-    return messages.flatMap((m, idx) => {
-      if (m.role === 'user') {
-        return {
-          role: 'user',
-          content: m.content,
-        };
-      } else {
-        if (loading && messages.length - 1 === idx) {
-          return {
-            role: 'assistant',
-            content: {
-              prompt: null,
-              negativePrompt: null,
-              comment: '',
-              recommendedStylePreset: [],
-            },
-          };
-        }
-        try {
-          const matches = m.content.match(/\{[^{}]*\}/g);
-          return {
-            role: 'assistant',
-            content: JSON.parse(matches ? matches[0] : '{}'),
-          };
-        } catch (e) {
-          console.error(e);
-          return {
-            role: 'assistant',
-            content: {
-              prompt: null,
-              negativePrompt: null,
-              comment: '',
-              error: true,
-              recommendedStylePreset: [],
-            },
-          };
-        }
+  const contents: (
+    | {
+        role: 'user';
+        content: string;
       }
-    });
-  }, [loading, messages]);
+    | {
+        role: 'assistant';
+        content: {
+          prompt: string | null;
+          negativePrompt: string | null;
+          comment: string;
+          recommendedStylePreset: string[];
+          error?: boolean;
+        };
+      }
+  )[] = messages.flatMap((m, idx) => {
+    if (m.role === 'user') {
+      return {
+        role: 'user',
+        content: m.content,
+      };
+    } else {
+      if (loading && messages.length - 1 === idx) {
+        return {
+          role: 'assistant',
+          content: {
+            prompt: null,
+            negativePrompt: null,
+            comment: '',
+            recommendedStylePreset: [],
+          },
+        };
+      }
+      try {
+        const matches = m.content.match(/\{[^{}]*\}/g);
+        return {
+          role: 'assistant',
+          content: JSON.parse(matches ? matches[0] : '{}'),
+        };
+      } catch (e) {
+        console.error(e);
+        return {
+          role: 'assistant',
+          content: {
+            prompt: null,
+            negativePrompt: null,
+            comment: '',
+            error: true,
+            recommendedStylePreset: [],
+          },
+        };
+      }
+    }
+  });
 
   useEffect(() => {
     // メッセージ追加時の画像の自動生成
@@ -110,17 +106,17 @@ export const GenerateImageAssistant = (props: Props) => {
     }
   }, [loading]);
 
-  const onSend = useCallback(() => {
+  const onSend = () => {
     setFollowing(true);
     postChat(props.content);
     props.onChangeContent('');
-  }, [postChat, props, setFollowing]);
+  };
 
-  const onRetrySend = useCallback(() => {
+  const onRetrySend = () => {
     popMessage();
     const lastMessage = popMessage();
     postChat(lastMessage?.content ?? '');
-  }, [popMessage, postChat]);
+  };
 
   const lastMessage = contents.length > 0 ? contents[contents.length - 1] : null;
   const { liveStatusMessage } = useLiveStatusMessage({

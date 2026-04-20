@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
 import { Divider } from '@/components/ui/dads/Divider';
@@ -12,68 +11,30 @@ import { DiagramSentence } from '@/features/generate-diagram/components/DiagramS
 import { useDiagram } from '@/features/generate-diagram/hooks/useDiagram';
 import { useReset } from '@/features/generate-diagram/hooks/useReset';
 import { useSetDefaultValues } from '@/features/generate-diagram/hooks/useSetDefaultValues';
-import { useDiagramStore } from '@/features/generate-diagram/stores/useDiagramStore';
+import {
+  extractDiagramCode,
+  extractDiagramSentence,
+} from '@/features/generate-diagram/utils/extractDiagram';
 import { useLiveStatusMessage } from '@/hooks/useLiveStatusMessage';
 import { LayoutBody } from '@/layout/LayoutBody';
 
 export const GenerateDiagramPage = () => {
-  const { setDiagramCode, setDiagramSentence } = useDiagramStore();
   const { pathname } = useLocation();
   const { loading, messages } = useDiagram(pathname);
 
   useReset();
-
-  // 画面遷移時に出力が残る問題の対応
-  // メッセージが空の時はテキストをクリア
-  useEffect(() => {
-    if (messages.length === 0) {
-      setDiagramCode('');
-      setDiagramSentence('');
-    }
-  }, [messages, setDiagramCode, setDiagramSentence]);
-
   useSetDefaultValues();
 
-  // description部分のみを抽出
-  const getDiagramSentence = (content: string): string => {
-    if (content.toLowerCase().includes('<description>')) {
-      return content
-        .split(/<description>/i)[1]
-        .split(/<\/description>/i)[0]
-        .trim();
-    } else if (
-      content.includes('ただいまアクセスが集中しているため時間をおいて試してみてください。')
-    ) {
-      return 'ただいまアクセスが集中しているため時間をおいて試してみてください。';
-    } else {
-      return content;
-    }
-  };
-
-  useEffect(() => {
-    if (messages.length === 0) {
-      return;
-    }
-
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== 'assistant') {
-      return;
-    }
-
-    const currentMessage = lastMessage.content;
-    if (currentMessage.toLowerCase().includes('```mermaid')) {
-      const mermaidCode = currentMessage.split('```mermaid')[1].split('```')[0].trim();
-      setDiagramCode(mermaidCode);
-    }
-
-    setDiagramSentence(getDiagramSentence(currentMessage));
-  }, [messages, setDiagramCode, setDiagramSentence]);
-
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const isAssistantMessage = lastMessage?.role === 'assistant';
+  const assistantContent = isAssistantMessage ? lastMessage.content : '';
+  const diagramCode = extractDiagramCode(assistantContent);
+  const diagramSentence = isAssistantMessage ? extractDiagramSentence(assistantContent) : '';
+
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: lastMessage?.role === 'assistant',
+    isAssistant: isAssistantMessage,
     loading: loading,
-    content: lastMessage?.content ? getDiagramSentence(lastMessage.content) : undefined,
+    content: lastMessage?.content ? extractDiagramSentence(lastMessage.content) : undefined,
   });
 
   return (
@@ -97,9 +58,9 @@ export const GenerateDiagramPage = () => {
               )}
 
               <div className='space-y-4'>
-                <DiagramSentence />
+                <DiagramSentence diagramSentence={diagramSentence} />
 
-                <DiagramResult />
+                <DiagramResult diagramCode={diagramCode} />
               </div>
             </div>
           </div>

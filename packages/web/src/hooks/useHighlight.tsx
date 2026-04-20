@@ -1,9 +1,8 @@
-import { useCallback } from 'react';
 import { HighLightText } from '@/components/ui/HighLightText';
 import { escapeRegExp } from '@/utils/escapeRegExp';
 
 export const useHighlight = () => {
-  const highlightText = useCallback((text: string, words: string[]) => {
+  const highlightText = (text: string, words: string[]) => {
     if (words.length === 0) return text;
 
     const escapedWords = words.map(escapeRegExp);
@@ -14,7 +13,7 @@ export const useHighlight = () => {
       }
       return part;
     });
-  }, []);
+  };
 
   return { highlightText };
 };

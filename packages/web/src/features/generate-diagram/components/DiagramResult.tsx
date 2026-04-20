@@ -5,10 +5,15 @@ import { useDiagramStore } from '@/features/generate-diagram/stores/useDiagramSt
 import { DIAGRAM_DATA } from '../constants';
 import { Markdown } from './Markdown';
 
-export const DiagramResult = () => {
+type Props = {
+  diagramCode: string;
+};
+
+export const DiagramResult = (props: Props) => {
+  const { diagramCode } = props;
   const { pathname } = useLocation();
   const { loading, diagramType, isEmpty } = useDiagram(pathname);
-  const { diagramCode, diagramGenerationError } = useDiagramStore();
+  const { diagramGenerationError } = useDiagramStore();
 
   const correctedDiagramCode = diagramCode
     .replace(/(^|\s)classDef(?!\s)/gm, '$1classDef ')

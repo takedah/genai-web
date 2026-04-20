@@ -1,4 +1,3 @@
-import { useEffect, useMemo } from 'react';
 import { PageTitle } from '@/components/PageTitle';
 import { Divider } from '@/components/ui/dads/Divider';
 import { APP_TITLE } from '@/constants';
@@ -14,30 +13,23 @@ import { TranscribeHeader } from './components/TranscribeHeader';
 export const TranscribePage = () => {
   const { transcriptData, loading } = useTranscribe();
 
-  const { content, setContent, speakers } = useTranscribeStore();
+  const { speakers } = useTranscribeStore();
 
   const { scrollableContainer, setFollowing } = useFollow();
 
-  const speakerMapping = useMemo(() => {
-    return Object.fromEntries(
-      speakers.split(',').map((speaker, idx) => [`spk_${idx}`, speaker.trim()]),
-    );
-  }, [speakers]);
+  const transcripts = transcriptData?.transcripts ?? [];
 
-  const formattedOutput = content
+  const speakerMapping = Object.fromEntries(
+    speakers.split(',').map((speaker, idx) => [`spk_${idx}`, speaker.trim()]),
+  );
+
+  const formattedOutput = transcripts
     .map((item) =>
       item.speakerLabel
         ? `${speakerMapping[item.speakerLabel] || item.speakerLabel}: ${item.transcript}`
         : item.transcript,
     )
     .join('\n');
-
-  useEffect(() => {
-    if (!transcriptData?.transcripts) {
-      return;
-    }
-    setContent(transcriptData.transcripts);
-  }, [setContent, transcriptData]);
 
   const { liveStatusMessage } = useLiveStatusMessage({
     isAssistant: true,
@@ -57,6 +49,7 @@ export const TranscribePage = () => {
 
         <TranscribeResult
           scrollableContainer={scrollableContainer}
+          transcripts={transcripts}
           formattedOutput={formattedOutput}
           speakerMapping={speakerMapping}
         />

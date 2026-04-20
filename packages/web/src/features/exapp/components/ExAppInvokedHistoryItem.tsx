@@ -1,5 +1,5 @@
 import { InvokeExAppHistory } from 'genai-web';
-import { ComponentProps, useCallback, useId, useRef, useState } from 'react';
+import { ComponentProps, useId, useRef, useState } from 'react';
 import { Markdown } from '@/components/Markdown';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
 import { Button } from '@/components/ui/dads/Button';
@@ -35,20 +35,17 @@ export const ExAppInvokedHistoryItem = (props: Props) => {
   const copyTextRef = useRef<HTMLDivElement>(null);
   const [shouldShowDeleteDialog, setShouldShowDeleteDialog] = useState(false);
 
-  const downloadArtifact = useCallback(
-    async (fileUrl: string, displayName: string) => {
-      setLoadingArtifacts((prev) => [...prev, fileUrl]);
-      try {
-        const signedUrl = await getArtifactFileUrl(fileUrl);
-        download(signedUrl, displayName);
-      } catch (error) {
-        console.error('Error loading file:', error);
-      } finally {
-        setLoadingArtifacts((prev) => prev.filter((url) => url !== fileUrl));
-      }
-    },
-    [download, getArtifactFileUrl],
-  );
+  const downloadArtifact = async (fileUrl: string, displayName: string) => {
+    setLoadingArtifacts((prev) => [...prev, fileUrl]);
+    try {
+      const signedUrl = await getArtifactFileUrl(fileUrl);
+      download(signedUrl, displayName);
+    } catch (error) {
+      console.error('Error loading file:', error);
+    } finally {
+      setLoadingArtifacts((prev) => prev.filter((url) => url !== fileUrl));
+    }
+  };
 
   const getFilesInfo = (files: FileInputItem[]) => {
     return files.map((item) => item.files.map((file) => file.filename).join(', ')).join(', ');

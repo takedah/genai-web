@@ -10,7 +10,6 @@ export type InvokeStreamInterface = (
   model: Model,
   messages: UnrecordedMessage[],
   id: string,
-  idToken?: string,
 ) => AsyncIterable<string>;
 
 // Base64 にエンコードした画像を Return する

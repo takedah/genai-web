@@ -1,20 +1,20 @@
+import type { Transcript } from 'genai-web';
 import { RefObject, useRef } from 'react';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
 import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
 import { useTranscribe } from '@/features/transcribe/hooks/useTranscribe';
-import { useTranscribeStore } from '@/features/transcribe/stores/useTranscribeStore';
 
 type Props = {
   scrollableContainer: RefObject<HTMLDivElement | null>;
+  transcripts: Transcript[];
   formattedOutput: string;
   speakerMapping: Record<string, string>;
 };
 
 export const TranscribeResult = (props: Props) => {
-  const { scrollableContainer, formattedOutput, speakerMapping } = props;
+  const { scrollableContainer, transcripts, formattedOutput, speakerMapping } = props;
 
   const { loading } = useTranscribe();
-  const { content } = useTranscribeStore();
 
   const copyTextRef = useRef<HTMLDivElement>(null);
   const isInitial = !loading && formattedOutput === '';
@@ -31,9 +31,9 @@ export const TranscribeResult = (props: Props) => {
         <div className='leading-175 text-solid-gray-536'>音声認識結果がここに表示されます</div>
       )}
 
-      {content.length > 0 && (
+      {transcripts.length > 0 && (
         <div ref={copyTextRef}>
-          {content.map((transcript, idx) => (
+          {transcripts.map((transcript, idx) => (
             <div key={idx} className='flex'>
               {transcript.speakerLabel && (
                 <div className='min-w-20'>

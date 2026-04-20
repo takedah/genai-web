@@ -14,11 +14,12 @@ import { TranslatedResult } from './TranslatedResult';
 
 type Props = {
   typingTextOutput: string;
+  translatedSentence: string;
   getTranslation: (sentence: string, language: string, context: string) => void;
 };
 
 export const TranslateForm = (props: Props) => {
-  const { typingTextOutput, getTranslation } = props;
+  const { typingTextOutput, translatedSentence, getTranslation } = props;
 
   const { sentence, setSentence, additionalContext, setAdditionalContext, language } =
     useTranslateStore();
@@ -81,7 +82,10 @@ export const TranslateForm = (props: Props) => {
             </div>
           </div>
 
-          <TranslatedResult typingTextOutput={typingTextOutput} />
+          <TranslatedResult
+            typingTextOutput={typingTextOutput}
+            translatedSentence={translatedSentence}
+          />
         </div>
 
         <div className='flex flex-col gap-1.5'>
