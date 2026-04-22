@@ -195,6 +195,10 @@ This project incorporates components from the following third-party libraries:
   Authors: AWS SDK for JavaScript Team and Contributors
   Source: https://github.com/aws/aws-sdk-js-v3
 
+* @aws-sdk/client-cloudformation (Apache-2.0)
+  Authors: AWS SDK for JavaScript Team and Contributors
+  Source: https://github.com/aws/aws-sdk-js-v3
+
 * @aws-sdk/client-cloudwatch (Apache-2.0)
   Authors: AWS SDK for JavaScript Team and Contributors
   Source: https://github.com/aws/aws-sdk-js-v3
@@ -1183,9 +1187,6 @@ This project incorporates components from the following third-party libraries:
 * @types/hast (MIT)
   Source: https://github.com/DefinitelyTyped/DefinitelyTyped
 
-* @types/http-errors (MIT)
-  Source: https://github.com/DefinitelyTyped/DefinitelyTyped
-
 * @types/json-schema (MIT)
   Source: https://github.com/DefinitelyTyped/DefinitelyTyped
 
@@ -1640,10 +1641,6 @@ This project incorporates components from the following third-party libraries:
   Authors: Vladimir Agafonkin and Contributors
   Source: https://github.com/mapbox/delaunator
 
-* depd (MIT)
-  Authors: Douglas Christopher Wilson and Contributors
-  Source: https://github.com/dougwilson/nodejs-depd
-
 * dequal (MIT)
   Authors: Luke Edwards and Contributors
   Source: https://github.com/lukeed/dequal
@@ -1814,10 +1811,6 @@ This project incorporates components from the following third-party libraries:
 * html-void-elements (MIT)
   Authors: Titus Wormer and Contributors
   Source: https://github.com/wooorm/html-void-elements
-
-* http-errors (MIT)
-  Authors: Jonathan Ong and Contributors
-  Source: https://github.com/jshttp/http-errors
 
 * iconv-lite (MIT)
   Authors: Alexander Shtuchkin and Contributors
@@ -2472,10 +2465,6 @@ This project incorporates components from the following third-party libraries:
   Authors: Nathan Friedly and Contributors
   Source: https://github.com/nfriedly/set-cookie-parser
 
-* setprototypeof (ISC)
-  Authors: Wes Todd and Contributors
-  Source: https://github.com/wesleytodd/setprototypeof
-
 * shiki (MIT)
   Authors: Pine Wu and Contributors
   Source: https://github.com/shikijs/shiki
@@ -2506,9 +2495,6 @@ This project incorporates components from the following third-party libraries:
 * stackback (MIT)
   Authors: Roman Shtylman and Contributors
   Source: https://github.com/shtylman/node-stackback
-
-* statuses (MIT)
-  Source: https://github.com/jshttp/statuses
 
 * std-env (MIT)
   Source: https://github.com/unjs/std-env
@@ -2603,10 +2589,6 @@ This project incorporates components from the following third-party libraries:
 * tldts-core (MIT)
   Authors: Rémi Berson and Contributors
   Source: https://github.com/remusao/tldts
-
-* toidentifier (MIT)
-  Authors: Douglas Christopher Wilson and Contributors
-  Source: https://github.com/component/toidentifier
 
 * token-types (MIT)
   Authors: Borewit and Contributors

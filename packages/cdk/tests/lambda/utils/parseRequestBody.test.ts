@@ -57,8 +57,14 @@ describe('parseRequestBody', () => {
     }
   });
 
-  test('無効なJSONの場合、エラーをスローする', () => {
-    expect(() => parseRequestBody(testSchema, 'not valid json')).toThrow();
+  test('無効なJSONの場合、HttpError(400)をスローする', () => {
+    expect(() => parseRequestBody(testSchema, 'not valid json')).toThrow(HttpError);
+    try {
+      parseRequestBody(testSchema, 'not valid json');
+    } catch (error) {
+      expect((error as HttpError).statusCode).toBe(400);
+      expect((error as HttpError).message).toBe('リクエストボディのJSON形式が不正です。');
+    }
   });
 
   test('空白のみの必須フィールドはtrimにより空文字となりエラーになる', () => {

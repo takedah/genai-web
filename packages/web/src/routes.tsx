@@ -1,4 +1,3 @@
-import type { HiddenUseCasesKeys } from 'genai-web';
 import type { RouteObject } from 'react-router';
 import { ChatPage } from '@/features/chat/ChatPage';
 import { ChatHistoryPage } from '@/features/chat-history/ChatHistoryPage';
@@ -22,17 +21,21 @@ import { TranscribePage } from '@/features/transcribe/TranscribePage';
 import { TranslatePage } from '@/features/translate/TranslatePage';
 import { NotFound } from '@/NotFound';
 import { ApiRequestDataFormatPage } from '@/pages/ApiRequestDataFormat';
+import { isUseCaseEnabled } from '@/utils/isUseCaseEnabled';
 import { Layout } from './layout/Layout';
+import { AuthErrorPage } from './pages/AuthErrorPage';
 import { DietAnswerDraftingAiSkillsPage } from './pages/DietAnswerDraftingAiSkillsPage';
 import { SignedOutPage } from './pages/SignedOutPage';
 
-type EnabledFn = (...useCases: HiddenUseCasesKeys[]) => boolean;
-
-export const createRoutes = (enabled: EnabledFn): RouteObject[] => {
+export const createRoutes = (): RouteObject[] => {
   return [
     {
       path: '/signed-out',
       element: <SignedOutPage />,
+    },
+    {
+      path: '/auth-error',
+      element: <AuthErrorPage />,
     },
     {
       path: '/',
@@ -53,10 +56,10 @@ export const createRoutes = (enabled: EnabledFn): RouteObject[] => {
           element: <ChatPage />,
         },
         { path: 'history', element: <ChatHistoryPage /> },
-        enabled('generate') ? { path: 'generate', element: <GenerateTextPage /> } : null,
-        enabled('translate') ? { path: 'translate', element: <TranslatePage /> } : null,
-        enabled('image') ? { path: 'image', element: <GenerateImagePage /> } : null,
-        enabled('diagram') ? { path: 'diagram', element: <GenerateDiagramPage /> } : null,
+        isUseCaseEnabled('generate') ? { path: 'generate', element: <GenerateTextPage /> } : null,
+        isUseCaseEnabled('translate') ? { path: 'translate', element: <TranslatePage /> } : null,
+        isUseCaseEnabled('image') ? { path: 'image', element: <GenerateImagePage /> } : null,
+        isUseCaseEnabled('diagram') ? { path: 'diagram', element: <GenerateDiagramPage /> } : null,
         { path: 'transcribe', element: <TranscribePage /> },
         { path: 'teams', element: <TeamsPage /> },
         { path: 'teams/create', element: <TeamCreatePage /> },

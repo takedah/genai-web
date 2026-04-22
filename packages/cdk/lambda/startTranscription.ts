@@ -3,10 +3,11 @@ import { StartTranscriptionRequest } from 'genai-web';
 import { createApiHandler } from './utils/createApiHandler';
 import { authorizeOwnedKey, resolveRequestIdentityId } from './utils/fileOwnership';
 import { HttpError } from './utils/httpError';
+import { parseJsonBody } from './utils/parseJsonBody';
 
 export const handler = createApiHandler(async (event) => {
   const client = new TranscribeClient({});
-  const req: StartTranscriptionRequest = JSON.parse(event.body!);
+  const req = parseJsonBody(event.body) as StartTranscriptionRequest;
   const userId = event.requestContext.authorizer!.claims.sub;
 
   const { audioKey, speakerLabel, maxSpeakers } = req;

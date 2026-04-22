@@ -17,7 +17,7 @@ type AdditionalProvider = {
 
 const samlAdditionalProviders: AdditionalProvider[] = (() => {
   const raw = import.meta.env.VITE_APP_SAML_COGNITO_FEDERATED_IDENTITY_ADDITIONAL_PROVIDER_NAMES;
-  if (!raw || !raw.trim()) return [];
+  if (!raw?.trim()) return [];
 
   try {
     const parsed = JSON.parse(raw);
@@ -66,6 +66,16 @@ const isAdditionalProviderPath = (): boolean => {
   return samlAdditionalProviders.some((p) => normalizeSigninPath(p.signinPath) === signinPath);
 };
 
+const isAuthSkipPath = (): boolean => {
+  const path = window.location.pathname;
+  return path === '/signed-out' || path === '/auth-error';
+};
+
+const hasOAuthErrorInUrl = (): boolean => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('error') || params.has('error_description');
+};
+
 type Props = {
   children: React.ReactNode;
 };
@@ -101,8 +111,12 @@ export const AuthWithSAML = (props: Props) => {
       setLoading(false);
       setAuthenticated(false);
 
-      // サインアウト後のページではサインインリダイレクトしない
-      if (window.location.pathname === '/signed-out') {
+      if (isAuthSkipPath()) {
+        return;
+      }
+
+      if (hasOAuthErrorInUrl()) {
+        window.location.replace('/auth-error');
         return;
       }
 
@@ -135,8 +149,8 @@ export const AuthWithSAML = (props: Props) => {
     },
   });
 
-  // サインアウト後のページは認証不要でレンダリング
-  if (window.location.pathname === '/signed-out' && !authenticated) {
+  // サインアウト後・認証エラーページは認証不要でレンダリング
+  if (isAuthSkipPath() && !authenticated) {
     return <>{children}</>;
   }
 
