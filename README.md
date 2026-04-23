@@ -1,3 +1,5 @@
+日本語 | [English](README.en.md)
+
 # 源内 Web（AI インターフェース）
 
 ## 概要
@@ -88,6 +90,10 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 - 対応状況についてのお問い合わせへの個別回答は行っておりません
 - 致命的と判断された問題については、可能な範囲で対応状況を Issue 上でお知らせします
 
+## 脆弱性の報告
+
+脆弱性の報告は、https://github.com/digital-go-jp/genai-web/security よりご報告ください。
+
 ## このソースコード・ドキュメント等の性格
 
 このリポジトリ（ソースコードおよびドキュメント）は、デジタル庁が作成し、公開するものです。  
@@ -98,10 +104,6 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 - 個人情報や機微情報をリポジトリ上で扱う行為
 - セキュリティ脆弱性発見時に、デジタル庁に報告・承諾を得ることなく、脆弱性内容を第三者に開示する行為
 - 本ソースコードを他システムへの攻撃を目的として改変する行為
-
-## 脆弱性の報告
-
-脆弱性の報告は、https://github.com/digital-go-jp/genai-web/security よりご報告ください。
 
 ## 関連リンク
 

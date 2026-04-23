@@ -2,7 +2,6 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { CloudWatchClient } from '@aws-sdk/client-cloudwatch';
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as createError from 'http-errors';
 import { findExAppById } from './repository/exAppRepository';
 import { createInvokeExAppHistory } from './repository/invokeHistoryRepository';
 import { findTeamById } from './repository/teamRepository';
@@ -10,6 +9,7 @@ import { getApiKeyValue } from './utils/apiKey';
 import { resolveIdentityId } from './utils/cognitoIdentity';
 import { COMMON_TEAM_ID } from './utils/constants';
 import { createResponse } from './utils/http';
+import { HttpError } from './utils/httpError';
 import { classifyErrorType, publishErrorMetrics, publishSuccessMetrics } from './utils/monitoring';
 import { isSystemAdmin, isTeamUser } from './utils/teamRole';
 import { truncate } from './utils/truncate';
@@ -33,7 +33,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     stableUserId = await generateStableUserId(userId);
   } catch (error) {
     logger.error('Failed to generate stable user ID', error as Error);
-    throw new createError.InternalServerError('ユーザーID生成に失敗しました');
+    throw new HttpError(500, 'ユーザーID生成に失敗しました');
   }
 
   let teamId: string = '';
@@ -49,10 +49,15 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   try {
     if (!event.body) {
-      throw new createError.BadRequest('Pathが不正か、bodyがありません');
+      throw new HttpError(400, 'Pathが不正か、bodyがありません');
     }
 
-    const parsedBody = JSON.parse(event.body!);
+    let parsedBody: Record<string, any>;
+    try {
+      parsedBody = JSON.parse(event.body);
+    } catch {
+      throw new HttpError(400, 'リクエストボディのJSON形式が不正です。');
+    }
     teamId = parsedBody.teamId;
     exAppId = parsedBody.exAppId;
     inputs = parsedBody.inputs;
@@ -61,7 +66,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const authHeader = event.headers?.Authorization ?? event.headers?.authorization;
     const idToken = authHeader?.replace(/^Bearer\s+/i, '');
     if (!idToken) {
-      throw new createError.Unauthorized('Authorization header is required');
+      throw new HttpError(401, 'Authorization header is required');
     }
     const cognitoId = await resolveIdentityId(idToken);
     baseS3Prefix = `${cognitoId}/${teamId}/${exAppId}/${createdDate}`;
@@ -72,30 +77,31 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         sessionId = parsedBody.sessionId;
       } else {
         logger.warn('Invalid sessionId format provided', { sessionId: parsedBody.sessionId });
-        throw new createError.BadRequest('sessionIdはUUID v4形式である必要があります。');
+        throw new HttpError(400, 'sessionIdはUUID v4形式である必要があります。');
       }
     }
 
     if (!teamId || !exAppId || !inputs) {
-      throw new createError.BadRequest('パラメータが不正です。');
+      throw new HttpError(400, 'パラメータが不正です。');
     }
 
     const isTeamUserResult = await isTeamUser(event, teamId);
     const isCommonOrTeamUser = teamId === COMMON_TEAM_ID || isTeamUserResult;
     if (!isSystemAdmin(event) && !isCommonOrTeamUser) {
-      throw new createError.Forbidden(
+      throw new HttpError(
+        403,
         'チームメンバーではないため実行できません。権限を見直してください。',
       );
     }
 
     const res = await findExAppById(teamId, exAppId);
     if (!res) {
-      throw new createError.NotFound('リクエストされたAIアプリが見つかりませんでした。');
+      throw new HttpError(404, 'リクエストされたAIアプリが見つかりませんでした。');
     }
 
     const apiKeyValue = await getApiKeyValue(teamId, exAppId, APP_ENV);
     if (!apiKeyValue) {
-      throw new createError.NotFound('リクエストされたAIアプリが見つかりませんでした。');
+      throw new HttpError(404, 'リクエストされたAIアプリが見つかりませんでした。');
     }
 
     const requestBody: { inputs: Record<string, any>; sessionId?: string } = { inputs };
@@ -194,7 +200,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   } catch (error) {
     logger.error('Error in invokeExApp', error as Error);
     status = 'ERROR';
-    if (error instanceof createError.HttpError) {
+    if (error instanceof HttpError) {
       responseBody = { outputs: error.message };
       return createResponse(error.statusCode, JSON.stringify(responseBody));
     } else {

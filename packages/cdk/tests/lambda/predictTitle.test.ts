@@ -66,25 +66,25 @@ describe('predictTitle Lambda handler', () => {
     expect(result.body).toBe('Clean Title');
   });
 
-  test('bodyがない場合はエラーを返す', async () => {
+  test('bodyがない場合は400を返す', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const event = createEvent(null);
     (event as any).body = null;
     const result = await handler(event);
 
-    expect(result.statusCode).toBe(500);
+    expect(result.statusCode).toBe(400);
 
     consoleErrorSpy.mockRestore();
   });
 
-  test('必須パラメータが不足している場合はエラーを返す', async () => {
+  test('必須パラメータが不足している場合は400を返す', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const event = createEvent({ prompt: 'test' });
     const result = await handler(event);
 
-    expect(result.statusCode).toBe(500);
+    expect(result.statusCode).toBe(400);
 
     consoleErrorSpy.mockRestore();
   });

@@ -3,9 +3,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetFileUploadSignedUrlRequest } from 'genai-web';
 import { createApiHandler } from './utils/createApiHandler';
 import { resolveRequestIdentityId } from './utils/fileOwnership';
+import { parseJsonBody } from './utils/parseJsonBody';
 
 export const handler = createApiHandler(async (event) => {
-  const req: GetFileUploadSignedUrlRequest = JSON.parse(event.body!);
+  const req = parseJsonBody(event.body) as GetFileUploadSignedUrlRequest;
   const filename = req.filename;
 
   const identityId = await resolveRequestIdentityId(event);
