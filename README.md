@@ -61,7 +61,7 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 
 ## Issue / Pull Request の対応方針
 
-本リポジトリでは、サービスの安定運用に影響する致命的な問題に限り、Issue での報告を受け付けています。PRは受け付けておりません。
+本リポジトリでは、サービスの安定運用に影響する致命的な問題に限り、Issue での報告を受け付けています。Pull Request は受け付けておりません。
 
 ### Issues
 
