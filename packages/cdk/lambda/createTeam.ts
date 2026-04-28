@@ -19,7 +19,10 @@ export const handler = createApiHandler(async (event) => {
   const { teamAdminEmail } = req;
   const user = await findUserByEmail(teamAdminEmail);
   if (!user) {
-    throw new HttpError(404, '源内に未ログインのユーザーです。源内へのログインをご案内ください。');
+    throw new HttpError(
+      404,
+      '本環境に未ログインのユーザーです。本環境へのログインをご案内ください。',
+    );
   }
   await addUserToGroup(user.userId!, GROUP_NAME.TeamAdminGroup as GroupName);
 

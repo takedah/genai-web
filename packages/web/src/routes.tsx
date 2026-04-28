@@ -24,7 +24,6 @@ import { ApiRequestDataFormatPage } from '@/pages/ApiRequestDataFormat';
 import { isUseCaseEnabled } from '@/utils/isUseCaseEnabled';
 import { Layout } from './layout/Layout';
 import { AuthErrorPage } from './pages/AuthErrorPage';
-import { DietAnswerDraftingAiSkillsPage } from './pages/DietAnswerDraftingAiSkillsPage';
 import { SignedOutPage } from './pages/SignedOutPage';
 
 export const createRoutes = (): RouteObject[] => {
@@ -96,10 +95,6 @@ export const createRoutes = (): RouteObject[] => {
           element: <TeamAppCopyPage />,
         },
         { path: 'docs/api-request-data-format', element: <ApiRequestDataFormatPage /> },
-        {
-          path: 'skillsets/diet-answer-drafting',
-          element: <DietAnswerDraftingAiSkillsPage />,
-        },
         { path: '*', element: <NotFound /> },
       ].flatMap((r) => (r ? [r] : [])),
     },

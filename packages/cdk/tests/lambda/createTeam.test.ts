@@ -213,7 +213,7 @@ describe('createTeam Lambda handler', () => {
 
     expect(result.statusCode).toBe(404);
     expect(JSON.parse(result.body)).toEqual({
-      error: '源内に未ログインのユーザーです。源内へのログインをご案内ください。',
+      error: '本環境に未ログインのユーザーです。本環境へのログインをご案内ください。',
     });
   });
 

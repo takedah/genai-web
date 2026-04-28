@@ -65,7 +65,9 @@ export const ExAppPage = () => {
     error: error,
   });
 
-  const pageTitle = exApp?.exAppName ? `${exApp.exAppName} | ${APP_TITLE}` : undefined;
+  const pageTitle = exApp?.exAppName
+    ? `${exApp.exAppName}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`
+    : undefined;
 
   return (
     <LayoutBody>

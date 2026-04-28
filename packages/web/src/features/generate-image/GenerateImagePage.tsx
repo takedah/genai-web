@@ -71,7 +71,7 @@ export const GenerateImagePage = () => {
 
   return (
     <>
-      <PageTitle title={`画像を生成 | ${APP_TITLE}`} />
+      <PageTitle title={`画像を生成${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='h-full'>
         <div className='grid h-full grid-rows-[auto_minmax(0,1fr)]'>
           <div className='border-b border-b-black px-4 pt-4 pb-2 lg:px-6'>

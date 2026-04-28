@@ -14,7 +14,7 @@ export const NotFound = () => {
         <br />
         大変お手数ですが、アドレス（URL）をご確認の上再度お探しいただくか、
         <DadsLink asChild>
-          <Link to='/'>{APP_TITLE} トップページ</Link>
+          <Link to='/'>{APP_TITLE ? `${APP_TITLE} トップページ` : 'トップページ'}</Link>
         </DadsLink>
         からご利用ください。
       </p>

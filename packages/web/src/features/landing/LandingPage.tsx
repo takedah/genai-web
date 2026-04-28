@@ -21,7 +21,7 @@ export const LandingPage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`${APP_TITLE}`} />
+      <PageTitle title={APP_TITLE ? `${APP_TITLE} :` : 'トップページ'} />
       <div className='mx-6 max-w-[calc(1120/16*1rem)] pb-24 lg:mx-10'>
         <div className='mt-8 lg:mt-10'>
           <h2 className='mb-6 flex justify-start text-std-24B-150'>おすすめ</h2>

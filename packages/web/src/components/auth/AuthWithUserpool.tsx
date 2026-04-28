@@ -64,9 +64,9 @@ const AuthWithUserpoolContent = (props: Props) => {
         Header: () => {
           return (
             <>
-              <PageTitle title={`サインイン | ${APP_TITLE}`} />
+              <PageTitle title={`サインイン${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
               <h1 className='mt-8 mb-6 flex justify-center text-std-32B-150 text-solid-gray-900'>
-                {APP_TITLE}
+                ここにロゴが入る
               </h1>
             </>
           );

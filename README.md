@@ -94,7 +94,7 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 
 脆弱性の報告は、https://github.com/digital-go-jp/genai-web/security よりご報告ください。
 
-## このソースコード・ドキュメント等の性格
+## コミュニティガイドライン
 
 このリポジトリ（ソースコードおよびドキュメント）は、デジタル庁が作成し、公開するものです。  
 公的資源として、OSS コミュニティのすべての方にオープンにしております。そのため、以下のことは禁止します。
