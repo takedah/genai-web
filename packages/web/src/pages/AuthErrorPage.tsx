@@ -6,7 +6,7 @@ export const AuthErrorPage = () => {
 
   return (
     <>
-      <PageTitle title={`${PAGE_TITLE} | ${APP_TITLE}`} />
+      <PageTitle title={`${PAGE_TITLE}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='m-8'>
         <main id='mainContents' className='flex flex-col gap-4'>
           <h1 className='mb-8 text-std-28B-150 lg:text-std-45B-140'>認証エラー</h1>

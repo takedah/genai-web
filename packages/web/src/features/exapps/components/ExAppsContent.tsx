@@ -8,7 +8,7 @@ export const ExAppsContent = () => {
 
   return (
     <>
-      <PageTitle title={`AIアプリ一覧 | ${APP_TITLE}`} />
+      <PageTitle title={`AIアプリ一覧${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1120/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
         <h1 className='mb-4 flex justify-start text-std-20B-160 lg:text-std-24B-150'>
           AIアプリ一覧

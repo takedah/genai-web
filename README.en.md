@@ -96,7 +96,7 @@ Issues that do not match the template may be closed.
 
 To report security vulnerabilities, please visit https://github.com/digital-go-jp/genai-web/security.
 
-## Nature of This Repository
+## Community Guidelines
 
 This repository (source code and documentation) is created and published by the Digital Agency, Government of Japan.  
 As a public resource, it is openly available to all members of the OSS community. Therefore, the following actions are prohibited:

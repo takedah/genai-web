@@ -1,4 +1,5 @@
-export const APP_TITLE = 'ガバメントAI 検証環境';
+// サービス名称
+export const APP_TITLE = '';
 
 export const EXAPP_STATUS_OPTIONS = [
   { value: 'draft', label: '下書き' },

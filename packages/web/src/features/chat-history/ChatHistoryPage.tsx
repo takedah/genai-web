@@ -18,7 +18,7 @@ export const ChatHistoryPage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`${PAGE_TITLE} | ${APP_TITLE}`} />
+      <PageTitle title={`${PAGE_TITLE}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
         <h1 className='mb-4 flex justify-start text-std-20B-160 lg:text-std-24B-150'>
           {PAGE_TITLE}

@@ -39,7 +39,7 @@ export const GenerateDiagramPage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`ダイアグラムを生成 | ${APP_TITLE}`} />
+      <PageTitle title={`ダイアグラムを生成${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1120/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
         <DiagramHeader />
         <Divider className='my-6' />

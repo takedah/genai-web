@@ -229,7 +229,7 @@ describe('createTeamUser Lambda handler', () => {
 
     expect(result.statusCode).toBe(404);
     expect(JSON.parse(result.body)).toEqual({
-      error: '源内に未ログインのユーザです。源内にログインするようご案内ください。',
+      error: '本環境に未ログインのユーザです。本環境にログインするようご案内ください。',
     });
     expect(mockedCreateTeamUser).not.toHaveBeenCalled();
   });

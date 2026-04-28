@@ -8,7 +8,7 @@ export const ApiRequestDataFormatPage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`${PAGE_TITLE} | ${APP_TITLE}`} />
+      <PageTitle title={`${PAGE_TITLE}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-12'>
         <h1 className='mb-8 flex justify-start text-std-24B-150 lg:text-std-28B-150'>
           {PAGE_TITLE}
@@ -777,7 +777,7 @@ export const ApiRequestDataFormatPage = () => {
           <pre>
             <code>{`{
   "inputs": {
-    "question": "源内とは？",
+    "question": "生成AIとは？",
     "content": "コンテンツコンテンツ\\nコンテンツ",
     "count": 35,
     "files": [

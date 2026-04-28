@@ -48,7 +48,7 @@ export const GenerateTextPage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`文章を生成 | ${APP_TITLE}`} />
+      <PageTitle title={`文章を生成${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
         <GenerateTextHeader />
         <Divider className='my-6' />

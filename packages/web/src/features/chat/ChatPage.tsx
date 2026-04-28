@@ -170,7 +170,7 @@ export const ChatPage = () => {
 
   return (
     <>
-      <PageTitle title={`${title} | ${APP_TITLE}`} />
+      <PageTitle title={`${title}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='h-full'>
         <div onDragOver={fileUploadable ? handleDragOver : undefined} className='relative'>
           <div className='grid h-[calc(100vh-var(--header-height))] grid-rows-[auto_1fr_auto]'>

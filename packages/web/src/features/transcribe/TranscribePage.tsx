@@ -39,7 +39,7 @@ export const TranscribePage = () => {
 
   return (
     <LayoutBody>
-      <PageTitle title={`音声ファイルから文字起こし | ${APP_TITLE}`} />
+      <PageTitle title={`音声ファイルから文字起こし${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
       <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
         <TranscribeHeader />
         <Divider className='my-6' />
