@@ -86,7 +86,7 @@ export class Transcribe extends Construct {
       initialPolicy: [
         new PolicyStatement({
           effect: Effect.ALLOW,
-          actions: ['transcribe:*'],
+          actions: ['transcribe:StartTranscriptionJob', 'transcribe:TagResource'],
           resources: ['*'],
         }),
         new PolicyStatement({
@@ -108,7 +108,7 @@ export class Transcribe extends Construct {
       initialPolicy: [
         new PolicyStatement({
           effect: Effect.ALLOW,
-          actions: ['transcribe:*'],
+          actions: ['transcribe:GetTranscriptionJob'],
           resources: ['*'],
         }),
       ],

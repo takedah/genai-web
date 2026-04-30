@@ -11,13 +11,7 @@ import {
   UserPoolOperation,
 } from 'aws-cdk-lib/aws-cognito';
 import { RoleMappingMatchType } from 'aws-cdk-lib/aws-cognito-identitypool';
-import {
-  Effect,
-  FederatedPrincipal,
-  PolicyDocument,
-  PolicyStatement,
-  Role,
-} from 'aws-cdk-lib/aws-iam';
+import { Effect, FederatedPrincipal, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -195,17 +189,6 @@ export class Auth extends Construct {
         },
         'sts:AssumeRoleWithWebIdentity',
       ),
-      inlinePolicies: {
-        PollyPolicy: new PolicyDocument({
-          statements: [
-            new PolicyStatement({
-              effect: Effect.ALLOW,
-              resources: ['*'],
-              actions: ['polly:SynthesizeSpeech'],
-            }),
-          ],
-        }),
-      },
     });
     this.unauthenticatedRole = unauthenticatedRole;
 

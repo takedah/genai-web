@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 const defaultConfig: MermaidConfig = {
   suppressErrorRendering: true,
-  securityLevel: 'loose',
+  securityLevel: 'antiscript',
   fontFamily: 'monospace',
   fontSize: 16,
   htmlLabels: true,

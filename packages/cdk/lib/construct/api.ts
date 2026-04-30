@@ -215,40 +215,44 @@ export class Api extends Construct {
       generateImageFunction.role?.addToPrincipalPolicy(sagemakerPolicy);
     }
 
-    // Bedrock は常に権限付与
-    // Bedrock Policy
     if (typeof crossAccountBedrockRoleArn !== 'string' || crossAccountBedrockRoleArn === '') {
-      const bedrockPolicy = new PolicyStatement({
+      // 同一アカウントの Bedrock を使用する場合
+      const bedrockInvokePolicy = new PolicyStatement({
         effect: Effect.ALLOW,
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
         resources: ['*'],
-        actions: ['bedrock:*', 'logs:*'],
       });
-      predictStreamFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      predictFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      predictTitleFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      generateImageFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      optimizePromptFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+      predictFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
+      predictStreamFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
+      predictTitleFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
+      generateImageFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
+
+      // Bedrock Agent 権限（predictStream は bedrockAgentApi 経由で Agent を呼び出す可能性がある）
+      const bedrockAgentPolicy = new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['bedrock:InvokeAgent', 'bedrock:GetAgentAlias', 'bedrock:ListAgentActionGroups'],
+        resources: ['*'],
+      });
+      predictStreamFunction.role?.addToPrincipalPolicy(bedrockAgentPolicy);
     } else {
-      // crossAccountBedrockRoleArn が指定されている場合のポリシー
-      const logsPolicy = new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['logs:*'],
-        resources: ['*'],
-      });
       const assumeRolePolicy = new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['sts:AssumeRole'],
         resources: [crossAccountBedrockRoleArn],
       });
-      predictStreamFunction.role?.addToPrincipalPolicy(logsPolicy);
-      predictFunction.role?.addToPrincipalPolicy(logsPolicy);
-      predictTitleFunction.role?.addToPrincipalPolicy(logsPolicy);
-      generateImageFunction.role?.addToPrincipalPolicy(logsPolicy);
-      predictStreamFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
       predictFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
+      predictStreamFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
       predictTitleFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
       generateImageFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
     }
+
+    // OptimizePrompt は常に同一アカウントの Bedrock Agent Runtime を使用する
+    const bedrockOptimizePolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['bedrock:OptimizePrompt'],
+      resources: ['*'],
+    });
+    optimizePromptFunction.role?.addToPrincipalPolicy(bedrockOptimizePolicy);
 
     // AWS Marketplace Policy for Converse API functions
     const marketplacePolicy = new PolicyStatement({
@@ -422,13 +426,6 @@ export class Api extends Construct {
         ],
       }),
     );
-
-    // Grant all Cognito Identity Pool roles access to S3 and KMS
-    const cognitoRoles = [authenticatedRole, systemAdminRole, teamAdminRole, userRole];
-    cognitoRoles.forEach((role) => {
-      fileBucket.grantRead(role);
-      props.encryptionKey.grantDecrypt(role);
-    });
 
     const deleteFileFunction = new NodejsFunction(this, 'DeleteFileFunction', {
       runtime: Runtime.NODEJS_22_X,

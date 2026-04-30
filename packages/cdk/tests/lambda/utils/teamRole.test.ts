@@ -52,6 +52,22 @@ describe('isSystemAdmin', () => {
 
     expect(result).toBe(false);
   });
+
+  test('部分一致するグループ名の場合、falseを返す', () => {
+    const event = createAPIGatewayProxyEvent('NotSystemAdminGroup');
+
+    const result = isSystemAdmin(event);
+
+    expect(result).toBe(false);
+  });
+
+  test('部分一致するグループ名が複数グループに含まれる場合、falseを返す', () => {
+    const event = createAPIGatewayProxyEvent('NotSystemAdminGroup,UserGroup');
+
+    const result = isSystemAdmin(event);
+
+    expect(result).toBe(false);
+  });
 });
 
 describe('isTeamAdmin', () => {
@@ -117,6 +133,22 @@ describe('isTeamAdmin', () => {
     expect(result).toBe(false);
   });
 
+  test('部分一致するグループ名の場合、falseを返す', async () => {
+    const event = createAPIGatewayProxyEvent('ReadOnlyTeamAdminGroup', 'admin-user-id');
+    mockedFindTeamUserById.mockResolvedValue({
+      teamId: 'team-1',
+      userId: 'admin-user-id',
+      username: 'admin@example.com',
+      isAdmin: true,
+      createdDate: '2025-01-01',
+      updatedDate: '2025-01-01',
+    });
+
+    const result = await isTeamAdmin(event, 'team-1');
+
+    expect(result).toBe(false);
+  });
+
   test('複数グループにTeamAdminGroupが含まれ、isAdmin権限がある場合、trueを返す', async () => {
     const event = createAPIGatewayProxyEvent('UserGroup,TeamAdminGroup', 'admin-user-id');
     mockedFindTeamUserById.mockResolvedValue({
@@ -167,6 +199,22 @@ describe('isTeamUser', () => {
 
   test('UserGroupを含まない場合、falseを返す', async () => {
     const event = createAPIGatewayProxyEvent('TeamAdminGroup', 'user-id');
+    mockedFindTeamUserById.mockResolvedValue({
+      teamId: 'team-1',
+      userId: 'user-id',
+      username: 'user@example.com',
+      isAdmin: false,
+      createdDate: '2025-01-01',
+      updatedDate: '2025-01-01',
+    });
+
+    const result = await isTeamUser(event, 'team-1');
+
+    expect(result).toBe(false);
+  });
+
+  test('部分一致するグループ名の場合、falseを返す', async () => {
+    const event = createAPIGatewayProxyEvent('PowerUserGroup', 'user-id');
     mockedFindTeamUserById.mockResolvedValue({
       teamId: 'team-1',
       userId: 'user-id',
