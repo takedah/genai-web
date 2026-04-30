@@ -158,6 +158,95 @@ describe('copyExApp Lambda handler', () => {
     expect(body.exAppName).toBe('コピーされたアプリ');
   });
 
+  test('copyable=falseのExAppをコピーしようとすると403エラーを返す', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'source-exapp-id';
+    const now = Date.now().toString();
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+
+    mockedFindTeamById.mockResolvedValue({
+      teamId,
+      teamName: 'テストチーム',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    mockedFindExAppById.mockResolvedValue({
+      teamId,
+      exAppId,
+      exAppName: '元アプリ',
+      description: '元アプリの概要',
+      howToUse: '元アプリの使い方',
+      endpoint: 'https://api.example.com/original',
+      apiKey: '',
+      placeholder: '{"input": "original"}',
+      config: '{"model": "original"}',
+      systemPrompt: '元プロンプト',
+      systemPromptKeyName: 'system',
+      copyable: false,
+      status: 'published',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(403);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'このAIアプリはコピーできません。',
+    });
+    expect(mockedCreateExApp).not.toHaveBeenCalled();
+    expect(mockedGetApiKeyValue).not.toHaveBeenCalled();
+  });
+
+  test('copyableが未定義のExAppをコピーしようとすると403エラーを返す', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'source-exapp-id';
+    const now = Date.now().toString();
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+
+    mockedFindTeamById.mockResolvedValue({
+      teamId,
+      teamName: 'テストチーム',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    mockedFindExAppById.mockResolvedValue({
+      teamId,
+      exAppId,
+      exAppName: '元アプリ',
+      description: '元アプリの概要',
+      howToUse: '元アプリの使い方',
+      endpoint: 'https://api.example.com/original',
+      apiKey: '',
+      placeholder: '{"input": "original"}',
+      config: '{"model": "original"}',
+      systemPrompt: '元プロンプト',
+      systemPromptKeyName: 'system',
+      status: 'published',
+      createdDate: now,
+      updatedDate: now,
+    });
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(403);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'このAIアプリはコピーできません。',
+    });
+    expect(mockedCreateExApp).not.toHaveBeenCalled();
+    expect(mockedGetApiKeyValue).not.toHaveBeenCalled();
+  });
+
   test('管理者でない場合は403エラーを返す', async () => {
     const teamId = 'test-team-id';
     const exAppId = 'source-exapp-id';

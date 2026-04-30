@@ -27,6 +27,10 @@ export const handler = createApiHandler(async (event) => {
     throw new HttpError(400, 'ExAppが見つかりませんでした。');
   }
 
+  if (!exApp.copyable) {
+    throw new HttpError(403, 'このAIアプリはコピーできません。');
+  }
+
   const apiKeyValue = await getApiKeyValue(teamId, exAppId, APP_ENV);
   if (!apiKeyValue) {
     throw new HttpError(400, 'APIキーの取得に失敗しました。');

@@ -5,7 +5,7 @@ const defaultConfig: MermaidConfig = {
   // syntax error が dom node に勝手に追加されないようにする
   // https://github.com/mermaid-js/mermaid/pull/4359
   suppressErrorRendering: true,
-  securityLevel: 'loose', // SVGのレンダリングを許可
+  securityLevel: 'antiscript', // SVGのレンダリングを許可
   fontFamily: 'monospace', // フォントファミリーを指定
   fontSize: 16, // フォントサイズを指定
   htmlLabels: true, // HTMLラベルを許可
