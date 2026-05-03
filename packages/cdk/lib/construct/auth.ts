@@ -11,23 +11,20 @@ import {
   UserPoolOperation,
 } from 'aws-cdk-lib/aws-cognito';
 import { RoleMappingMatchType } from 'aws-cdk-lib/aws-cognito-identitypool';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { Effect, FederatedPrincipal, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import { Construct } from 'constructs';
 
 export interface AuthProps {
   encryptionKey: kms.IKey;
+  vpc: ec2.IVpc;
   selfSignUpEnabled: boolean;
-  allowedIpV4AddressRanges: string[] | null;
-  allowedIpV6AddressRanges: string[] | null;
   allowedSignUpEmailDomains: string[] | null;
-  samlAuthEnabled: boolean;
-  samlOAuthCallbackUrls?: string[];
-  samlIdentityProviderNames?: string[];
   customEmailSender: {
     sesIdentityName: string;
     fromAddress: string;
@@ -57,9 +54,14 @@ export class Auth extends Construct {
   constructor(scope: Construct, id: string, props: AuthProps) {
     super(scope, id);
 
+    // 全 Lambda 共通の VPC 設定（Closed Network 環境）
+    const lambdaVpcProps: Pick<NodejsFunctionProps, 'vpc' | 'vpcSubnets'> = {
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    };
+
     const userPool = new UserPool(this, 'UserPool', {
-      // SAML 認証を有効化する場合、UserPool を利用したセルフサインアップは利用しない。セキュリティを意識して閉じる。
-      selfSignUpEnabled: props.samlAuthEnabled ? false : props.selfSignUpEnabled,
+      selfSignUpEnabled: props.selfSignUpEnabled,
       signInAliases: {
         username: false,
         email: true,
@@ -84,7 +86,6 @@ export class Auth extends Construct {
           }
         : {}),
       // Email MFA: emailMfaRequired が true の場合、Email MFA を必須化
-      // SAML/フェデレーテッドユーザーには MFA REQUIRED は適用されない（AWS仕様）
       ...(props.emailMfaRequired
         ? {
             mfa: cognito.Mfa.REQUIRED,
@@ -120,36 +121,9 @@ export class Auth extends Construct {
       ],
     });
 
-    const samlOAuthConfig =
-      props.samlAuthEnabled &&
-      props.samlOAuthCallbackUrls?.length &&
-      props.samlIdentityProviderNames?.length
-        ? {
-            oAuth: {
-              flows: {
-                authorizationCodeGrant: true,
-                implicitCodeGrant: true,
-              },
-              scopes: [
-                cognito.OAuthScope.PROFILE,
-                cognito.OAuthScope.PHONE,
-                cognito.OAuthScope.EMAIL,
-                cognito.OAuthScope.OPENID,
-                cognito.OAuthScope.COGNITO_ADMIN,
-              ],
-              callbackUrls: props.samlOAuthCallbackUrls,
-              logoutUrls: props.samlOAuthCallbackUrls?.map((url) => `${url}/signed-out`),
-            },
-            supportedIdentityProviders: props.samlIdentityProviderNames.map((name) =>
-              cognito.UserPoolClientIdentityProvider.custom(name),
-            ),
-          }
-        : {};
-
     const client = userPool.addClient('client', {
       idTokenValidity: Duration.days(1),
       refreshTokenValidity: Duration.days(props.reauthenticationIntervalDays),
-      ...samlOAuthConfig,
     });
 
     const idPool = new CfnIdentityPool(this, 'IdentityPool', {
@@ -208,28 +182,10 @@ export class Auth extends Construct {
       ),
     };
     this.systemAdminRole = new Role(this, 'SystemAdminRole', commonRoleProps);
-    this.systemAdminRole.addToPolicy(
-      new PolicyStatement({
-        actions: ['transcribe:StartStreamTranscriptionWebSocket'],
-        resources: ['*'],
-      }),
-    );
 
     this.teamAdminRole = new Role(this, 'TeamAdminRole', commonRoleProps);
-    this.teamAdminRole.addToPolicy(
-      new PolicyStatement({
-        actions: ['transcribe:StartStreamTranscriptionWebSocket'],
-        resources: ['*'],
-      }),
-    );
 
     this.userRole = new Role(this, 'UserRole', commonRoleProps);
-    this.userRole.addToPolicy(
-      new PolicyStatement({
-        actions: ['transcribe:StartStreamTranscriptionWebSocket'],
-        resources: ['*'],
-      }),
-    );
 
     const cfnIdentityPoolRoleAttachment = new CfnIdentityPoolRoleAttachment(
       this,
@@ -289,32 +245,13 @@ export class Auth extends Construct {
     });
     /** End */
 
-    if (props.allowedIpV4AddressRanges || props.allowedIpV6AddressRanges) {
-      const ipRanges = [
-        ...(props.allowedIpV4AddressRanges ? props.allowedIpV4AddressRanges : []),
-        ...(props.allowedIpV6AddressRanges ? props.allowedIpV6AddressRanges : []),
-      ];
-
-      authenticatedRole.addToPolicy(
-        new PolicyStatement({
-          effect: Effect.DENY,
-          resources: ['*'],
-          actions: ['*'],
-          conditions: {
-            NotIpAddress: {
-              'aws:SourceIp': ipRanges,
-            },
-          },
-        }),
-      );
-    }
-
     // Lambda
     if (props.allowedSignUpEmailDomains) {
       const checkEmailDomainFunction = new NodejsFunction(this, 'CheckEmailDomain', {
         runtime: Runtime.NODEJS_22_X,
         entry: './lambda/checkEmailDomain.ts',
         timeout: Duration.minutes(15),
+        ...lambdaVpcProps,
         environment: {
           ALLOWED_SIGN_UP_EMAIL_DOMAINS_STR: JSON.stringify(props.allowedSignUpEmailDomains),
         },
@@ -327,6 +264,7 @@ export class Auth extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/assignUserToDefaultGroupOnSignUp.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
     });
     assignUserToDefaultGroupFunction.addToRolePolicy(
       new PolicyStatement({
@@ -364,6 +302,7 @@ export class Auth extends Construct {
         runtime: Runtime.NODEJS_22_X,
         entry: './lambda/customEmailSender.ts',
         timeout: Duration.minutes(15),
+        ...lambdaVpcProps,
         environment: {
           KMS_KEY_ARN: props.encryptionKey.keyArn,
           SES_FROM_ADDRESS: props.customEmailSender.fromAddress,

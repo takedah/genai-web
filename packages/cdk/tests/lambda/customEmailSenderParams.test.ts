@@ -7,8 +7,9 @@ describe('customEmailSender and emailMfaRequired parameter validation', () => {
     account: '123456890123',
     region: 'us-east-1',
     allowedSignUpEmailDomains: null,
-    allowedIpV4AddressRanges: null,
-    allowedIpV6AddressRanges: null,
+    closedNetworkDomainName: 'test.internal',
+    closedNetworkCertificateArn:
+      'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
   };
 
   describe('customEmailSender: 正常値', () => {
@@ -147,42 +148,6 @@ describe('customEmailSender and emailMfaRequired parameter validation', () => {
       const params = stackInputSchema.parse(baseParams);
 
       expect(params.emailMfaRequired).toBe(false);
-    });
-  });
-
-  describe('emailMfaRequired + samlAuthEnabled 排他バリデーション', () => {
-    test('emailMfaRequired: true + samlAuthEnabled: true でバリデーションエラーになる', () => {
-      expect(() =>
-        stackInputSchema.parse({
-          ...baseParams,
-          emailMfaRequired: true,
-          samlAuthEnabled: true,
-          samlCognitoFederatedIdentityPrimaryProviderName: 'EntraID',
-        }),
-      ).toThrow('emailMfaRequired is not applicable when samlAuthEnabled is true');
-    });
-
-    test('emailMfaRequired: false + samlAuthEnabled: true は成功する', () => {
-      const params = stackInputSchema.parse({
-        ...baseParams,
-        emailMfaRequired: false,
-        samlAuthEnabled: true,
-        samlCognitoFederatedIdentityPrimaryProviderName: 'EntraID',
-      });
-
-      expect(params.emailMfaRequired).toBe(false);
-      expect(params.samlAuthEnabled).toBe(true);
-    });
-
-    test('emailMfaRequired: true + samlAuthEnabled: false は成功する', () => {
-      const params = stackInputSchema.parse({
-        ...baseParams,
-        emailMfaRequired: true,
-        samlAuthEnabled: false,
-      });
-
-      expect(params.emailMfaRequired).toBe(true);
-      expect(params.samlAuthEnabled).toBe(false);
     });
   });
 

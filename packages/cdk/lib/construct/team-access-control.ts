@@ -19,9 +19,9 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { UserPool } from 'aws-cdk-lib/aws-cognito';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
-import { IVpc, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import {
   ApplicationLogLevel,
@@ -30,14 +30,13 @@ import {
   SystemLogLevel,
 } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { StackInput } from '../stack-input';
-import { InvokeExAppLambdaVpc } from './invoke-exapp-lambda-vpc';
 import { UserIdentifierHmacKey } from './kms';
 
 interface TeamAccessControlProps {
@@ -45,7 +44,8 @@ interface TeamAccessControlProps {
   userPool: UserPool;
   identityPoolId: string;
   allowedSignUpEmailDomains: string[] | null | undefined;
-  vpcId: string | undefined;
+  vpc: ec2.IVpc;
+  apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
   logLevel: StackInput['logLevel'];
   exAppInvokeTimeoutSeconds: number;
   s3FileExpirationDays: number;
@@ -69,6 +69,7 @@ export class TeamAccessControl extends Construct {
   public readonly userPoolId: string;
   private readonly identityPoolId: string;
   private readonly appEnv: string;
+  private readonly lambdaVpcProps: Pick<NodejsFunctionProps, 'vpc' | 'vpcSubnets'>;
 
   constructor(scope: Construct, id: string, props: TeamAccessControlProps) {
     super(scope, id);
@@ -77,6 +78,10 @@ export class TeamAccessControl extends Construct {
     this.userPoolId = userPool.userPoolId;
     this.identityPoolId = props.identityPoolId;
     this.appEnv = props.envName || '';
+    this.lambdaVpcProps = {
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    };
 
     // LogLevelの文字列を cdkが提供する型に変換
     const applicationLogLevel = props.logLevel as ApplicationLogLevel;
@@ -201,7 +206,25 @@ export class TeamAccessControl extends Construct {
       encryptionKey: props.encryptionKey,
     });
     const api = new RestApi(this, 'Api', {
-      endpointTypes: [EndpointType.REGIONAL],
+      endpointConfiguration: {
+        types: [EndpointType.PRIVATE],
+        vpcEndpoints: [props.apiGatewayVpcEndpoint],
+      },
+      policy: new PolicyDocument({
+        statements: [
+          new PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            principals: [new AnyPrincipal()],
+            actions: ['execute-api:Invoke'],
+            resources: ['execute-api:/*'],
+            conditions: {
+              StringEquals: {
+                'aws:SourceVpce': props.apiGatewayVpcEndpoint.vpcEndpointId,
+              },
+            },
+          }),
+        ],
+      }),
       deployOptions: {
         stageName: 'api',
         loggingLevel: MethodLoggingLevel.INFO,
@@ -340,6 +363,7 @@ export class TeamAccessControl extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getArtifactFile.ts',
       timeout: Duration.seconds(15),
+      ...this.lambdaVpcProps,
       environment: {
         ARTIFACTS_BUCKET_NAME: artifactsBucket.bucketName,
         IDENTITY_POOL_ID: this.identityPoolId,
@@ -373,25 +397,6 @@ export class TeamAccessControl extends Construct {
       ],
       true,
     );
-
-    // VPC For POST /exapps/{id}
-
-    let vpcForLambda: IVpc;
-    if (props.vpcId && props.vpcId !== '') {
-      // 既存VPCを使用
-      vpcForLambda = Vpc.fromLookup(this, 'LookupExistingVpc', {
-        vpcId: props.vpcId,
-      });
-    } else {
-      // 新しいVPCを作成し、そのvpcプロパティを使用
-      const invokeExAppVpc = new InvokeExAppLambdaVpc(this, 'InvokeExAppVpc', {
-        encryptionKey: props.encryptionKey,
-        maxAzs: 2,
-        cidr: '10.0.0.0/16',
-        cidrMask: 24,
-      });
-      vpcForLambda = invokeExAppVpc.vpc;
-    }
 
     const pollingDlq = new sqs.Queue(this, 'ExAppPollingDlq', {
       retentionPeriod: Duration.days(14),
@@ -438,10 +443,7 @@ export class TeamAccessControl extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/pollExAppStatus.ts',
       timeout: Duration.seconds(15),
-      vpc: vpcForLambda,
-      vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-      },
+      ...this.lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
         INVOKE_HISTORY_TABLE_NAME: invokeExAppHistoryTable.tableName,
@@ -493,10 +495,7 @@ export class TeamAccessControl extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/invokeExApp.ts',
       timeout: Duration.seconds(props.exAppInvokeTimeoutSeconds),
-      vpc: vpcForLambda,
-      vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-      },
+      ...this.lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
         EXAPP_TABLE_NAME: exAppTable.tableName,
@@ -822,7 +821,7 @@ export class TeamAccessControl extends Construct {
         },
         {
           id: 'AwsSolutions-APIG3',
-          reason: 'WAF will be associated in GenerativeAiUseCasesStack',
+          reason: 'API Gateway is PRIVATE endpoint accessible only via VPC endpoint in closed network mode.',
         },
       ],
       true,
@@ -908,6 +907,7 @@ export class TeamAccessControl extends Construct {
       entry,
       timeout: Duration.seconds(15),
       memorySize,
+      ...this.lambdaVpcProps,
       environment: {
         TABLE_NAME: this.table.tableName,
         EXAPP_TABLE_NAME: this.exAppTable.tableName,

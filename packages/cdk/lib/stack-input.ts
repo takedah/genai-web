@@ -74,8 +74,7 @@ export const stackInputSchema = z
 
     // Auth
     selfSignUpEnabled: z.boolean().default(false),
-    allowedSignUpEmailDomains: z.array(z.string()).nullable(),
-    samlAuthEnabled: z.boolean().default(false),
+    allowedSignUpEmailDomains: z.array(z.string()).nullable().default(null),
     customEmailSender: z
       .object({
         sesIdentityName: z
@@ -99,16 +98,7 @@ export const stackInputSchema = z
       .nullish(),
     emailMfaRequired: z.boolean().default(false),
     reauthenticationIntervalDays: z.number().min(1).max(365).default(7),
-    samlCognitoDomainName: z.string().nullish(),
-    samlCognitoFederatedIdentityPrimaryProviderName: z.string().nullish(),
-    samlCognitoFederatedIdentityAdditionalProviderNames: z
-      .array(
-        z.object({
-          providerName: z.string(),
-          signinPath: z.string(), // /login/{signinPath}
-        }),
-      )
-      .nullish(),
+
     // Frontend
     hiddenUseCases: z
       .object({
@@ -147,22 +137,17 @@ export const stackInputSchema = z
         }),
       )
       .default([]),
-    // WAF
-    allowedIpV4AddressRanges: z.array(z.string()).nullable(),
-    allowedIpV6AddressRanges: z.array(z.string()).nullable(),
-    allowedCountryCodes: z.array(z.string()).nullish(),
 
-    // Custom Domain
-    useHostedZone: z.boolean().default(false),
-    hostName: z.string().nullish(),
-    domainName: z.string().nullish(),
-    hostedZoneId: z.string().nullish(),
-    certificateArn: z.string().nullish(),
+    // Closed Network (always enabled in this fork)
+    closedNetworkVpcCidr: z.string().default('10.1.0.0/16'),
+    closedNetworkDomainName: z.string().min(1, 'closedNetworkDomainName is required'),
+    closedNetworkCertificateArn: z
+      .string()
+      .min(1, 'closedNetworkCertificateArn is required (must be in app region, NOT us-east-1)'),
+    closedNetworkPrivateHostedZoneId: z.string().nullish(),
 
     // Dashboard
     dashboard: z.boolean().default(false),
-    // Shared VPC for invokeExApp
-    vpcIdForInvokeExApp: z.string().default(''),
     // Log
     destination: z // ログ収集システムのログ送信先
       .object({
@@ -211,28 +196,6 @@ export const stackInputSchema = z
     // Maintenance Mode
     maintenance: z.boolean().default(false),
   })
-  .refine(
-    (data) => {
-      if (data.emailMfaRequired && data.samlAuthEnabled) return false;
-      return true;
-    },
-    {
-      message:
-        'emailMfaRequired is not applicable when samlAuthEnabled is true (SAML IdP handles MFA)',
-    },
-  )
-  .refine(
-    (data) => {
-      if (data.samlAuthEnabled && !data.samlCognitoFederatedIdentityPrimaryProviderName) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message:
-        'samlCognitoFederatedIdentityPrimaryProviderName is required when samlAuthEnabled is true',
-    },
-  )
   .transform((data) => {
     if (data.emailMfaRequired && !data.customEmailSender) {
       console.warn(

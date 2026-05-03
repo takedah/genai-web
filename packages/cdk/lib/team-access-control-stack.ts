@@ -8,6 +8,7 @@ import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import { RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -18,7 +19,8 @@ interface TeamAccessControlStackProps extends NestedStackProps {
   encryptionKey: kms.IKey;
   userPool: cognito.UserPool;
   identityPoolId: string;
-  vpcId: string | undefined;
+  vpc: ec2.IVpc;
+  apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
   logLevel: StackInput['logLevel'];
   exAppInvokeTimeoutSeconds: number;
   s3FileExpirationDays: number;
@@ -45,7 +47,8 @@ export class TeamAccessControlStack extends NestedStack {
       userPool: props.userPool,
       identityPoolId: props.identityPoolId,
       allowedSignUpEmailDomains,
-      vpcId: props.vpcId,
+      vpc: props.vpc,
+      apiGatewayVpcEndpoint: props.apiGatewayVpcEndpoint,
       logLevel: props.logLevel,
       exAppInvokeTimeoutSeconds: props.exAppInvokeTimeoutSeconds,
       s3FileExpirationDays: props.s3FileExpirationDays,

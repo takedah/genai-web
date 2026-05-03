@@ -17,11 +17,10 @@ const deploy_envs: Record<string, Partial<StackInput>> = {
   //   appEnv: 'dev',
   //   logLevel: 'INFO',
   //   allowedSignUpEmailDomains: ['example.co.jp'],
-  //
-  //   allowedIpV4AddressRanges: [
-  //     '192.168.0.1/32', // 源内Webアプリへのアクセスを許すIPアドレス
-  //     '192.168.0.2/32', // 源内Webアプリへのアクセスを許すIPアドレス
-  //   ],
+  //   closedNetworkVpcCidr: '10.1.0.0/16',
+  //   closedNetworkDomainName: 'genai.example.internal',
+  //   closedNetworkCertificateArn:
+  //     'arn:aws:acm:ap-northeast-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   // },
   // 他環境も必要に応じて定義を追加可能
 };

@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 import { Logging } from './construct';
@@ -6,6 +7,7 @@ import { StackInput } from './stack-input';
 
 interface SourceStackProps extends cdk.StackProps {
   encryptionKey: kms.IKey;
+  vpc: ec2.IVpc;
   params: StackInput;
   s3BucketInvocationLog?: string;
   dynamoTableChatLog: string;
@@ -24,6 +26,7 @@ export class LoggingStack extends cdk.Stack {
 
     new Logging(this, 'Logging', {
       encryptionKey: props.encryptionKey,
+      vpc: props.vpc,
       thisAccount: this.account,
       thisRegion: this.region,
       appEnv: params.appEnv, // パラメータ"appEnv"で指定する文字列を使用する。cdkのenv（"-dev"や"-prod"）ではない

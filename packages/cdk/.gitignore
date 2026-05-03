@@ -8,3 +8,5 @@ node_modules
 cdk.out
 !custom-resources/*.js
 !flows.d.ts
+
+env-parameters/self-hosting-dev.ts

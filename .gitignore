@@ -5,6 +5,7 @@ cdk.out/
 ToDo.md
 !.gitkeep
 .env
+.claude
 
 
 # MkDocs documentation

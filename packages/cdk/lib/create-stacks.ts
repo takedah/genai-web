@@ -1,8 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { IConstruct } from 'constructs';
-import { AppDomainStack } from './app-domain-stack';
 import { ResourceTaggerAspect } from './aspect/resource-tagger';
-import { CloudFrontWafStack } from './cloud-front-waf-stack';
+import { ClosedNetworkStack } from './closed-network-stack';
 import { GenerativeAiUseCasesStack } from './generative-ai-use-cases-stack';
 import { GuardrailStack } from './guardrail-stack';
 import { StackInput } from './stack-input';
@@ -19,11 +18,6 @@ class DeletionPolicySetter implements cdk.IAspect {
 
 /**
  * Apply Environment tag to a stack and all its resources.
- * Uses both Tags.of() for standard resources and ResourceTaggerAspect for L1 resources
- * with non-standard tag properties (e.g., CfnIdentityPool).
- *
- * @param stack - The stack to apply tags to
- * @param appEnv - The environment value (defaults to 'default' if empty)
  */
 const applyEnvironmentTag = (stack: cdk.Stack, appEnv: string): void => {
   const tagValue = appEnv || 'default';
@@ -36,29 +30,15 @@ const applyEnvironmentTag = (stack: cdk.Stack, appEnv: string): void => {
 };
 
 export const createStacks = (app: cdk.App, params: StackInput) => {
-  const appDomainStack = new AppDomainStack(app, `AppDomainStack${params.env}`, {
+  // Closed Network: VPC, VPC endpoints, ALB+ECS web tier, S3 bucket for SPA assets
+  const closedNetworkStack = new ClosedNetworkStack(app, `ClosedNetworkStack${params.env}`, {
     env: {
       account: params.account,
-      region: 'us-east-1',
+      region: params.region,
     },
-    params: params,
+    params,
     crossRegionReferences: true,
   });
-
-  // CloudFront WAF
-  // IP アドレス範囲(v4もしくはv6のいずれか)か地理的制限が定義されている場合のみ、CloudFrontWafStack をデプロイする
-  // WAF v2 は us-east-1 でのみデプロイ可能なため、Stack を分けている
-  const cloudFrontWafStack =
-    params.allowedIpV4AddressRanges || params.allowedIpV6AddressRanges || params.allowedCountryCodes
-      ? new CloudFrontWafStack(app, `CloudFrontWafStack${params.env}`, {
-          env: {
-            account: params.account,
-            region: 'us-east-1',
-          },
-          params: params,
-          crossRegionReferences: true,
-        })
-      : null;
 
   // Guardrail
   const guardrail = params.guardrailEnabled
@@ -80,19 +60,20 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
         account: params.account,
         region: params.region,
       },
-      description: 'Genai Web Application Stack',
+      description: 'Genai Web Application Stack (Closed Network)',
       params: params,
       crossRegionReferences: true,
+      // Closed Network resources
+      vpc: closedNetworkStack.vpc,
+      apiGatewayVpcEndpoint: closedNetworkStack.apiGatewayVpcEndpoint,
+      hostedZone: closedNetworkStack.hostedZone,
       // Guardrail
       guardrailIdentifier: guardrail?.guardrailIdentifier,
       guardrailVersion: 'DRAFT',
-      // WAF
-      webAclId: cloudFrontWafStack?.webAclArn,
-      // Custom Domain
-      cert: appDomainStack?.certificate,
-      hostedZoneId: appDomainStack?.hostedZone?.hostedZoneId,
     },
   );
+
+  generativeAiUseCasesStack.addDependency(closedNetworkStack);
 
   cdk.Aspects.of(generativeAiUseCasesStack).add(
     new DeletionPolicySetter(cdk.RemovalPolicy.DESTROY),
@@ -101,24 +82,16 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
   // Apply Environment tags to all stacks
   const appEnv = params.appEnv ?? '';
 
-  // Apply to AppDomainStack (always created)
-  applyEnvironmentTag(appDomainStack, appEnv);
+  applyEnvironmentTag(closedNetworkStack, appEnv);
 
-  // Apply to CloudFrontWafStack (conditionally created)
-  if (cloudFrontWafStack) {
-    applyEnvironmentTag(cloudFrontWafStack, appEnv);
-  }
-
-  // Apply to GuardrailStack (conditionally created)
   if (guardrail) {
     applyEnvironmentTag(guardrail, appEnv);
   }
 
-  // Apply to GenerativeAiUseCasesStack (main stack)
   applyEnvironmentTag(generativeAiUseCasesStack, appEnv);
 
   return {
-    cloudFrontWafStack,
+    closedNetworkStack,
     guardrail,
     generativeAiUseCasesStack,
   };

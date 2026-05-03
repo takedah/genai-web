@@ -1,10 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 
 export interface LoggingProps {
   encryptionKey: kms.IKey;
+  vpc: ec2.IVpc;
   thisAccount: string;
   thisRegion: string;
   appEnv: string;
@@ -26,11 +28,13 @@ export interface LoggingProps {
 
 export class Logging extends Construct {
   private readonly encryptionKey: kms.IKey;
+  private readonly vpc: ec2.IVpc;
 
   constructor(scope: Construct, id: string, props: LoggingProps) {
     super(scope, id);
 
     this.encryptionKey = props.encryptionKey;
+    this.vpc = props.vpc;
 
     const {
       thisAccount,
@@ -254,6 +258,8 @@ export class Logging extends Construct {
       entry: './lambda/lambdaExportCognitoLogsToS3/index.ts',
       handler: 'handler',
       role: lambdaRole,
+      vpc: this.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       environment: {
         BUCKET_NAME: s3Bucket.bucketName,
         LOG_GROUP_NAME: cognitoLogGroupName,
@@ -314,6 +320,8 @@ export class Logging extends Construct {
       entry: './lambda/lambdaDailyExportFromDynamoDbToS3/index.ts',
       handler: 'handler',
       role: lambdaRole,
+      vpc: this.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_ARN: `arn:aws:dynamodb:${thisRegion}:${thisAccount}:table/${dynamoTableName}`,
@@ -419,6 +427,8 @@ export class Logging extends Construct {
       entry: codePath + 'index.ts',
       handler: 'handler',
       role: lambdaRole,
+      vpc: this.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       environment: {
         APP_ENV: appEnv,
         DESTINATION_ACCOUNT_ID: destinationAccountId,
@@ -547,6 +557,8 @@ export class Logging extends Construct {
       entry: codePath + 'index.ts',
       handler: 'handler',
       role: lambdaRole,
+      vpc: this.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       environment: {
         APP_ENV: appEnv,
         DESTINATION_ACCOUNT_ID: destinationAccountId,

@@ -1,17 +1,17 @@
 import * as cdk from 'aws-cdk-lib';
 import { Aspects, CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
-import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import { CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
+import { PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import {
   Api,
   Auth,
   BedrockInferenceProfiles,
-  CommonWebAcl,
+  ClosedWeb,
   Database,
   Monitoring,
   Transcribe,
@@ -24,14 +24,13 @@ import { TeamAccessControlStack } from './team-access-control-stack';
 
 export interface GenerativeAiUseCasesStackProps extends StackProps {
   params: StackInput;
+  // Closed Network resources (created by ClosedNetworkStack)
+  vpc: ec2.IVpc;
+  apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
+  hostedZone?: PrivateHostedZone;
   // Guardrail
   guardrailIdentifier?: string;
   guardrailVersion?: string;
-  // WAF
-  webAclId?: string;
-  // Custom Domain
-  cert?: ICertificate;
-  hostedZoneId?: string;
 }
 
 export class GenerativeAiUseCasesStack extends Stack {
@@ -51,32 +50,12 @@ export class GenerativeAiUseCasesStack extends Stack {
     });
     this.encryptionKey = encryptionKey.key;
 
-    // SAML OAuth: IdP名のリストを構築
-    const samlIdentityProviderNames = params.samlAuthEnabled
-      ? [
-          params.samlCognitoFederatedIdentityPrimaryProviderName,
-          ...(params.samlCognitoFederatedIdentityAdditionalProviderNames?.map(
-            (p) => p.providerName,
-          ) ?? []),
-        ].filter((name): name is string => !!name)
-      : undefined;
-
-    // SAML OAuth: コールバックURL（カスタムドメインがある場合のみ事前に解決可能）
-    const samlOAuthCallbackUrls =
-      params.samlAuthEnabled && params.hostName && params.domainName
-        ? [`https://${params.hostName}.${params.domainName}`]
-        : undefined;
-
     // Auth
     const auth = new Auth(this, 'Auth', {
       encryptionKey: encryptionKey.key,
+      vpc: props.vpc,
       selfSignUpEnabled: params.selfSignUpEnabled,
-      allowedIpV4AddressRanges: params.allowedIpV4AddressRanges,
-      allowedIpV6AddressRanges: params.allowedIpV6AddressRanges,
       allowedSignUpEmailDomains: params.allowedSignUpEmailDomains,
-      samlAuthEnabled: params.samlAuthEnabled,
-      samlOAuthCallbackUrls,
-      samlIdentityProviderNames,
       customEmailSender: params.customEmailSender ?? null,
       emailMfaRequired: params.emailMfaRequired,
       reauthenticationIntervalDays: params.reauthenticationIntervalDays,
@@ -107,6 +86,8 @@ export class GenerativeAiUseCasesStack extends Stack {
     // API
     const api = new Api(this, 'API', {
       encryptionKey: encryptionKey.key,
+      vpc: props.vpc,
+      apiGatewayVpcEndpoint: props.apiGatewayVpcEndpoint,
       modelRegion: params.modelRegion,
       modelIds: params.modelIds,
       imageGenerationModelIds: params.imageGenerationModelIds,
@@ -141,7 +122,8 @@ export class GenerativeAiUseCasesStack extends Stack {
       encryptionKey: encryptionKey.key,
       userPool: auth.userPool,
       identityPoolId: auth.idPool.ref,
-      vpcId: params.vpcIdForInvokeExApp,
+      vpc: props.vpc,
+      apiGatewayVpcEndpoint: props.apiGatewayVpcEndpoint,
       logLevel: params.logLevel,
       exAppInvokeTimeoutSeconds: params.exAppInvokeTimeoutSeconds,
       s3FileExpirationDays: params.dataRetentionDays.s3FileExpiration,
@@ -249,54 +231,31 @@ export class GenerativeAiUseCasesStack extends Stack {
     // Prototyping の範囲だけ CDK-NAG を適用します
     Aspects.of(teamAccessControl).add(new AwsSolutionsChecks({ verbose: true }));
 
-    if (
-      params.allowedIpV4AddressRanges ||
-      params.allowedIpV6AddressRanges ||
-      params.allowedCountryCodes
-    ) {
-      const regionalWaf = new CommonWebAcl(this, 'RegionalWaf', {
-        encryptionKey: encryptionKey.key,
-        scope: 'REGIONAL',
-        allowedIpV4AddressRanges: params.allowedIpV4AddressRanges,
-        allowedIpV6AddressRanges: params.allowedIpV6AddressRanges,
-        allowedCountryCodes: params.allowedCountryCodes,
-        appEnv: params.appEnv,
-      });
-      new CfnWebACLAssociation(this, 'ApiWafAssociation', {
-        resourceArn: api.api.deploymentStage.stageArn,
-        webAclArn: regionalWaf.webAclArn,
-      });
-      new CfnWebACLAssociation(this, 'UserPoolWafAssociation', {
-        resourceArn: auth.userPool.userPoolArn,
-        webAclArn: regionalWaf.webAclArn,
-      });
-      // Added by prototyping
-      new CfnWebACLAssociation(this, 'TeamAccessControlApiWafAssociation', {
-        resourceArn: teamAccessControl.api.deploymentStage.stageArn,
-        webAclArn: regionalWaf.webAclArn,
-      });
-    }
+    // Closed Network: ALB + ECS Fargate web tier serving static assets from S3
+    const closedWeb = new ClosedWeb(this, 'ClosedWeb', {
+      vpc: props.vpc,
+      hostedZone: props.hostedZone,
+      certificateArn: params.closedNetworkCertificateArn,
+    });
+
+    const webUrl = props.hostedZone
+      ? `https://${props.hostedZone.zoneName}`
+      : `http://${closedWeb.alb.loadBalancerDnsName}`;
+
+    new CfnOutput(this, 'WebUrl', { value: webUrl });
 
     // Web Frontend
-    const web = new Web(this, 'Api', {
-      encryptionKey: encryptionKey.key,
+    new Web(this, 'Web', {
       appEnv: params.appEnv,
       teamAccessControlApiEndpointUrl: teamAccessControl.api.url, // Added by prototyping
       userPoolId: auth.userPool.userPoolId,
       userPoolClientId: auth.client.userPoolClientId,
       idPoolId: auth.idPool.attrId,
       selfSignUpEnabled: params.selfSignUpEnabled,
-      samlAuthEnabled: params.samlAuthEnabled,
-      samlCognitoDomainName: params.samlCognitoDomainName,
-      samlCognitoFederatedIdentityPrimaryProviderName:
-        params.samlCognitoFederatedIdentityPrimaryProviderName,
-      samlCognitoFederatedIdentityAdditionalProviderNames:
-        params.samlCognitoFederatedIdentityAdditionalProviderNames,
       // Backend
       apiEndpointUrl: api.api.url,
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
       optimizePromptFunctionArn: api.optimizePromptFunction.functionArn,
-      webAclId: props.webAclId,
       modelRegion: api.modelRegion,
       modelIds: api.modelIds,
       imageGenerationModelIds: api.imageGenerationModelIds,
@@ -305,28 +264,16 @@ export class GenerativeAiUseCasesStack extends Stack {
       hiddenUseCases: params.hiddenUseCases,
       govais_for_homepage: params.govais_for_homepage,
       govais_for_sidebar: params.govais_for_sidebar,
-      // Custom Domain
-      cert: props.cert,
-      hostName: params.hostName,
-      domainName: params.domainName,
-      hostedZoneId: props.hostedZoneId,
       // Maintenance Mode
       maintenance: params.maintenance,
+      // Closed Network Bucket
+      webBucket: closedWeb.bucket,
     });
-
-    // SAML有効かつカスタムドメインがない場合、CloudFront URL をコールバックURLに設定
-    if (params.samlAuthEnabled && !params.hostName && samlIdentityProviderNames?.length) {
-      const cfnClient = auth.client.node.defaultChild as cognito.CfnUserPoolClient;
-      cfnClient.addPropertyOverride('CallbackURLs', [`https://${web.distribution.domainName}`]);
-      cfnClient.addPropertyOverride('LogoutURLs', [
-        `https://${web.distribution.domainName}/signed-out`,
-      ]);
-      cfnClient.addPropertyOverride('SupportedIdentityProviders', samlIdentityProviderNames);
-    }
 
     // Transcribe
     new Transcribe(this, 'Transcribe', {
       encryptionKey: encryptionKey.key,
+      vpc: props.vpc,
       userPool: auth.userPool,
       idPool: auth.idPool,
       authenticatedRole: auth.authenticatedRole,
@@ -338,6 +285,7 @@ export class GenerativeAiUseCasesStack extends Stack {
     if (params.destination) {
       new LoggingStack(this, `SourceStack${params.env}`, {
         encryptionKey: encryptionKey.key,
+        vpc: props.vpc,
         env: {
           account: process.env.CDK_DEFAULT_ACCOUNT,
           region: process.env.CDK_DEFAULT_REGION,
@@ -372,16 +320,6 @@ export class GenerativeAiUseCasesStack extends Stack {
     new CfnOutput(this, 'Region', {
       value: this.region,
     });
-
-    if (params.hostName && params.domainName) {
-      new CfnOutput(this, 'WebUrl', {
-        value: `https://${params.hostName}.${params.domainName}`,
-      });
-    } else {
-      new CfnOutput(this, 'WebUrl', {
-        value: `https://${web.distribution.domainName}`,
-      });
-    }
 
     new CfnOutput(this, 'ApiEndpoint', {
       value: api.api.url,
@@ -442,22 +380,6 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new CfnOutput(this, 'EndpointNames', {
       value: JSON.stringify(api.endpointNames),
-    });
-
-    new CfnOutput(this, 'SamlAuthEnabled', {
-      value: params.samlAuthEnabled.toString(),
-    });
-
-    new CfnOutput(this, 'SamlCognitoDomainName', {
-      value: params.samlCognitoDomainName ?? '',
-    });
-
-    new CfnOutput(this, 'SamlCognitoFederatedIdentityPrimaryProviderName', {
-      value: params.samlCognitoFederatedIdentityPrimaryProviderName ?? '',
-    });
-
-    new CfnOutput(this, 'SamlCognitoFederatedIdentityAdditionalProviderNames', {
-      value: JSON.stringify(params.samlCognitoFederatedIdentityAdditionalProviderNames ?? []),
     });
 
     new CfnOutput(this, 'HiddenUseCases', {

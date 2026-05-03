@@ -6,15 +6,17 @@ import {
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
 import { CfnIdentityPool, UserPool } from 'aws-cdk-lib/aws-cognito';
-import { Effect, Policy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
 export interface TranscribeProps {
   encryptionKey: kms.IKey;
+  vpc: ec2.IVpc;
   userPool: UserPool;
   idPool: CfnIdentityPool;
   authenticatedRole: Role;
@@ -25,6 +27,11 @@ export interface TranscribeProps {
 export class Transcribe extends Construct {
   constructor(scope: Construct, id: string, props: TranscribeProps) {
     super(scope, id);
+
+    const lambdaVpcProps: Pick<NodejsFunctionProps, 'vpc' | 'vpcSubnets'> = {
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    };
 
     const audioBucket = new Bucket(this, 'AudioBucket', {
       encryption: BucketEncryption.KMS,
@@ -55,6 +62,7 @@ export class Transcribe extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         BUCKET_NAME: audioBucket.bucketName,
         IDENTITY_POOL_ID: props.idPool.ref,
@@ -76,6 +84,7 @@ export class Transcribe extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/startTranscription.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
         TRANSCRIPT_BUCKET_NAME: transcriptBucket.bucketName,
@@ -105,6 +114,7 @@ export class Transcribe extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getTranscription.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       initialPolicy: [
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -141,18 +151,5 @@ export class Transcribe extends Construct {
       .addResource('result')
       .addResource('{jobName}')
       .addMethod('GET', new LambdaIntegration(getTranscriptionFunction), commonAuthorizerProps);
-
-    // add Policy for Amplify User
-    // grant access policy transcribe stream and translate
-    props.authenticatedRole.attachInlinePolicy(
-      new Policy(this, 'GrantAccessTranscribeStream', {
-        statements: [
-          new PolicyStatement({
-            actions: ['transcribe:StartStreamTranscriptionWebSocket'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
   }
 }

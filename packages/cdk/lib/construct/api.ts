@@ -4,16 +4,24 @@ import {
   AuthorizationType,
   CognitoUserPoolsAuthorizer,
   Cors,
+  EndpointType,
   LambdaIntegration,
   ResponseType,
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
-import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import {
+  AnyPrincipal,
+  Effect,
+  PolicyDocument,
+  PolicyStatement,
+  Role,
+} from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -21,6 +29,10 @@ import { Construct } from 'constructs';
 export interface BackendApiProps {
   // Encryption
   encryptionKey: kms.IKey;
+
+  // Closed Network
+  vpc: ec2.IVpc;
+  apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
 
   // Context Params
   modelRegion: string;
@@ -74,10 +86,13 @@ export class Api extends Construct {
       table,
       // idPool,
       authenticatedRole,
-      systemAdminRole,
-      teamAdminRole,
-      userRole,
     } = props;
+
+    // 全 Lambda 共通の VPC 設定（Closed Network 環境）
+    const lambdaVpcProps: Pick<NodejsFunctionProps, 'vpc' | 'vpcSubnets'> = {
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    };
 
     // Validate Model Names
     for (const modelId of modelIds) {
@@ -118,6 +133,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/predict.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         MODEL_REGION: modelRegion,
         MODEL_IDS: JSON.stringify(modelIds),
@@ -136,6 +152,7 @@ export class Api extends Construct {
       entry: './lambda/predictStream.ts',
       timeout: Duration.minutes(15),
       memorySize: 256,
+      ...lambdaVpcProps,
       environment: {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
@@ -158,6 +175,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/predictTitle.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
         MODEL_REGION: modelRegion,
@@ -177,6 +195,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/generateImage.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         MODEL_REGION: modelRegion,
         MODEL_IDS: JSON.stringify(modelIds),
@@ -192,6 +211,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/optimizePrompt.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         MODEL_REGION: modelRegion,
       },
@@ -272,6 +292,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/createChat.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
         TTL_DAYS: props.dynamoDbTtlDays.toString(),
@@ -283,6 +304,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/deleteChat.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -293,6 +315,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/createMessages.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
         BUCKET_NAME: fileBucket.bucketName,
@@ -305,6 +328,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/updateTitle.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -315,6 +339,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/listChats.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -325,6 +350,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/findChatById.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -335,6 +361,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/listMessages.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -345,6 +372,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/listSystemContexts.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -355,6 +383,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/createSystemContext.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -365,6 +394,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/updateSystemContextTitle.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -375,6 +405,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/deleteSystemContext.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         TABLE_NAME: table.tableName,
       },
@@ -385,6 +416,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         BUCKET_NAME: fileBucket.bucketName,
         IDENTITY_POOL_ID: props.identityPoolId,
@@ -409,6 +441,7 @@ export class Api extends Construct {
         runtime: Runtime.NODEJS_22_X,
         entry: './lambda/getFileDownloadSignedUrl.ts',
         timeout: Duration.minutes(15),
+        ...lambdaVpcProps,
         environment: {
           BUCKET_NAME: fileBucket.bucketName,
           IDENTITY_POOL_ID: props.identityPoolId,
@@ -431,6 +464,7 @@ export class Api extends Construct {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/deleteFile.ts',
       timeout: Duration.minutes(15),
+      ...lambdaVpcProps,
       environment: {
         BUCKET_NAME: fileBucket.bucketName,
         IDENTITY_POOL_ID: props.identityPoolId,
@@ -467,6 +501,25 @@ export class Api extends Construct {
         allowMethods: Cors.ALL_METHODS,
       },
       cloudWatchRole: true,
+      endpointConfiguration: {
+        types: [EndpointType.PRIVATE],
+        vpcEndpoints: [props.apiGatewayVpcEndpoint],
+      },
+      policy: new PolicyDocument({
+        statements: [
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            principals: [new AnyPrincipal()],
+            actions: ['execute-api:Invoke'],
+            resources: ['execute-api:/*'],
+            conditions: {
+              StringEquals: {
+                'aws:SourceVpce': props.apiGatewayVpcEndpoint.vpcEndpointId,
+              },
+            },
+          }),
+        ],
+      }),
     });
 
     api.addGatewayResponse('Api4XX', {

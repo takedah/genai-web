@@ -8,8 +8,9 @@ describe('StackInput databaseRemovalPolicy', () => {
     env: '-test',
     appEnv: 'test',
     allowedSignUpEmailDomains: null,
-    allowedIpV4AddressRanges: null,
-    allowedIpV6AddressRanges: null,
+    closedNetworkDomainName: 'test.internal',
+    closedNetworkCertificateArn:
+      'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
   };
 
   test('accepts DESTROY value', () => {
@@ -48,55 +49,68 @@ describe('StackInput databaseRemovalPolicy', () => {
   });
 });
 
-describe('StackInput SAML validation', () => {
+describe('StackInput Closed Network validation', () => {
   const baseParams = {
     account: '123456789012',
     region: 'ap-northeast-1',
     env: '-test',
     appEnv: 'test',
     allowedSignUpEmailDomains: null,
-    allowedIpV4AddressRanges: null,
-    allowedIpV6AddressRanges: null,
   };
 
-  test('rejects samlAuthEnabled=true without primaryProviderName', () => {
+  test('rejects missing closedNetworkDomainName', () => {
     const input = {
       ...baseParams,
-      samlAuthEnabled: true,
+      closedNetworkCertificateArn:
+        'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
     };
-    expect(() => stackInputSchema.parse(input)).toThrow(
-      'samlCognitoFederatedIdentityPrimaryProviderName is required when samlAuthEnabled is true',
-    );
+    expect(() => stackInputSchema.parse(input)).toThrow();
   });
 
-  test('rejects samlAuthEnabled=true with empty string primaryProviderName', () => {
+  test('rejects missing closedNetworkCertificateArn', () => {
     const input = {
       ...baseParams,
-      samlAuthEnabled: true,
-      samlCognitoFederatedIdentityPrimaryProviderName: '',
+      closedNetworkDomainName: 'test.internal',
     };
-    expect(() => stackInputSchema.parse(input)).toThrow(
-      'samlCognitoFederatedIdentityPrimaryProviderName is required when samlAuthEnabled is true',
-    );
+    expect(() => stackInputSchema.parse(input)).toThrow();
   });
 
-  test('accepts samlAuthEnabled=true with primaryProviderName', () => {
+  test('accepts valid closed network params', () => {
     const input = {
       ...baseParams,
-      samlAuthEnabled: true,
-      samlCognitoFederatedIdentityPrimaryProviderName: 'EntraID',
+      closedNetworkDomainName: 'test.internal',
+      closedNetworkCertificateArn:
+        'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
     };
     const result = stackInputSchema.parse(input);
-    expect(result.samlAuthEnabled).toBe(true);
-    expect(result.samlCognitoFederatedIdentityPrimaryProviderName).toBe('EntraID');
+    expect(result.closedNetworkDomainName).toBe('test.internal');
+    expect(result.closedNetworkCertificateArn).toBe(
+      'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
+    );
+    expect(result.closedNetworkVpcCidr).toBe('10.1.0.0/16');
   });
 
-  test('accepts samlAuthEnabled=false without primaryProviderName', () => {
+  test('accepts custom closedNetworkVpcCidr', () => {
     const input = {
       ...baseParams,
-      samlAuthEnabled: false,
+      closedNetworkVpcCidr: '10.42.0.0/16',
+      closedNetworkDomainName: 'test.internal',
+      closedNetworkCertificateArn:
+        'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
     };
     const result = stackInputSchema.parse(input);
-    expect(result.samlAuthEnabled).toBe(false);
+    expect(result.closedNetworkVpcCidr).toBe('10.42.0.0/16');
+  });
+
+  test('accepts existing privateHostedZoneId', () => {
+    const input = {
+      ...baseParams,
+      closedNetworkDomainName: 'test.internal',
+      closedNetworkCertificateArn:
+        'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
+      closedNetworkPrivateHostedZoneId: 'Z1234567890ABC',
+    };
+    const result = stackInputSchema.parse(input);
+    expect(result.closedNetworkPrivateHostedZoneId).toBe('Z1234567890ABC');
   });
 });
