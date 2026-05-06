@@ -2,6 +2,36 @@
 
 # GENAI Web (AI Interface)
 
+## Deployment to Closed Network for Genai-Web
+
+This project is a partially modified CDK version of the Digital Agency's [genai-web](https://github.com/digital-go-jp/genai-web), designed to operate in a closed network environment with private subnets only.
+
+The main modifications are as follows.
+
+### Porting CDK Code for GenU's Closed Network Mode
+
+The CDK code related to the closed network mode of [Generative AI Use Cases (GenU)](https://github.com/aws-samples/generative-ai-use-cases), which genai-web is based on (primarily the following code), has been ported:
+
+- packages/cdk/fargate-s3-server/*
+- packages/cdk/lib/construct/closedNetwork/*
+- packages/cdk/lib/closed-network-stack.ts
+
+As a result, the following architectural changes have been made from the original genai-web:
+
+- The frontend interface has been changed from a CloudFront + WAF configuration to Application Load Balancer (ALB) + ECS (Fargate).
+- Lambda has been changed to deploy inside the VPC.
+- SAML-based Single Sign-On via Cognito has been removed, as it does not function in a closed network environment.
+- Cognito self-signup has been removed, as the Cognito Hosted UI does not work with VPC endpoints.
+- Transcribe's streaming API has been removed, as it does not work with VPC endpoints.
+
+Additionally, for the team management feature that was added in genai-web (absent in GenU), the API Gateway serving as the endpoint has been changed to a Private REST API.
+
+### About the Documentation
+
+The documentation in this project is a modified version based on the Digital Agency's [genai-web](https://github.com/digital-go-jp/genai-web) and is provided under the CC BY 4.0 license.
+
+The following is the content from the Digital Agency's original documentation.
+
 ## Overview
 
 GENAI is a generative AI utilization platform developed and operated by the Digital Agency of Japan. It provides an environment in which government employees can quickly, securely, and easily use generative AI applications tailored to their work.
@@ -76,7 +106,7 @@ This repository accepts issue reports only for critical problems that affect the
 
 #### What not to report
 
-Please refrain from reporting the following as issues.  
+Please refrain from reporting the following as issues.
 Issues that do not match the template may be closed.
 
 - Requests or proposals for new features
@@ -98,7 +128,7 @@ To report security vulnerabilities, please visit https://github.com/digital-go-j
 
 ## Community Guidelines
 
-This repository (source code and documentation) is created and published by the Digital Agency, Government of Japan.  
+This repository (source code and documentation) is created and published by the Digital Agency, Government of Japan.
 As a public resource, it is openly available to all members of the OSS community. Therefore, the following actions are prohibited:
 
 - Actions that support or exclude specific ideologies, organizations, or companies
