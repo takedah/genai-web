@@ -12,17 +12,17 @@
 
 源内 Web が元にしている [Generative AI Use Cases (GenU)](https://github.com/aws-samples/generative-ai-use-cases) の閉域モードに関する CDK のコード（主に以下のコード）を移植しています。
 
-    - packages/cdk/fargate-s3-server/*
-    - packages/cdk/lib/construct/closedNetwork/*
-    - packages/cdk/lib/closed-network-stack.ts
+- packages/cdk/fargate-s3-server/*
+- packages/cdk/lib/construct/closedNetwork/*
+- packages/cdk/lib/closed-network-stack.ts
 
 これにより、源内 Web から次のとおりアーキテクチャを変更しています。
 
-- フロントエンド側のインターフェースを CloudFront + WAF の構成から、Application Load Balancer (ALB) + ECS (Fargate) に変更。
-- Lambda は VPC 内にデプロイするよう変更。
-- Cognito による SAML でのシングルサインオンが閉域ネットワーク環境では動作しないので削除。
-- 同様に Cognito のセルフサインアップは Cognito Hosted UI が VPC エンドポイントで動作しないので削除。
-- Transcribe のストリーミング API が VPC エンドポイントで動作しないので削除。
+- フロントエンド側のインターフェースを CloudFront + WAF の構成から、Application Load Balancer (ALB) + ECS (Fargate) に変更
+- Lambda は VPC 内にデプロイするよう変更
+- Cognito による SAML でのシングルサインオンが閉域ネットワーク環境では動作しないので削除
+- 同様に Cognito のセルフサインアップは Cognito Hosted UI が VPC エンドポイントで動作しないので削除
+- Transcribe のストリーミング API が VPC エンドポイントで動作しないので削除
 
 また、GenU に無く、源内 Web で追加されたチーム管理機能について、エンドポイントとなる API Gateway をプライベート REST API へ変更しています。
 
@@ -30,7 +30,9 @@
 
 このプロジェクト内のドキュメントは、デジタル庁 [genai-web](https://github.com/digital-go-jp/genai-web) を元に改変したものでライセンスは CC BY 4.0 のもとで提供されています。
 
-以下は、デジタル庁の元ドキュメントの記載です。
+以下は、デジタル庁の元ドキュメントの記載ですが、[事前準備](./docs/事前準備.md) 及び [デプロイ手順](./docs/デプロイ手順.md) は、閉域ネットワーク環境で動作するように内容の一部を改変しています。
+
+また、[カスタムドメイン設定](./docs/カスタムドメイン設定.md) 及び [SAML 認証手順](./docs/SAML認証手順.md) はこの改変したプロジェクトでは使えない機能となっています。
 
 ## 概要
 
