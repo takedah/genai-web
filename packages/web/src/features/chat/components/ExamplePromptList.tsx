@@ -5,7 +5,7 @@ import { ChatPageQueryParams } from '../types';
 
 type Props = {
   modelId: string;
-  onClick: (params: ChatPageQueryParams) => void;
+  onClick: (params: ChatPageQueryParams, title: string) => void;
 };
 
 export const ExamplePromptList = (props: Props) => {
@@ -32,10 +32,13 @@ export const ExamplePromptList = (props: Props) => {
                       className='-ml-1 h-9 w-full cursor-pointer px-1 text-left underline underline-offset-[calc(3/16*1rem)] hover:bg-solid-gray-50 hover:decoration-[calc(3/16*1rem)] hover:outline-2 focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid'
                       type='button'
                       onClick={() => {
-                        onClick({
-                          systemContext: item.systemContext,
-                          content: item.prompt,
-                        });
+                        onClick(
+                          {
+                            systemContext: item.systemContext,
+                            content: item.prompt,
+                          },
+                          item.title,
+                        );
                       }}
                     >
                       {item.title}

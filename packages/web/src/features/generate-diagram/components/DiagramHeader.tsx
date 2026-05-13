@@ -1,9 +1,17 @@
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { Disclosure, DisclosureSummary } from '@/components/ui/dads/Disclosure';
 import { ModelSelector } from './ModelSelector';
 
 export const DiagramHeader = () => {
   return (
     <div className='mb-6 flex flex-col gap-4'>
+      <BreadcrumbsNav
+        items={[
+          { label: 'ホーム', to: '/' },
+          { label: 'AIアプリ', to: '/apps' },
+          { label: 'ダイアグラムを生成' },
+        ]}
+      />
       <h1 className='flex justify-start text-std-20B-160 lg:text-std-24B-150'>
         ダイアグラムを生成
       </h1>
@@ -21,7 +29,7 @@ export const DiagramHeader = () => {
         <p>図にしたい任意の文章を入力してください。</p>
         <h2>操作方法</h2>
         <p>
-          図にしたい任意の文章を入力します。AIを選択すると、生成AIが適切な図を選択し、生成します。LLMのプルダウンより利用するLLMを選択してください。利用するLLMによって、結果が変わることがあります。
+          図にしたい任意の文章を入力します。AIを選択すると、生成AIが適切な図を選択し、生成します。AIモデルのプルダウンより利用するAIモデルを選択してください。利用するAIモデルによって、結果が変わることがあります。
         </p>
         <Disclosure className='my-4'>
           <DisclosureSummary>仕組み</DisclosureSummary>

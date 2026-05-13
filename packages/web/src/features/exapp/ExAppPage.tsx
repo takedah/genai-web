@@ -57,12 +57,18 @@ export const ExAppPage = () => {
     return defaultValues;
   }, [uiJson]);
 
+  const exAppName = exApp?.exAppName ?? 'GovAI';
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: true,
-    assistantName: exApp?.exAppName ?? 'GovAI',
+    active: true,
     loading: requestLoading,
-    content: exAppResponse?.outputs ?? '',
-    error: error,
+    messages: {
+      loading: `${exAppName}が回答を生成しています...`,
+      loadingContinue: `${exAppName}が引き続き回答を生成しています...`,
+      completed: exAppResponse?.outputs
+        ? `${exAppName}の回答：${exAppResponse.outputs}`
+        : `${exAppName}の回答がありません。`,
+      error: error ? `${exAppName}のエラー：${error}` : undefined,
+    },
   });
 
   const pageTitle = exApp?.exAppName
@@ -72,7 +78,7 @@ export const ExAppPage = () => {
   return (
     <LayoutBody>
       <PageTitle title={pageTitle} />
-      <div className='mx-6 max-w-[calc(1024/16*1rem)] pt-6 pb-6 lg:mx-10 lg:pb-8'>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
         <div>
           {isExAppLoading && <ProgressIndicator label='AIアプリを読み込み中...' />}
 

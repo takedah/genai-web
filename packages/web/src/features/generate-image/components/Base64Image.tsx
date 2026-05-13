@@ -2,6 +2,7 @@ import { PiFileX, PiImageLight } from 'react-icons/pi';
 import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
 
 type CommonProps = {
+  alt?: string;
   className?: string;
   error?: boolean;
   errorMessage?: string;
@@ -16,7 +17,7 @@ type ContentProps = CommonProps & {
 };
 
 const Base64ImageContent = (props: ContentProps) => {
-  const { error, errorMessage, imageBase64, loading, src, width, height } = props;
+  const { alt, error, errorMessage, imageBase64, loading, src, width, height } = props;
 
   if (error) {
     return (
@@ -42,7 +43,7 @@ const Base64ImageContent = (props: ContentProps) => {
   return (
     <img
       src={src}
-      alt=''
+      alt={alt ?? ''}
       width={width}
       height={height}
       className='size-full rounded-[calc(3/16*1rem)]'
@@ -51,6 +52,7 @@ const Base64ImageContent = (props: ContentProps) => {
 };
 
 type Props = CommonProps & {
+  'aria-label'?: string;
   clickable?: boolean;
   format: string; // image/png等
   onClick?: () => void;
@@ -59,8 +61,18 @@ type Props = CommonProps & {
 const baseStyles = 'flex items-center justify-center rounded-4 border border-solid-gray-420';
 
 export const Base64Image = (props: Props) => {
-  const { clickable, format, imageBase64, onClick, className, error, errorMessage, loading } =
-    props;
+  const {
+    alt,
+    'aria-label': ariaLabel,
+    clickable,
+    format,
+    imageBase64,
+    onClick,
+    className,
+    error,
+    errorMessage,
+    loading,
+  } = props;
 
   const handleClick = () => {
     if (!clickable) {
@@ -76,10 +88,12 @@ export const Base64Image = (props: Props) => {
   return clickable ? (
     <button
       type='button'
+      aria-label={ariaLabel}
       className={`${baseStyles} cursor-pointer outline-offset-1 hover:ring-1 hover:ring-white hover:outline-black hover:outline-solid focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black! focus-visible:outline-solid ${className ?? ''}`}
       onClick={handleClick}
     >
       <Base64ImageContent
+        alt={alt}
         error={error}
         src={src}
         imageBase64={imageBase64}
@@ -90,6 +104,7 @@ export const Base64Image = (props: Props) => {
   ) : (
     <div className={`${baseStyles} ${className ?? ''}`}>
       <Base64ImageContent
+        alt={alt}
         error={error}
         src={src}
         imageBase64={imageBase64}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useSystemContextApi } from './useSystemContextApi';
 
 export const useSystemContext = () => {
@@ -5,7 +6,7 @@ export const useSystemContext = () => {
     useSystemContextApi();
   const { data: systemContextResponse, mutate: mutateSystemContext } = listSystemContexts();
 
-  const systemContextList = systemContextResponse ?? [];
+  const systemContextList = useMemo(() => systemContextResponse ?? [], [systemContextResponse]);
 
   const onSaveSystemContext = async (title: string, systemContext: string) => {
     await createSystemContext(title, systemContext);

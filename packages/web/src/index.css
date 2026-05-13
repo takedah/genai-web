@@ -59,16 +59,33 @@
 
 @layer base {
   :root {
-    --header-height: 3.5rem;
-
-    @media (width >= theme(--breakpoint-lg)) {
-      --header-height: 3.75rem;
-    }
+    --page-width: calc(1440 / 16 * 1rem);
+    --header-height: 3.75rem;
   }
 
   :root {
-    overflow: clip;
+    overflow-x: clip;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
     scroll-padding-block: var(--header-height);
+    /* override @aws-amplify/ui-react style */
+    scroll-behavior: auto !important;
+  }
+
+  /* NOTE: Dialog 表示中は html の scrollbar-gutter による余白と Dialog 内スクロール領域の
+     スクロールバーが二重表示されるため、html 側のガターは無効化し、
+     #layoutRoot 側でガターを確保してガタつきを防ぐ */
+  /* ネイティブ <dialog> と Headless UI Dialog 対応 */
+  :root:has(:modal),
+  :root:has([role="dialog"][data-open]) {
+    overflow: clip;
+    scrollbar-gutter: auto;
+  }
+
+  :root:has(:modal) #layoutRoot,
+  :root:has([role="dialog"][data-open]) #layoutRoot {
+    overflow: auto;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -150,7 +167,7 @@
     @apply mt-4 mb-0 text-std-16B-170;
   }
   .prose-sm :where(h6) {
-    @apply mt-4 mb-0 text-dns-14B-130 leading-170!;
+    @apply mt-4 mb-0 text-std-16N-170;
   }
   /* Paragraph */
 

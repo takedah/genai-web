@@ -24,7 +24,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { HiddenUseCases } from 'genai-web';
 import { z } from 'zod';
-import { govaiForHomepage, govaiForSidebar } from '../stack-input';
+import { govaiForHomepage } from '../stack-input';
 
 export interface WebProps {
   encryptionKey: kms.IKey;
@@ -35,7 +35,6 @@ export interface WebProps {
   userPoolClientId: string;
   idPoolId: string;
   predictStreamFunctionArn: string;
-  optimizePromptFunctionArn: string;
   selfSignUpEnabled: boolean;
   webAclId?: string;
   modelRegion: string;
@@ -54,7 +53,8 @@ export interface WebProps {
   hostedZoneId?: string | null;
   hiddenUseCases: HiddenUseCases;
   govais_for_homepage: z.infer<typeof govaiForHomepage>[];
-  govais_for_sidebar: z.infer<typeof govaiForSidebar>[];
+  topChatSystemPrompt: string;
+  topChatSystemPromptTitle: string;
   maintenance: boolean;
 }
 
@@ -324,7 +324,6 @@ function handler(event) {
         VITE_APP_USER_POOL_CLIENT_ID: props.userPoolClientId,
         VITE_APP_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_PREDICT_STREAM_FUNCTION_ARN: props.predictStreamFunctionArn,
-        VITE_APP_OPTIMIZE_PROMPT_FUNCTION_ARN: props.optimizePromptFunctionArn,
         VITE_APP_SELF_SIGN_UP_ENABLED: props.selfSignUpEnabled.toString(),
         VITE_APP_MODEL_REGION: props.modelRegion,
         VITE_APP_MODEL_IDS: JSON.stringify(props.modelIds),
@@ -339,7 +338,8 @@ function handler(event) {
         ),
         VITE_APP_HIDDEN_USE_CASES: JSON.stringify(props.hiddenUseCases),
         VITE_APP_GOVAIS_FOR_HOMEPAGE: JSON.stringify(props.govais_for_homepage),
-        VITE_APP_GOVAIS_FOR_SIDEBAR: JSON.stringify(props.govais_for_sidebar),
+        VITE_APP_TOP_CHAT_SYSTEM_PROMPT: props.topChatSystemPrompt,
+        VITE_APP_TOP_CHAT_SYSTEM_PROMPT_TITLE: props.topChatSystemPromptTitle,
       },
     });
 

@@ -1,7 +1,8 @@
 import type React from 'react';
 import { useState } from 'react';
-import { PiCheck, PiClipboard } from 'react-icons/pi';
-import { ButtonIcon } from '@/components/ui/ButtonIcon';
+import { Button } from './dads/Button';
+import { CheckmarkIcon } from './icons/CheckmarkIcon';
+import { CopyIcon } from './icons/CopyIcon';
 
 type Props = {
   className?: string;
@@ -48,8 +49,10 @@ export const ButtonCopy = (props: Props) => {
   };
 
   return (
-    <ButtonIcon
-      className={`min-w-[calc(78/16*1rem)] justify-start! gap-x-0.5 text-oln-14N-100! ${className ?? ''}`}
+    <Button
+      variant='text'
+      size='sm'
+      className={`min-w-[calc(102/16*1rem)] inline-flex justify-center gap-1 items-center ${className ?? ''}`}
       disabled={disabled}
       onClick={() => {
         copyMessage(text);
@@ -57,15 +60,15 @@ export const ButtonCopy = (props: Props) => {
     >
       {isShowsCheck ? (
         <>
-          <PiCheck className='mr-1 text-xl' aria-hidden={true} />
+          <CheckmarkIcon className='-ml-1 shrink-0' aria-hidden={true} />
           完了
         </>
       ) : (
         <>
-          <PiClipboard className='text-xl' aria-hidden={true} />
+          <CopyIcon className='shrink-0' aria-hidden={true} />
           コピー
         </>
       )}
-    </ButtonIcon>
+    </Button>
   );
 };

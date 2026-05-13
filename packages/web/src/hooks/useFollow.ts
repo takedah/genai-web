@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScreen } from './useScreen';
 
 export const useFollow = () => {
@@ -7,39 +7,49 @@ export const useFollow = () => {
   // スクロールされる要素が含まれる要素
   // サイズが動的に変更されることが想定される
   // チャットのページであればメッセージを wrap した要素
-  const scrollableContainer = useRef<HTMLDivElement>(null);
+  // callback ref パターンで DOM 要素のマウントを検知する
+  const [scrollableElement, setScrollableElement] = useState<HTMLDivElement | null>(null);
+
+  const scrollableContainerRef = useCallback((node: HTMLDivElement | null) => {
+    setScrollableElement(node);
+  }, []);
 
   // フォローするか否か
-  // ページ最下部まで到達している場合はフォローする
-  // そうでない場合 (手動で上にスクロールした場合) はフォローしないようにする
-  const [following, setFollowing] = useState(true);
+  // 初期値は false にし、ユーザーのアクション（フォーム送信等）で明示的に true にする
+  // これにより、ページ遷移直後に ResizeObserver が scrollToBottom を呼ぶのを防ぐ
+  const [following, setFollowing] = useState(false);
 
-  // scrollableContainer のサイズ変更を監視
+  // scrollableElement のサイズ変更を監視
   useEffect(() => {
-    if (scrollableContainer.current) {
-      const observer = new ResizeObserver(() => {
-        // 画面サイズ変更されたらフォローする
-        if (following) {
-          scrollToBottom();
-        }
-      });
+    if (!scrollableElement) return;
 
-      observer.observe(scrollableContainer.current);
+    const observer = new ResizeObserver(() => {
+      // 画面サイズ変更されたらフォローする
+      if (following) {
+        scrollToBottom();
+      }
+    });
 
-      return () => {
-        observer.disconnect();
-      };
+    observer.observe(scrollableElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollableElement, following, scrollToBottom]);
+
+  // フォロー中にユーザーが最下部から離れた場合（true → false）のみ following を解除する
+  // setFollowing(true) 直後に isAtBottom が false でも即解除しないよう、
+  // 直前の isAtBottom を保持して遷移を検出する
+  const prevIsAtBottomRef = useRef(isAtBottom);
+  useEffect(() => {
+    if (following && prevIsAtBottomRef.current && !isAtBottom) {
+      setFollowing(false);
     }
-  }, [following, scrollToBottom]);
-
-  // ページ最下部に到達した場合は following を true に
-  // 手動で上にスクロールした場合は following を false にする
-  useEffect(() => {
-    setFollowing(isAtBottom);
-  }, [isAtBottom, setFollowing]);
+    prevIsAtBottomRef.current = isAtBottom;
+  }, [isAtBottom, following]);
 
   return {
     setFollowing,
-    scrollableContainer,
+    scrollableContainer: scrollableContainerRef,
   };
 };

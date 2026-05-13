@@ -1,5 +1,7 @@
+import type { SystemContext } from 'genai-web';
 import { useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'react-router';
+import { TOP_CHAT_SYSTEM_PROMPT, TOP_CHAT_SYSTEM_PROMPT_TITLE } from '@/features/landing/constants';
 import { useChat } from '@/hooks/useChat';
 import { MODELS } from '@/models';
 import { useChatStore } from '../stores/useChatStore';
@@ -8,10 +10,18 @@ import { ChatPageQueryParams } from '../types';
 interface LocationState {
   content?: string;
   systemContext?: string;
+  systemContextTitle?: string;
+  autoSubmit?: boolean;
 }
 
-export const useSetDefaultValues = () => {
-  const { setContent, setInputSystemContext, setShouldAutoSubmit } = useChatStore();
+export const useSetDefaultValues = (systemContextList: SystemContext[]) => {
+  const {
+    setContent,
+    setInputSystemContext,
+    setSystemContextTitle,
+    setShouldAutoSubmit,
+    setHasSent,
+  } = useChatStore();
   const { pathname, search, state } = useLocation();
   const { chatId } = useParams();
   const { getModelId, setModelId, clear, getCurrentSystemContext, updateSystemContext } = useChat(
@@ -24,21 +34,29 @@ export const useSetDefaultValues = () => {
   // state は初回のナビゲーション時のみ有効。
   // ハッシュリンクや戻る/進むボタンで state が失われても再処理しないようにする。
   const hasProcessedStateRef = useRef(false);
+  const prevChatIdRef = useRef(chatId);
 
   useEffect(() => {
+    // chatId が変わったら hasProcessedStateRef をリセット
+    if (prevChatIdRef.current !== chatId) {
+      hasProcessedStateRef.current = false;
+      prevChatIdRef.current = chatId;
+    }
     const defaultModelId = !modelId ? availableModels[0] : modelId;
     const locationState = state as LocationState | undefined;
 
-    if (search === '') {
-      setModelId(defaultModelId);
-      setShouldAutoSubmit(false);
-      hasProcessedStateRef.current = false;
+    // state が処理済みで、かつ state が失われた場合はスキップ
+    // （左メニューのクリック、ハッシュリンク、戻る/進むボタンで state が undefined になる）
+    if (hasProcessedStateRef.current && !state && search === '') {
       return;
     }
 
-    // state が処理済みで、かつ state が失われた場合はスキップ
-    // （ハッシュリンクのクリックや戻る/進むボタンで state が undefined になる）
-    if (hasProcessedStateRef.current && !state) {
+    if (search === '' && !state) {
+      setContent('');
+      setModelId(defaultModelId);
+      setShouldAutoSubmit(false);
+      setHasSent(false);
+      hasProcessedStateRef.current = false;
       return;
     }
 
@@ -52,10 +70,12 @@ export const useSetDefaultValues = () => {
     // state または query params から content と systemContext を取得
     const content = locationState?.content ?? params.content ?? '';
     const systemContext = locationState?.systemContext ?? params.systemContext;
+    const autoSubmit = locationState?.autoSubmit ?? params.autoSubmit === 'true';
 
     if (systemContext && systemContext !== '') {
       updateSystemContext(systemContext);
       setInputSystemContext(systemContext);
+      setSystemContextTitle(locationState?.systemContextTitle ?? '');
     } else {
       clear();
       setInputSystemContext(getCurrentSystemContext());
@@ -63,6 +83,44 @@ export const useSetDefaultValues = () => {
 
     setContent(content);
     setModelId(availableModels.includes(params.modelId ?? '') ? params.modelId! : defaultModelId);
-    setShouldAutoSubmit(params.autoSubmit === 'true' && !!content.trim());
-  }, [search, state]);
+    const shouldSubmit = autoSubmit && !!content.trim();
+    setShouldAutoSubmit(shouldSubmit);
+    setHasSent(shouldSubmit);
+  }, [search, state, chatId]);
+
+  // 既存チャット遷移時にシステムプロンプトタイトルを解決
+  const currentSystemContext = getCurrentSystemContext();
+  const prevChatIdForTitleRef = useRef(chatId);
+  useEffect(() => {
+    const prevChatId = prevChatIdForTitleRef.current;
+    prevChatIdForTitleRef.current = chatId;
+
+    // 既存チャット → 新規チャットへの遷移時はタイトルをクリア
+    if (!chatId) {
+      if (prevChatId) {
+        setSystemContextTitle('');
+      }
+      return;
+    }
+
+    // chatId が変わった場合（chat-1→chat-2）、restore 完了前は
+    // currentSystemContext が空のため、前チャットのタイトルが残らないようクリア
+    if (prevChatId !== chatId) {
+      setSystemContextTitle('');
+    }
+
+    if (!currentSystemContext) {
+      return;
+    }
+
+    const trimmed = currentSystemContext.trim();
+
+    if (TOP_CHAT_SYSTEM_PROMPT && trimmed === TOP_CHAT_SYSTEM_PROMPT.trim()) {
+      setSystemContextTitle(TOP_CHAT_SYSTEM_PROMPT_TITLE);
+      return;
+    }
+
+    const matched = systemContextList.find((item) => item.systemContext.trim() === trimmed);
+    setSystemContextTitle(matched?.systemContextTitle ?? '');
+  }, [chatId, currentSystemContext, systemContextList, setSystemContextTitle]);
 };

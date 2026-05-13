@@ -2,21 +2,21 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useNavigate } from 'react-router';
 import { useSWRConfig } from 'swr';
 import { AccountMenu } from '@/components/ui/AccountMenu';
-import {
-  HamburgerMenuButton,
-  HamburgerWithLabelIcon,
-} from '@/components/ui/dads/HamburgerMenuButton';
+import { HamburgerIcon, HamburgerMenuButton } from '@/components/ui/dads/HamburgerMenuButton';
+import { GlobalMenuLink } from '@/components/ui/GlobalMenuLink';
 import { Logo } from '@/components/ui/Logo';
+import { MobileMenu } from '@/components/ui/mobile-menu/MobileMenu';
 import { useAuth } from '@/hooks/useAuth';
+import { useMobileMenuHandler } from '@/layout/hooks/useMobileMenuHandler';
 
 type Props = {
   className?: string;
   isLandingPage?: boolean;
-  onClickMenuToggleForMobile: () => void;
 };
 
 export const Header = (props: Props) => {
-  const { className, isLandingPage, onClickMenuToggleForMobile } = props;
+  const { className, isLandingPage } = props;
+  const { mobileMenuRef } = useMobileMenuHandler();
 
   const { data } = useAuth();
   const groups =
@@ -37,21 +37,44 @@ export const Header = (props: Props) => {
 
   return (
     <header
-      className={`flex h-(--header-height) items-center justify-start border-b border-b-solid-gray-420 bg-white pl-1.5 lg:pl-4 ${className ?? ''}`}
+      className={`w-full h-(--header-height) border-b border-b-solid-gray-420 bg-white ${className ?? ''}`}
     >
-      {/* For Mobile view */}
-      <HamburgerMenuButton
-        className={`relative mr-1.5 hover:outline-black hover:outline-solid lg:hidden`}
-        aria-controls='main-menu-container'
-        aria-haspopup='dialog'
-        onClick={onClickMenuToggleForMobile}
-      >
-        <HamburgerWithLabelIcon className='flex-none' />
-      </HamburgerMenuButton>
-      <Logo isLandingPage={isLandingPage} />
+      <div className='flex justify-start items-center gap-2 mx-auto w-full h-full px-6 max-w-(--page-width) lg:gap-6 lg:px-8'>
+        <Logo isLandingPage={isLandingPage} />
+        <nav className='hidden md:block'>
+          <ul className='flex items-center gap-1.5'>
+            <li>
+              <GlobalMenuLink to='/chat' state={{ shouldReset: true }}>
+                チャット
+              </GlobalMenuLink>
+            </li>
+            <li>
+              <GlobalMenuLink to='/apps'>AIアプリ</GlobalMenuLink>
+            </li>
+          </ul>
+        </nav>
 
-      <div className='ml-auto flex h-full'>
-        <AccountMenu
+        <div className='hidden ml-auto md:flex h-full'>
+          <AccountMenu
+            onClickSignout={onClickSignout}
+            isShowTeamManagementMenu={
+              groups.includes('SystemAdminGroup') || groups.includes('TeamAdminGroup')
+            }
+          />
+        </div>
+        {/* For Mobile view */}
+        <HamburgerMenuButton
+          className={`relative ml-auto md:hidden rounded-infinity`}
+          aria-controls='mobile-menu'
+          aria-haspopup='dialog'
+          onClick={() => mobileMenuRef.current?.showModal()}
+        >
+          <HamburgerIcon className='mt-0.5 flex-none' />
+          メニュー
+        </HamburgerMenuButton>
+        <MobileMenu
+          ref={mobileMenuRef}
+          onClose={() => mobileMenuRef.current?.close()}
           onClickSignout={onClickSignout}
           isShowTeamManagementMenu={
             groups.includes('SystemAdminGroup') || groups.includes('TeamAdminGroup')

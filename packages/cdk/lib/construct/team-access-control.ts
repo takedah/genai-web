@@ -43,7 +43,6 @@ import { UserIdentifierHmacKey } from './kms';
 interface TeamAccessControlProps {
   encryptionKey: kms.IKey;
   userPool: UserPool;
-  identityPoolId: string;
   allowedSignUpEmailDomains: string[] | null | undefined;
   vpcId: string | undefined;
   logLevel: StackInput['logLevel'];
@@ -67,7 +66,9 @@ export class TeamAccessControl extends Construct {
   public readonly artifactsBucket: s3.Bucket;
   public readonly api: RestApi;
   public readonly userPoolId: string;
-  private readonly identityPoolId: string;
+  /** 親スタックから cognito-identity:* の IAM を付与するため公開する */
+  public readonly invokeExAppFunction: NodejsFunction;
+  public readonly getArtifactFileFunction: NodejsFunction;
   private readonly appEnv: string;
 
   constructor(scope: Construct, id: string, props: TeamAccessControlProps) {
@@ -75,7 +76,6 @@ export class TeamAccessControl extends Construct {
 
     const { userPool } = props;
     this.userPoolId = userPool.userPoolId;
-    this.identityPoolId = props.identityPoolId;
     this.appEnv = props.envName || '';
 
     // LogLevelの文字列を cdkが提供する型に変換
@@ -336,25 +336,19 @@ export class TeamAccessControl extends Construct {
     );
 
     // GET /exapps/artifact-file
+    // Cognito Identity Pool ID は実行時に Lambda が discovery するため env に含めない
+    // （NestedStack → 親スタック所属の CfnIdentityPool への依存による循環を回避するため、
+    //  cognito-identity:* の IAM も親スタック側で付与する）
     const getArtifactFileFunction = new NodejsFunction(this, 'GetArtifactFile', {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getArtifactFile.ts',
       timeout: Duration.seconds(15),
       environment: {
         ARTIFACTS_BUCKET_NAME: artifactsBucket.bucketName,
-        IDENTITY_POOL_ID: this.identityPoolId,
         USER_POOL_ID: this.userPoolId,
       },
     });
     artifactsBucket.grantRead(getArtifactFileFunction);
-    getArtifactFileFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${this.identityPoolId}`,
-        ],
-      }),
-    );
 
     NagSuppressions.addResourceSuppressions(
       getArtifactFileFunction.role!,
@@ -497,6 +491,7 @@ export class TeamAccessControl extends Construct {
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
+      // Cognito Identity Pool ID は Lambda が実行時に discovery で解決する
       environment: {
         TABLE_NAME: table.tableName,
         EXAPP_TABLE_NAME: exAppTable.tableName,
@@ -506,7 +501,6 @@ export class TeamAccessControl extends Construct {
         TTL_DAYS: props.dynamoDbTtlDays.toString(),
         APP_ENV: this.appEnv,
         USER_IDENTIFIER_HMAC_KEY_ID: userIdentifierHmacKey.key.keyId,
-        IDENTITY_POOL_ID: this.identityPoolId,
         USER_POOL_ID: this.userPoolId,
       },
       memorySize: 256,
@@ -522,14 +516,7 @@ export class TeamAccessControl extends Construct {
 
     // HMAC生成権限を付与
     userIdentifierHmacKey.grantGenerateMac(invokeExAppFunction.role!);
-    invokeExAppFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${this.identityPoolId}`,
-        ],
-      }),
-    );
+    // cognito-identity:* は親スタック側で付与（循環依存回避）
     invokeExAppFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:AbortMultipartUpload'],
@@ -807,6 +794,8 @@ export class TeamAccessControl extends Construct {
       .addMethod('GET', new LambdaIntegration(getArtifactFileFunction), commonAuthorizerProps);
 
     this.api = api;
+    this.invokeExAppFunction = invokeExAppFunction;
+    this.getArtifactFileFunction = getArtifactFileFunction;
 
     /** cdk-nag */
     NagSuppressions.addResourceSuppressions(

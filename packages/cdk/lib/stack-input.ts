@@ -50,12 +50,6 @@ export const govaiForHomepage = z.object({
   description: z.string(),
 });
 
-export const govaiForSidebar = z.object({
-  title: z.string(),
-  teamId: z.literal('00000000-0000-0000-0000-000000000000'), // 共通チームIDのみ許可する。拡張時はここをstrng()に変更する。
-  exAppId: z.string(),
-});
-
 // Common Validator
 export const stackInputSchema = z
   .object({
@@ -119,7 +113,8 @@ export const stackInputSchema = z
       })
       .default({}),
     govais_for_homepage: z.array(govaiForHomepage).default([]),
-    govais_for_sidebar: z.array(govaiForSidebar).default([]),
+    top_chat_system_prompt: z.string().default(''),
+    top_chat_system_prompt_title: z.string().default(''),
 
     // API
     modelRegion: z.string().default('ap-northeast-1'),

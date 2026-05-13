@@ -1,4 +1,3 @@
-import { RetrieveCommandOutput as RetrieveCommandOutputKnowledgeBase } from '@aws-sdk/client-bedrock-agent-runtime';
 import { StopReason } from '@aws-sdk/client-bedrock-runtime';
 import { Chat } from './chat';
 import { GenerateImageParams } from './image';
@@ -67,11 +66,6 @@ export type PredictRequest = {
 
 export type PredictResponse = string;
 
-export type OptimizePromptRequest = {
-  prompt: string;
-  targetModelId: string;
-};
-
 export type PredictTitleRequest = {
   model: Model;
   chat: Chat;
@@ -84,8 +78,6 @@ export type PredictTitleResponse = string;
 export type RetrieveKnowledgeBaseRequest = {
   query: string;
 };
-
-export type RetrieveKnowledgeBaseResponse = RetrieveCommandOutputKnowledgeBase;
 
 export type GetFileDownloadSignedUrlRequest = {
   bucketName: string;

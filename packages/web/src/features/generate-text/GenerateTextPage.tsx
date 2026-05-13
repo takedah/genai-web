@@ -41,15 +41,21 @@ export const GenerateTextPage = () => {
   };
 
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: lastMessage?.role === 'assistant',
+    active: lastMessage?.role === 'assistant',
     loading: loading,
-    content: lastMessage?.content,
+    messages: {
+      loading: 'AIが回答を生成しています...',
+      loadingContinue: 'AIが引き続き回答を生成しています...',
+      completed: lastMessage?.content
+        ? `AIの回答：${lastMessage.content}`
+        : 'AIの回答がありません。',
+    },
   });
 
   return (
     <LayoutBody>
       <PageTitle title={`文章を生成${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
         <GenerateTextHeader />
         <Divider className='my-6' />
         <GenerateTextForm setFollowing={setFollowing} getGeneratedText={getGeneratedText} />

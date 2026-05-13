@@ -22,6 +22,7 @@ type Props = {
   className?: string;
   label?: string;
   labelClassName?: string;
+  buttonClassName?: string;
   value: string;
   options: Option[];
   description?: string;
@@ -54,6 +55,7 @@ export const CustomSelect = (props: Props) => {
     className,
     label,
     labelClassName,
+    buttonClassName,
     description,
     value,
     options,
@@ -84,7 +86,7 @@ export const CustomSelect = (props: Props) => {
         <Listbox value={value} onChange={onChange}>
           <div className='relative'>
             <ListboxButton
-              className={`group/button relative rounded-4 border border-solid-gray-600 bg-white pr-10 pl-3 text-left text-solid-gray-800 hover:border-black focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid data-[select-size=lg]:h-14 data-[select-size=md]:h-12 data-[select-size=sm]:h-10 ${isFullWidth ? 'w-full' : 'w-fit'}`}
+              className={`group/button relative rounded-4 border border-solid-gray-600 bg-white pr-10 pl-3 text-left text-solid-gray-800 hover:border-black focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid data-[select-size=lg]:h-14 data-[select-size=md]:h-12 data-[select-size=sm]:h-10 ${isFullWidth ? 'w-full' : 'w-fit'} ${buttonClassName ?? ''}`}
               data-select-size={selectSize}
             >
               <span className='block truncate'>{selectedLabel}</span>

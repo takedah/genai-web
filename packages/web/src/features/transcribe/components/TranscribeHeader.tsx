@@ -1,9 +1,17 @@
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { Disclosure, DisclosureSummary } from '@/components/ui/dads/Disclosure';
 
 export const TranscribeHeader = () => {
   return (
     <div className='mb-6 flex flex-col gap-4'>
-      <h1 className='flex justify-start text-std-20B-160 lg:text-std-24B-150'>
+      <BreadcrumbsNav
+        items={[
+          { label: 'ホーム', to: '/' },
+          { label: 'AIアプリ', to: '/apps' },
+          { label: '音声ファイルから文字起こし' },
+        ]}
+      />
+      <h1 className='mb-2 flex justify-start text-std-20B-160 lg:text-std-24B-150'>
         音声ファイルから文字起こし
       </h1>
       <div className='prose prose-sm max-w-full'>

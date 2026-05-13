@@ -9,6 +9,7 @@ import {
   ConverseStreamOutput,
   InvokeModelCommand,
   ServiceQuotaExceededException,
+  SystemContentBlock,
   ThrottlingException,
 } from '@aws-sdk/client-bedrock-runtime';
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
@@ -114,19 +115,33 @@ const initBedrockClient = (): BedrockRuntimeClient => {
   }
 };
 
+const appendCachePointToSystem = (
+  system: SystemContentBlock[] | undefined,
+  ttl: 'none' | '5m' | '1h',
+): SystemContentBlock[] | undefined => {
+  if (!system || system.length === 0) return system;
+  const cachePoint: { type: 'default'; ttl?: '5m' | '1h' } =
+    ttl === 'none' ? { type: 'default' } : { type: 'default', ttl };
+  return [...system, { cachePoint } as SystemContentBlock.CachePointMember];
+};
+
 const createConverseCommandInput = (
   model: string,
   messages: UnrecordedMessage[],
   id: string,
 ): ConverseCommandInput => {
   const modelConfig = BEDROCK_TEXT_GEN_MODELS[model];
-  return modelConfig.createConverseCommandInput(
+  const input = modelConfig.createConverseCommandInput(
     messages,
     id,
     model,
     modelConfig.defaultParams,
     modelConfig.usecaseParams,
   );
+  if (modelConfig.promptCacheTtl) {
+    input.system = appendCachePointToSystem(input.system, modelConfig.promptCacheTtl);
+  }
+  return input;
 };
 
 const createConverseStreamCommandInput = (
@@ -135,13 +150,17 @@ const createConverseStreamCommandInput = (
   id: string,
 ): ConverseStreamCommandInput => {
   const modelConfig = BEDROCK_TEXT_GEN_MODELS[model];
-  return modelConfig.createConverseStreamCommandInput(
+  const input = modelConfig.createConverseStreamCommandInput(
     messages,
     id,
     model,
     modelConfig.defaultParams,
     modelConfig.usecaseParams,
   );
+  if (modelConfig.promptCacheTtl) {
+    input.system = appendCachePointToSystem(input.system, modelConfig.promptCacheTtl);
+  }
+  return input;
 };
 
 const extractConverseOutputText = (model: string, output: ConverseCommandOutput): string => {

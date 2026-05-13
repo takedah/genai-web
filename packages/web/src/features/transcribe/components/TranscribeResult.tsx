@@ -1,11 +1,11 @@
 import type { Transcript } from 'genai-web';
-import { RefObject, useRef } from 'react';
+import { Ref, useRef } from 'react';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
 import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
 import { useTranscribe } from '@/features/transcribe/hooks/useTranscribe';
 
 type Props = {
-  scrollableContainer: RefObject<HTMLDivElement | null>;
+  scrollableContainer: Ref<HTMLDivElement | null>;
   transcripts: Transcript[];
   formattedOutput: string;
   speakerMapping: Record<string, string>;

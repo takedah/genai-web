@@ -20,24 +20,42 @@ export const SystemPrompt = (props: Props) => {
 
   const { loadingMessages, isEmpty } = useChat(pathname, chatId);
 
-  const { inputSystemContext, setInputSystemContext, setSaveSystemContext } = useChatStore();
+  const { inputSystemContext, setInputSystemContext, setSaveSystemContext, systemContextTitle } =
+    useChatStore();
 
   const canEdit = isEmpty && !chatId;
   const isNewChat = !loadingMessages && canEdit;
   const isCurrentChat = !loadingMessages && !canEdit;
 
   return (
-    <div className='mt-3'>
-      <Disclosure className='relative'>
+    <div className='border-b border-b-solid-gray-800 pb-1'>
+      <Disclosure key={pathname} className='relative'>
         <DisclosureSummary id='system-prompt-input-label' className='font-700'>
-          システムプロンプト
+          <span>
+            システムプロンプト
+            <span className='font-400'>
+              {systemContextTitle
+                ? `（このチャットの役割：${systemContextTitle}）`
+                : '（このチャットの役割）'}
+            </span>
+          </span>
         </DisclosureSummary>
         <div>
           {loadingMessages && <p>システムプロンプトを読み込み中...</p>}
 
           {isNewChat && (
-            <div className='py-3'>
-              <div className='relative flex flex-col'>
+            <div className='flex flex-col gap-2 py-2 lg:pt-0 lg:pb-3'>
+              <div className='self-end'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  aria-haspopup='dialog'
+                  onClick={() => setShowPromptListDialog(true)}
+                >
+                  プロンプト一覧から選ぶ
+                </Button>
+              </div>
+              <div>
                 <AutoResizeTextarea
                   id='system-prompt-input'
                   className='resize-none'
@@ -49,18 +67,10 @@ export const SystemPrompt = (props: Props) => {
                   }}
                 />
               </div>
-              <div className='absolute top-0.5 right-2 flex justify-start gap-x-2'>
+              <div className='flex justify-center mt-2'>
                 <Button
                   variant='outline'
-                  size='xs'
-                  aria-haspopup='dialog'
-                  onClick={() => setShowPromptListDialog(true)}
-                >
-                  プロンプト一覧から選択
-                </Button>
-                <Button
-                  variant='outline'
-                  size='xs'
+                  size='md'
                   aria-haspopup='dialog'
                   onClick={() => {
                     setSaveSystemContext(inputSystemContext);
@@ -74,24 +84,24 @@ export const SystemPrompt = (props: Props) => {
           )}
 
           {isCurrentChat && (
-            <div className='pt-2 pb-3'>
+            <div className='flex flex-col gap-2 py-2 lg:pb-3'>
               <div className='flex flex-col gap-2'>
                 <SupportText id='system-prompt-input-support' className='text-dns-14N-130!'>
                   会話を開始したチャットのシステムプロンプトは編集できません
                 </SupportText>
                 <AutoResizeTextarea
                   id='current-system-prompt-input'
-                  className='resize-none pr-20'
+                  className='resize-none'
                   value={currentSystemContext}
                   aria-labelledby='system-prompt-input-label'
                   aria-describedby='system-prompt-input-support'
                   readOnly
                 />
               </div>
-              <div className='absolute top-6 right-2 flex flex-row-reverse justify-start gap-x-2'>
+              <div className='flex justify-center mt-2'>
                 <Button
                   variant='outline'
-                  size='xs'
+                  size='md'
                   onClick={() => {
                     setSaveSystemContext(currentSystemContext);
                     setShowSystemContextDialog(true);

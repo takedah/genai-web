@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/dads/Button';
 import { Input } from '@/components/ui/dads/Input';
 import { MoreVertIcon } from '@/components/ui/icons/MoreVertIcon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
-import { DialogConfirmDeleteChat } from '@/features/chat/components/DialogConfirmDeleteChat';
+import { DialogConfirmDeleteChat } from '@/features/chat-history/components/DialogConfirmDeleteChat';
 import { useChatList } from '@/hooks/useChatList';
 import { useHighlight } from '@/hooks/useHighlight';
 import { decomposeId } from '@/utils/decomposeId';
@@ -100,7 +100,7 @@ export const ChatListItem = (props: Props) => {
               >
                 <div className='flex w-full items-center justify-start'>
                   <div className='relative flex-1'>
-                    <div>{highlightText(chat.title, highlightWords)}</div>
+                    <div>{highlightText(chat.title || '無題', highlightWords)}</div>
                   </div>
                 </div>
               </Link>

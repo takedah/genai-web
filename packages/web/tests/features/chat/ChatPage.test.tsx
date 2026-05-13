@@ -10,6 +10,7 @@ const mockSetInputSystemContext = vi.fn();
 const mockUpdateSystemContext = vi.fn();
 const mockSetFollowing = vi.fn();
 const mockClearFiles = vi.fn();
+let mockIsSticky = false;
 
 let mockStoreState = {
   content: '',
@@ -104,6 +105,10 @@ vi.mock('@/features/chat/hooks/useFileUploadable', () => ({
   }),
 }));
 
+vi.mock('@/features/chat/hooks/useStickyHeader', () => ({
+  useStickyHeader: () => mockIsSticky,
+}));
+
 vi.mock('@/features/chat/hooks/useReset', () => ({
   useReset: vi.fn(),
 }));
@@ -135,10 +140,6 @@ vi.mock('@/features/chat/components/ChatMessage', () => ({
   ChatMessage: () => null,
 }));
 
-vi.mock('@/features/chat/components/ChatNotificationBanner', () => ({
-  ChatNotificationBanner: () => null,
-}));
-
 vi.mock('@/features/chat/components/DialogPromptList', () => ({
   DialogPromptList: () => null,
 }));
@@ -151,12 +152,12 @@ vi.mock('@/features/chat/components/FileDrop', () => ({
   FileDrop: () => null,
 }));
 
-vi.mock('@/features/chat/components/MessageInputSection', () => ({
-  MessageInputSection: () => null,
+vi.mock('@/features/chat/components/ChatInput', () => ({
+  ChatInput: () => null,
 }));
 
 vi.mock('@/features/chat/components/ModelSelector', () => ({
-  ModelSelector: () => null,
+  ModelSelector: () => <button type='button'>モデル選択</button>,
 }));
 
 vi.mock('@/features/chat/components/SystemPrompt', () => ({
@@ -182,6 +183,7 @@ describe('ChatPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsSticky = false;
     mockStoreState = {
       content: '',
       inputSystemContext: '',
@@ -338,4 +340,5 @@ describe('ChatPage', () => {
       });
     });
   });
+
 });

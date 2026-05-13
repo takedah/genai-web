@@ -12,24 +12,19 @@ type Props = {
   className?: string;
   isOpen: boolean;
   chatId: string;
-  chatTitle: string;
   isDeleting?: boolean;
   onDelete: (chatId: string) => void;
   onClose: () => void;
 };
 
 export const DialogConfirmDeleteChat = (props: Props) => {
-  const { chatId, chatTitle, isDeleting, onDelete, onClose } = props;
+  const { chatId, isDeleting, onDelete, onClose } = props;
   return (
     <CustomDialog {...props}>
       <CustomDialogPanel>
-        <CustomDialogHeader>会話の削除</CustomDialogHeader>
+        <CustomDialogHeader>チャットの削除</CustomDialogHeader>
         <CustomDialogBody>
-          <p>
-            会話
-            <strong className='font-700'>「{chatTitle}」</strong>
-            を削除しますか？
-          </p>
+          <p>このチャットを削除しますか？</p>
 
           <div className='relative mt-4 flex justify-between gap-2 pb-2 lg:mt-6'>
             <Button data-autofocus variant='text' size='md' onClick={onClose}>

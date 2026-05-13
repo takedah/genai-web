@@ -32,15 +32,19 @@ export const TranscribePage = () => {
     .join('\n');
 
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: true,
+    active: true,
     loading: loading,
-    content: '音声認識が完了しました。音声認識結果をご確認ください。',
+    messages: {
+      loading: 'AIが音声認識を実行しています...',
+      loadingContinue: 'AIが引き続き音声認識を実行しています...',
+      completed: '音声認識が完了しました。音声認識結果をご確認ください。',
+    },
   });
 
   return (
     <LayoutBody>
       <PageTitle title={`音声ファイルから文字起こし${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='mx-6 max-w-[calc(1024/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
         <TranscribeHeader />
         <Divider className='my-6' />
         <TranscribeForm setFollowing={setFollowing} />

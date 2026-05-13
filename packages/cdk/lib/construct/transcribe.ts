@@ -1,11 +1,11 @@
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import {
   AuthorizationType,
   CognitoUserPoolsAuthorizer,
   LambdaIntegration,
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
-import { CfnIdentityPool, UserPool } from 'aws-cdk-lib/aws-cognito';
+import { UserPool } from 'aws-cdk-lib/aws-cognito';
 import { Effect, Policy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
@@ -16,13 +16,16 @@ import { Construct } from 'constructs';
 export interface TranscribeProps {
   encryptionKey: kms.IKey;
   userPool: UserPool;
-  idPool: CfnIdentityPool;
   authenticatedRole: Role;
   api: RestApi;
   appEnv?: string;
 }
 
 export class Transcribe extends Construct {
+  /** 親スタックから cognito-identity:* の IAM を付与するため公開する */
+  public readonly getSignedUrlFunction: NodejsFunction;
+  public readonly startTranscriptionFunction: NodejsFunction;
+
   constructor(scope: Construct, id: string, props: TranscribeProps) {
     super(scope, id);
 
@@ -51,26 +54,18 @@ export class Transcribe extends Construct {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
     });
 
+    // Cognito Identity Pool ID は Lambda が実行時に discovery で解決する。
+    // cognito-identity:* の IAM は親スタック側で付与する（循環依存回避）。
     const getSignedUrlFunction = new NodejsFunction(this, 'GetSignedUrl', {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
       environment: {
         BUCKET_NAME: audioBucket.bucketName,
-        IDENTITY_POOL_ID: props.idPool.ref,
         USER_POOL_ID: props.userPool.userPoolId,
       },
     });
     audioBucket.grantWrite(getSignedUrlFunction);
-    getSignedUrlFunction.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${props.idPool.ref}`,
-        ],
-      }),
-    );
 
     const startTranscriptionFunction = new NodejsFunction(this, 'StartTranscription', {
       runtime: Runtime.NODEJS_22_X,
@@ -79,7 +74,6 @@ export class Transcribe extends Construct {
       environment: {
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
         TRANSCRIPT_BUCKET_NAME: transcriptBucket.bucketName,
-        IDENTITY_POOL_ID: props.idPool.ref,
         USER_POOL_ID: props.userPool.userPoolId,
         APP_ENV: props.appEnv ?? 'default',
       },
@@ -88,13 +82,6 @@ export class Transcribe extends Construct {
           effect: Effect.ALLOW,
           actions: ['transcribe:StartTranscriptionJob', 'transcribe:TagResource'],
           resources: ['*'],
-        }),
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['cognito-identity:GetId'],
-          resources: [
-            `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${props.idPool.ref}`,
-          ],
         }),
       ],
     });
@@ -154,5 +141,8 @@ export class Transcribe extends Construct {
         ],
       }),
     );
+
+    this.getSignedUrlFunction = getSignedUrlFunction;
+    this.startTranscriptionFunction = startTranscriptionFunction;
   }
 }

@@ -215,11 +215,16 @@ describe('createTeam Lambda handler', () => {
     expect(JSON.parse(result.body)).toEqual({
       error: '本環境に未ログインのユーザーです。本環境へのログインをご案内ください。',
     });
+    expect(mockedCreateTeam).not.toHaveBeenCalled();
   });
 
   test('予期しないエラーが発生した場合は500エラーを返す', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    mockedFindUserByEmail.mockResolvedValue({
+      userId: 'admin-user-id',
+      email: 'admin@example.com',
+    });
     mockedCreateTeam.mockRejectedValue(new Error('Unexpected error'));
 
     const event = createAPIGatewayProxyEvent({

@@ -1,20 +1,21 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { HttpError } from '../../lambda/utils/httpError';
 
-const { mockInvoke } = vi.hoisted(() => ({
+const { mockInvoke, mockResolveAllowedTextModel } = vi.hoisted(() => ({
   mockInvoke: vi.fn(),
+  mockResolveAllowedTextModel: vi.fn(),
 }));
 
 vi.mock('../../lambda/utils/api', () => ({
   default: {
     bedrock: { invoke: mockInvoke },
-    bedrockAgent: {},
     sagemaker: { invoke: mockInvoke },
   },
 }));
 
-vi.mock('../../lambda/utils/models', () => ({
-  defaultModel: { type: 'bedrock', modelId: 'test-model' },
+vi.mock('../../lambda/utils/allowedModels', () => ({
+  resolveAllowedTextModel: mockResolveAllowedTextModel,
 }));
 
 import { handler } from '../../lambda/predict';
@@ -32,6 +33,7 @@ function createEvent(body: Record<string, unknown>): APIGatewayProxyEvent {
 describe('predict Lambda handler', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockResolveAllowedTextModel.mockImplementation((model) => model ?? { type: 'bedrock', modelId: 'test-model' });
   });
 
   test('デフォルトモデルで推論して200を返す', async () => {
@@ -54,6 +56,7 @@ describe('predict Lambda handler', () => {
 
   test('リクエストでモデルを指定できる', async () => {
     mockInvoke.mockResolvedValue('response');
+    mockResolveAllowedTextModel.mockReturnValue({ type: 'bedrock', modelId: 'custom-model' });
 
     const event = createEvent({
       messages: [{ role: 'user', content: 'hi' }],
@@ -68,6 +71,28 @@ describe('predict Lambda handler', () => {
       [{ role: 'user', content: 'hi' }],
       'req-2',
     );
+  });
+
+  test('allowlist外のモデル指定は400で拒否する', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockResolveAllowedTextModel.mockImplementation(() => {
+      throw new HttpError(400, 'このモデルは使用できません。');
+    });
+
+    const event = createEvent({
+      messages: [{ role: 'user', content: 'hi' }],
+      id: 'req-4',
+      model: { type: 'bedrock', modelId: 'custom-model' },
+    });
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'このモデルは使用できません。',
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
   });
 
   test('エラー時は500を返す', async () => {

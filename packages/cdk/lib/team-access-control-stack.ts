@@ -9,6 +9,7 @@ import { RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { TeamAccessControl } from './construct/team-access-control';
@@ -17,7 +18,6 @@ import { StackInput } from './stack-input';
 interface TeamAccessControlStackProps extends NestedStackProps {
   encryptionKey: kms.IKey;
   userPool: cognito.UserPool;
-  identityPoolId: string;
   vpcId: string | undefined;
   logLevel: StackInput['logLevel'];
   exAppInvokeTimeoutSeconds: number;
@@ -33,6 +33,9 @@ export class TeamAccessControlStack extends NestedStack {
   public readonly exAppTable: ddb.Table;
   public readonly invokeExAppHistoryTable: ddb.Table;
   public readonly artifactsBucket: s3.Bucket;
+  /** 親スタックから cognito-identity:* の IAM を付与するため公開する */
+  public readonly invokeExAppFunction: NodejsFunction;
+  public readonly getArtifactFileFunction: NodejsFunction;
   constructor(scope: Construct, id: string, props: TeamAccessControlStackProps) {
     super(scope, id, props);
 
@@ -43,7 +46,6 @@ export class TeamAccessControlStack extends NestedStack {
     const teamAccessControl = new TeamAccessControl(this, 'TeamAccessControl', {
       encryptionKey: props.encryptionKey,
       userPool: props.userPool,
-      identityPoolId: props.identityPoolId,
       allowedSignUpEmailDomains,
       vpcId: props.vpcId,
       logLevel: props.logLevel,
@@ -58,5 +60,7 @@ export class TeamAccessControlStack extends NestedStack {
     this.exAppTable = teamAccessControl.exAppTable;
     this.invokeExAppHistoryTable = teamAccessControl.invokeExAppHistoryTable;
     this.artifactsBucket = teamAccessControl.artifactsBucket;
+    this.invokeExAppFunction = teamAccessControl.invokeExAppFunction;
+    this.getArtifactFileFunction = teamAccessControl.getArtifactFileFunction;
   }
 }
