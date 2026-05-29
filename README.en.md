@@ -22,7 +22,6 @@ As a result, the following architectural changes have been made from the origina
 - Lambda has been changed to deploy inside the VPC.
 - SAML-based Single Sign-On via Cognito has been removed, as it does not function in a closed network environment.
 - Cognito self-signup has been removed, as the Cognito Hosted UI does not work with VPC endpoints.
-- Transcribe's streaming API has been removed, as it does not work with VPC endpoints.
 
 Additionally, for the team management feature that was added in genai-web (absent in GenU), the API Gateway serving as the endpoint has been changed to a Private REST API.
 

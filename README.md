@@ -22,7 +22,6 @@
 - Lambda は VPC 内にデプロイするよう変更
 - Cognito による SAML でのシングルサインオンが閉域ネットワーク環境では動作しないので削除
 - 同様に Cognito のセルフサインアップは Cognito Hosted UI が VPC エンドポイントで動作しないので削除
-- Transcribe のストリーミング API が VPC エンドポイントで動作しないので削除
 
 また、GenU に無く、源内 Web で追加されたチーム管理機能について、エンドポイントとなる API Gateway をプライベート REST API へ変更しています。
 
