@@ -25,6 +25,8 @@
 
 また、GenU に無く、源内 Web で追加されたチーム管理機能について、エンドポイントとなる API Gateway をプライベート REST API へ変更しています。
 
+各変更点の詳細については、[閉域ネットワーク対応の変更点](./docs/閉域ネットワーク対応の変更点.md) を参照してください。
+
 ### ドキュメントについて
 
 このプロジェクト内のドキュメントは、デジタル庁 [genai-web](https://github.com/digital-go-jp/genai-web) を元に改変したものでライセンスは CC BY 4.0 のもとで提供されています。
@@ -89,6 +91,7 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 
 - [チーム管理権限表](./docs/チーム管理権限表.md)
 - [アーキテクチャ](./docs/アーキテクチャ.md)
+- [閉域ネットワーク対応の変更点](./docs/閉域ネットワーク対応の変更点.md)
 
 ## Issue / Pull Request の対応方針
 
