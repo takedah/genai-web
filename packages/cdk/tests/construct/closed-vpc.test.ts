@@ -62,9 +62,9 @@ describe('ClosedVpc Construct', () => {
       (e) => e.Properties.VpcEndpointType !== 'Interface',
     );
 
-    // closed-vpc.ts の VPC_ENDPOINTS（17 サービス）。新しい AWS サービスを使う機能を追加した場合は
+    // closed-vpc.ts の VPC_ENDPOINTS（15 サービス）。新しい AWS サービスを使う機能を追加した場合は
     // VPC_ENDPOINTS への追加とあわせてこの期待値を更新すること
-    expect(interfaceEndpoints.length).toBe(17);
+    expect(interfaceEndpoints.length).toBe(15);
     // S3 + DynamoDB の Gateway 型
     expect(gatewayEndpoints.length).toBe(2);
 

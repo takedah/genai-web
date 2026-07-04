@@ -4,17 +4,20 @@ import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { HostedZone, IHostedZone, PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 
+// Interface 型エンドポイントは 1 つあたり月額約 $20（2 AZ）の固定費がかかるため、
+// SDK 呼び出しの実態があるサービスのみ定義する。
+// 新しい AWS サービスを使う機能を追加した場合はここへの追加を忘れないこと
+// （closed-vpc.test.ts の期待値もあわせて更新する）。
 const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
-  // VPC Endpoints required by user side
+  // VPC Endpoints required by user side (ブラウザから直接呼び出されるサービス)
   ApiGateway: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
   Lambda: ec2.InterfaceVpcEndpointAwsService.LAMBDA,
-  Transcribe: ec2.InterfaceVpcEndpointAwsService.TRANSCRIBE,
-  Polly: ec2.InterfaceVpcEndpointAwsService.POLLY,
   // Cognito VPC Endpoints (Private Link)
   CognitoIdp: ec2.InterfaceVpcEndpointAwsService.COGNITO_IDP,
   CognitoIdentity: new ec2.InterfaceVpcEndpointAwsService('cognito-identity'),
-  // VPC Endpoints required by app side
+  // VPC Endpoints required by app side (VPC 内の Lambda / Fargate から呼び出されるサービス)
   Bedrock: ec2.InterfaceVpcEndpointAwsService.BEDROCK_RUNTIME,
+  Transcribe: ec2.InterfaceVpcEndpointAwsService.TRANSCRIBE,
   S3: ec2.InterfaceVpcEndpointAwsService.S3,
   Ecr: ec2.InterfaceVpcEndpointAwsService.ECR,
   EcrDocker: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
@@ -25,7 +28,6 @@ const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
   Sqs: ec2.InterfaceVpcEndpointAwsService.SQS,
   Kms: ec2.InterfaceVpcEndpointAwsService.KMS,
   Ses: ec2.InterfaceVpcEndpointAwsService.EMAIL,
-  EventBridge: ec2.InterfaceVpcEndpointAwsService.EVENTBRIDGE,
 };
 
 export interface ClosedVpcProps {
