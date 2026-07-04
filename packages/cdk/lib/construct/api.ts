@@ -64,7 +64,6 @@ export interface BackendApiProps {
 export class Api extends Construct {
   readonly api: RestApi;
   readonly predictStreamFunction: NodejsFunction;
-  readonly optimizePromptFunction: NodejsFunction;
   readonly modelRegion: string;
   readonly modelIds: string[];
   readonly imageGenerationModelIds: string[];
@@ -207,17 +206,6 @@ export class Api extends Construct {
       },
     });
 
-    const optimizePromptFunction = new NodejsFunction(this, 'OptimizePromptFunction', {
-      runtime: Runtime.NODEJS_22_X,
-      entry: './lambda/optimizePrompt.ts',
-      timeout: Duration.minutes(15),
-      ...lambdaVpcProps,
-      environment: {
-        MODEL_REGION: modelRegion,
-      },
-    });
-    authenticatedRole.grant(optimizePromptFunction.role!, 'lambda:InvokeFunction');
-
     // SageMaker Endpoint がある場合は権限付与
     if (endpointNames.length > 0) {
       // SageMaker Policy
@@ -246,14 +234,6 @@ export class Api extends Construct {
       predictStreamFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
       predictTitleFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
       generateImageFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
-
-      // Bedrock Agent 権限（predictStream は bedrockAgentApi 経由で Agent を呼び出す可能性がある）
-      const bedrockAgentPolicy = new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['bedrock:InvokeAgent', 'bedrock:GetAgentAlias', 'bedrock:ListAgentActionGroups'],
-        resources: ['*'],
-      });
-      predictStreamFunction.role?.addToPrincipalPolicy(bedrockAgentPolicy);
     } else {
       const assumeRolePolicy = new PolicyStatement({
         effect: Effect.ALLOW,
@@ -265,14 +245,6 @@ export class Api extends Construct {
       predictTitleFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
       generateImageFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
     }
-
-    // OptimizePrompt は常に同一アカウントの Bedrock Agent Runtime を使用する
-    const bedrockOptimizePolicy = new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['bedrock:OptimizePrompt'],
-      resources: ['*'],
-    });
-    optimizePromptFunction.role?.addToPrincipalPolicy(bedrockOptimizePolicy);
 
     // AWS Marketplace Policy for Converse API functions
     const marketplacePolicy = new PolicyStatement({
@@ -670,7 +642,6 @@ export class Api extends Construct {
 
     this.api = api;
     this.predictStreamFunction = predictStreamFunction;
-    this.optimizePromptFunction = optimizePromptFunction;
     this.modelRegion = modelRegion;
     this.modelIds = modelIds;
     this.imageGenerationModelIds = imageGenerationModelIds;

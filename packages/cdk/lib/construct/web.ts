@@ -14,7 +14,6 @@ export interface WebProps {
   userPoolClientId: string;
   idPoolId: string;
   predictStreamFunctionArn: string;
-  optimizePromptFunctionArn: string;
   selfSignUpEnabled: boolean;
   modelRegion: string;
   modelIds: string[];
@@ -76,7 +75,6 @@ export class Web extends Construct {
         VITE_APP_USER_POOL_CLIENT_ID: props.userPoolClientId,
         VITE_APP_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_PREDICT_STREAM_FUNCTION_ARN: props.predictStreamFunctionArn,
-        VITE_APP_OPTIMIZE_PROMPT_FUNCTION_ARN: props.optimizePromptFunctionArn,
         VITE_APP_SELF_SIGN_UP_ENABLED: props.selfSignUpEnabled.toString(),
         VITE_APP_MODEL_REGION: props.modelRegion,
         VITE_APP_MODEL_IDS: JSON.stringify(props.modelIds),

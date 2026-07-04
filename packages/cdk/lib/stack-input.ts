@@ -126,17 +126,6 @@ export const stackInputSchema = z
     crossAccountBedrockRoleArn: z.string().nullish(),
     // Guardrail
     guardrailEnabled: z.boolean().default(false),
-    // Flows
-    flows: z
-      .array(
-        z.object({
-          flowId: z.string(),
-          aliasId: z.string(),
-          flowName: z.string(),
-          description: z.string(),
-        }),
-      )
-      .default([]),
 
     // Closed Network (always enabled in this fork)
     closedNetworkVpcCidr: z.string().default('10.1.0.0/16'),

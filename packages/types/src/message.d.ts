@@ -3,18 +3,10 @@ import { PrimaryKey } from './base';
 export type Role = 'system' | 'user' | 'assistant';
 
 export type Model = {
-  type: 'bedrock' | 'bedrockAgent' | 'sagemaker';
+  type: 'bedrock' | 'sagemaker';
   modelId: string;
   sessionId?: string;
 };
-
-export type Agent = {
-  displayName: string;
-  agentId: string;
-  aliasId: string;
-};
-
-export type AgentMap = Record<string, { agentId: string; aliasId: string }>;
 
 export type MessageAttributes = {
   messageId: string;

@@ -8,14 +8,11 @@ const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
   Lambda: ec2.InterfaceVpcEndpointAwsService.LAMBDA,
   Transcribe: ec2.InterfaceVpcEndpointAwsService.TRANSCRIBE,
   Polly: ec2.InterfaceVpcEndpointAwsService.POLLY,
-  AgentCore: ec2.InterfaceVpcEndpointAwsService.BEDROCK_AGENTCORE,
   // Cognito VPC Endpoints (Private Link)
   CognitoIdp: ec2.InterfaceVpcEndpointAwsService.COGNITO_IDP,
   CognitoIdentity: new ec2.InterfaceVpcEndpointAwsService('cognito-identity'),
   // VPC Endpoints required by app side
   Bedrock: ec2.InterfaceVpcEndpointAwsService.BEDROCK_RUNTIME,
-  BedrockAgent: ec2.InterfaceVpcEndpointAwsService.BEDROCK_AGENT_RUNTIME,
-  BedrockAgentApi: ec2.InterfaceVpcEndpointAwsService.BEDROCK_AGENT,
   S3: ec2.InterfaceVpcEndpointAwsService.S3,
   Ecr: ec2.InterfaceVpcEndpointAwsService.ECR,
   EcrDocker: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,

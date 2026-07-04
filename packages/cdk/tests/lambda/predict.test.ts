@@ -8,7 +8,6 @@ const { mockInvoke } = vi.hoisted(() => ({
 vi.mock('../../lambda/utils/api', () => ({
   default: {
     bedrock: { invoke: mockInvoke },
-    bedrockAgent: {},
     sagemaker: { invoke: mockInvoke },
   },
 }));

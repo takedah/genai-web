@@ -255,7 +255,6 @@ export class GenerativeAiUseCasesStack extends Stack {
       // Backend
       apiEndpointUrl: api.api.url,
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
-      optimizePromptFunctionArn: api.optimizePromptFunction.functionArn,
       modelRegion: api.modelRegion,
       modelIds: api.modelIds,
       imageGenerationModelIds: api.imageGenerationModelIds,
@@ -356,10 +355,6 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new CfnOutput(this, 'PredictStreamFunctionArn', {
       value: api.predictStreamFunction.functionArn,
-    });
-
-    new CfnOutput(this, 'OptimizePromptFunctionArn', {
-      value: api.optimizePromptFunction.functionArn,
     });
 
     new CfnOutput(this, 'SelfSignUpEnabled', {
