@@ -28,6 +28,8 @@ export interface ClosedWebProps {
   readonly certificateArn?: string | null;
   // メンテナンスモード。true の場合、配信サーバーが全リクエストに maintenance.html を返す
   readonly maintenance: boolean;
+  // 専用線/VPN 越しの利用者端末（オンプレミス）側の CIDR リスト
+  readonly allowedClientCidrs?: string[];
 }
 
 export class ClosedWeb extends Construct {
@@ -76,7 +78,8 @@ export class ClosedWeb extends Construct {
           }
         : {};
 
-    // VPC エンドポイントの SG と同じ方針で、リスナーへの接続元を VPC CIDR に制限する
+    // VPC エンドポイントの SG と同じ方針で、リスナーへの接続元を
+    // VPC CIDR + 利用者端末（オンプレミス）側 CIDR に制限する
     const albSecurityGroup = new SecurityGroup(this, 'AlbSecurityGroup', {
       vpc: props.vpc,
       allowAllOutbound: false,
@@ -84,6 +87,10 @@ export class ClosedWeb extends Construct {
 
     const listenerPort = certificate ? 443 : 80;
     albSecurityGroup.addIngressRule(Peer.ipv4(props.vpc.vpcCidrBlock), Port.tcp(listenerPort));
+
+    for (const cidr of props.allowedClientCidrs ?? []) {
+      albSecurityGroup.addIngressRule(Peer.ipv4(cidr), Port.tcp(listenerPort));
+    }
 
     const loadBalancer = new ApplicationLoadBalancer(this, 'Alb', {
       vpc: props.vpc,

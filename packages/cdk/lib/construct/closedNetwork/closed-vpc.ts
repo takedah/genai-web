@@ -32,6 +32,8 @@ export interface ClosedVpcProps {
   readonly ipv4Cidr: string;
   readonly domainName?: string | null;
   readonly hostedZoneId?: string | null;
+  // 専用線/VPN 越しの利用者端末（オンプレミス）側の CIDR リスト
+  readonly allowedClientCidrs?: string[];
 }
 
 export class ClosedVpc extends Construct {
@@ -78,6 +80,12 @@ export class ClosedVpc extends Construct {
     });
 
     securityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443));
+
+    // ブラウザは Cognito・API Gateway・Lambda・S3（署名付き URL）を VPC エンドポイント経由で
+    // 直接呼び出すため、専用線/VPN 越しのオンプレミス端末の CIDR も許可する
+    for (const cidr of props.allowedClientCidrs ?? []) {
+      securityGroup.addIngressRule(ec2.Peer.ipv4(cidr), ec2.Port.tcp(443));
+    }
 
     for (const [name, service] of Object.entries(VPC_ENDPOINTS)) {
       const vpcEndpoint = new ec2.InterfaceVpcEndpoint(this, `VpcEndpoint${name}`, {

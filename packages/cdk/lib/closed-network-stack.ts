@@ -21,6 +21,7 @@ export class ClosedNetworkStack extends Stack {
       closedNetworkVpcCidr,
       closedNetworkDomainName,
       closedNetworkPrivateHostedZoneId,
+      closedNetworkAllowedClientCidrs,
       modelRegion,
     } = props.params;
 
@@ -34,6 +35,7 @@ export class ClosedNetworkStack extends Stack {
       ipv4Cidr: closedNetworkVpcCidr,
       domainName: closedNetworkDomainName,
       hostedZoneId: closedNetworkPrivateHostedZoneId,
+      allowedClientCidrs: closedNetworkAllowedClientCidrs,
     });
 
     this.vpc = closedVpc.vpc;

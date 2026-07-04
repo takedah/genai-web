@@ -129,6 +129,20 @@ export const stackInputSchema = z
 
     // Closed Network (always enabled in this fork)
     closedNetworkVpcCidr: z.string().default('10.1.0.0/16'),
+    // 専用線/VPN 越しにアクセスしてくる利用者端末側（オンプレミス）の CIDR リスト。
+    // VPC エンドポイント共通 SG と ALB の SG の許可対象に追加される。
+    // ブラウザは Cognito・API Gateway・Lambda・S3（署名付き URL）を VPC エンドポイント経由で
+    // 直接呼び出すため、オンプレミスから利用する場合はここに端末側 CIDR の指定が必須。
+    closedNetworkAllowedClientCidrs: z
+      .array(
+        z
+          .string()
+          .regex(
+            /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/,
+            'closedNetworkAllowedClientCidrs must be IPv4 CIDR notation (e.g., 172.16.0.0/12)',
+          ),
+      )
+      .default([]),
     closedNetworkDomainName: z.string().min(1, 'closedNetworkDomainName is required'),
     closedNetworkCertificateArn: z
       .string()

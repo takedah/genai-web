@@ -65,10 +65,21 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
   /**
    * 既存の Private Hosted Zone ID（任意）
    * オプション
-   * 指定した場合は既存の Hosted Zone を利用し、ALB の A レコードはユーザーが
-   * 別途作成してください。指定しなければスタックが新規 PrivateHostedZone を作成します。
+   * 指定した場合は新規ゾーンを作成せず、既存ゾーンに ALB への A レコードを作成します。
+   * ゾーン名は closedNetworkDomainName と一致している必要があります。
+   * 指定しなければスタックが新規 PrivateHostedZone を作成します。
    */
   // closedNetworkPrivateHostedZoneId: 'Z1234567890ABC',
+
+  /**
+   * 利用者端末（オンプレミス）側の CIDR リスト
+   * 必須: 専用線/VPN 越しのオンプレミス端末から利用する場合は Yes
+   * VPC エンドポイント共通 SG と ALB の SG の許可対象に追加されます。
+   * ブラウザは Cognito・API Gateway・Lambda・S3（署名付き URL）を VPC エンドポイント
+   * 経由で直接呼び出すため、未設定だとオンプレミス端末からはサインインもできません。
+   * 例: ['172.16.0.0/12', '192.168.10.0/24']
+   */
+  closedNetworkAllowedClientCidrs: [],
 
   // ============================================================================
   // 認証設定

@@ -114,3 +114,38 @@ describe('StackInput Closed Network validation', () => {
     expect(result.closedNetworkPrivateHostedZoneId).toBe('Z1234567890ABC');
   });
 });
+
+describe('StackInput closedNetworkAllowedClientCidrs', () => {
+  const baseParams = {
+    account: '123456789012',
+    region: 'ap-northeast-1',
+    env: '-test',
+    appEnv: 'test',
+    allowedSignUpEmailDomains: null,
+    closedNetworkDomainName: 'test.internal',
+    closedNetworkCertificateArn:
+      'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
+  };
+
+  test('デフォルトは空配列（VPC 内からのみアクセス可能）', () => {
+    const result = stackInputSchema.parse(baseParams);
+    expect(result.closedNetworkAllowedClientCidrs).toEqual([]);
+  });
+
+  test('IPv4 CIDR のリストを受け付ける', () => {
+    const input = {
+      ...baseParams,
+      closedNetworkAllowedClientCidrs: ['172.16.0.0/12', '192.168.10.0/24'],
+    };
+    const result = stackInputSchema.parse(input);
+    expect(result.closedNetworkAllowedClientCidrs).toEqual(['172.16.0.0/12', '192.168.10.0/24']);
+  });
+
+  test('CIDR 表記でない値は拒否する', () => {
+    const input = {
+      ...baseParams,
+      closedNetworkAllowedClientCidrs: ['172.16.0.0'], // プレフィックス長がない
+    };
+    expect(() => stackInputSchema.parse(input)).toThrow();
+  });
+});

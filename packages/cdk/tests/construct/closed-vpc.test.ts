@@ -78,6 +78,38 @@ describe('ClosedVpc Construct', () => {
     template.resourceCountIs('AWS::EC2::FlowLog', 1);
   });
 
+  test('allowedClientCidrs がエンドポイント共通 SG の許可対象に追加される', () => {
+    const app = new cdk.App();
+    const stack = new cdk.Stack(app, 'TestStack');
+
+    new ClosedVpc(stack, 'ClosedVpc', {
+      ipv4Cidr: '10.1.0.0/16',
+      allowedClientCidrs: ['172.16.0.0/12', '192.168.10.0/24'],
+    });
+
+    const template = Template.fromStack(stack);
+    const securityGroups = Object.values(template.findResources('AWS::EC2::SecurityGroup')) as {
+      Properties: {
+        SecurityGroupIngress?: { CidrIp?: unknown; FromPort?: number; ToPort?: number }[];
+      };
+    }[];
+
+    // エンドポイント共通 SG（VPC CIDR + クライアント CIDR ×2 の計 3 ルールを持つ SG）を特定
+    const endpointSg = securityGroups.find(
+      (sg) => (sg.Properties.SecurityGroupIngress ?? []).length === 3,
+    );
+    expect(endpointSg).toBeDefined();
+
+    const cidrs = (endpointSg!.Properties.SecurityGroupIngress ?? []).map((r) => r.CidrIp);
+    // オンプレミス端末側 CIDR が 443 で許可されていること
+    expect(cidrs).toContain('172.16.0.0/12');
+    expect(cidrs).toContain('192.168.10.0/24');
+    for (const rule of endpointSg!.Properties.SecurityGroupIngress ?? []) {
+      expect(rule.FromPort).toBe(443);
+      expect(rule.ToPort).toBe(443);
+    }
+  });
+
   test('domainName 未指定の場合は hostedZone を作成しない', () => {
     const app = new cdk.App();
     const stack = new cdk.Stack(app, 'TestStack');

@@ -240,6 +240,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       // メンテナンスモードは配信サーバー（Fargate）の環境変数で制御する
       // （フロントエンドの再ビルドなしにパラメーター変更 + デプロイのみで切り替え可能）
       maintenance: params.maintenance,
+      allowedClientCidrs: params.closedNetworkAllowedClientCidrs,
     });
 
     const webUrl = props.hostedZone
