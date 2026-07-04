@@ -1,6 +1,6 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
+import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { ClosedVpc } from './construct/closedNetwork';
 import { StackInput } from './stack-input';
@@ -12,7 +12,7 @@ export interface ClosedNetworkStackProps extends StackProps {
 export class ClosedNetworkStack extends Stack {
   public readonly vpc: ec2.IVpc;
   public readonly apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
-  public readonly hostedZone: PrivateHostedZone | undefined;
+  public readonly hostedZone: IHostedZone | undefined;
 
   constructor(scope: Construct, id: string, props: ClosedNetworkStackProps) {
     super(scope, id, props);

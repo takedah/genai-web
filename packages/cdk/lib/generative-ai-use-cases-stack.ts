@@ -4,7 +4,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import { PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
+import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import {
@@ -27,7 +27,7 @@ export interface GenerativeAiUseCasesStackProps extends StackProps {
   // Closed Network resources (created by ClosedNetworkStack)
   vpc: ec2.IVpc;
   apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
-  hostedZone?: PrivateHostedZone;
+  hostedZone?: IHostedZone;
   // Guardrail
   guardrailIdentifier?: string;
   guardrailVersion?: string;
@@ -234,8 +234,12 @@ export class GenerativeAiUseCasesStack extends Stack {
     // Closed Network: ALB + ECS Fargate web tier serving static assets from S3
     const closedWeb = new ClosedWeb(this, 'ClosedWeb', {
       vpc: props.vpc,
+      encryptionKey: encryptionKey.key,
       hostedZone: props.hostedZone,
       certificateArn: params.closedNetworkCertificateArn,
+      // メンテナンスモードは配信サーバー（Fargate）の環境変数で制御する
+      // （フロントエンドの再ビルドなしにパラメーター変更 + デプロイのみで切り替え可能）
+      maintenance: params.maintenance,
     });
 
     const webUrl = props.hostedZone
@@ -263,8 +267,6 @@ export class GenerativeAiUseCasesStack extends Stack {
       hiddenUseCases: params.hiddenUseCases,
       govais_for_homepage: params.govais_for_homepage,
       govais_for_sidebar: params.govais_for_sidebar,
-      // Maintenance Mode
-      maintenance: params.maintenance,
       // Closed Network Bucket
       webBucket: closedWeb.bucket,
     });
@@ -312,6 +314,10 @@ export class GenerativeAiUseCasesStack extends Stack {
         slackEnabled: params.slack.enabled,
         slackChannelId: params.slack.channelId,
         slackWorkspaceId: params.slack.workspaceId,
+        // 閉域構成のフロントエンド配信レイヤー（CloudFront の代替）の監視
+        alb: closedWeb.alb,
+        albTargetGroup: closedWeb.targetGroup,
+        fargateService: closedWeb.fargateService,
       });
     }
 

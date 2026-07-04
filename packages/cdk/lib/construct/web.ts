@@ -22,7 +22,6 @@ export interface WebProps {
   hiddenUseCases: HiddenUseCases;
   govais_for_homepage: z.infer<typeof govaiForHomepage>[];
   govais_for_sidebar: z.infer<typeof govaiForSidebar>[];
-  maintenance: boolean;
   // Closed Network: deploy frontend assets directly into the bucket served by ALB+ECS
   webBucket: s3.Bucket;
 }
@@ -83,7 +82,6 @@ export class Web extends Construct {
         VITE_APP_HIDDEN_USE_CASES: JSON.stringify(props.hiddenUseCases),
         VITE_APP_GOVAIS_FOR_HOMEPAGE: JSON.stringify(props.govais_for_homepage),
         VITE_APP_GOVAIS_FOR_SIDEBAR: JSON.stringify(props.govais_for_sidebar),
-        VITE_APP_MAINTENANCE: props.maintenance.toString(),
       },
     });
   }

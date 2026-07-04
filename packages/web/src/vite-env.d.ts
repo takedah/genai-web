@@ -15,10 +15,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_MODEL_IDS: string;
   readonly VITE_APP_IMAGE_MODEL_IDS: string;
   readonly VITE_APP_ENDPOINT_NAMES: string;
-  readonly VITE_APP_SAMLAUTH_ENABLED: string;
-  readonly VITE_APP_SAML_COGNITO_DOMAIN_NAME: string;
-  readonly VITE_APP_SAML_COGNITO_FEDERATED_IDENTITY_PRIMARY_PROVIDER_NAME: string;
-  readonly VITE_APP_SAML_COGNITO_FEDERATED_IDENTITY_ADDITIONAL_PROVIDER_NAMES: string;
   readonly VITE_APP_USE_CASE_BUILDER_ENABLED: string;
   readonly VITE_APP_HIDDEN_USE_CASES: string;
 }

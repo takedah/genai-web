@@ -1,5 +1,7 @@
+import { RemovalPolicy } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { HostedZone, IHostedZone, PrivateHostedZone } from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 
 const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
@@ -35,7 +37,7 @@ export interface ClosedVpcProps {
 export class ClosedVpc extends Construct {
   public readonly vpc: ec2.IVpc;
   public readonly apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
-  public readonly hostedZone: PrivateHostedZone | undefined;
+  public readonly hostedZone: IHostedZone | undefined;
 
   constructor(scope: Construct, id: string, props: ClosedVpcProps) {
     super(scope, id);
@@ -50,6 +52,17 @@ export class ClosedVpc extends Construct {
           cidrMask: 20,
         },
       ],
+    });
+
+    // 閉域では通信の到達性の問題調査（SG・エンドポイント設定漏れ等）が難しいため、フローログを残す
+    const flowLogGroup = new LogGroup(this, 'FlowLogGroup', {
+      retention: RetentionDays.THREE_MONTHS,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    vpc.addFlowLog('FlowLog', {
+      destination: ec2.FlowLogDestination.toCloudWatchLogs(flowLogGroup),
+      trafficType: ec2.FlowLogTrafficType.ALL,
     });
 
     vpc.addGatewayEndpoint('S3GatewayEndpoint', {
@@ -84,11 +97,13 @@ export class ClosedVpc extends Construct {
 
     if (props.domainName) {
       if (props.hostedZoneId) {
-        // Note: PrivateHostedZone.fromHostedZoneId returns IHostedZone, not PrivateHostedZone.
-        // For consistency, when an existing zone ID is provided we still construct a new PrivateHostedZone
-        // is undesirable, so users that bring their own zone should NOT provide hostedZoneId here and instead
-        // manage the A record outside the stack. We expose hostedZone as undefined in that case.
-        this.hostedZone = undefined;
+        // 既存のプライベートホストゾーンを取り込む。
+        // ゾーン名は domainName と一致している必要がある（ALB への A レコードはゾーン頂点に作成されるため）。
+        // また、利用者がアクセスしてくるネットワーク（VPC）にそのゾーンが関連付け済みであることが前提。
+        this.hostedZone = HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+          hostedZoneId: props.hostedZoneId,
+          zoneName: props.domainName,
+        });
       } else {
         this.hostedZone = new PrivateHostedZone(this, 'HostedZone', {
           vpc,

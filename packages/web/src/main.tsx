@@ -1,30 +1,20 @@
 import { App } from './App.tsx';
 import './index.css';
 import { Authenticator } from '@aws-amplify/ui-react';
-import React, { ReactNode } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ErrorBoundary } from 'react-error-boundary';
 import { BrowserRouter } from 'react-router';
-import { AuthWithSAML } from '@/components/auth/AuthWithSAML';
 import { AuthWithUserpool } from '@/components/auth/AuthWithUserpool';
 import { OnlineStatusProvider } from '@/components/OnlineStatusProvider';
 import { GlobalErrorFallback } from '@/components/ui/GlobalErrorFallback';
 
-const samlAuthEnabled: boolean = import.meta.env.VITE_APP_SAMLAUTH_ENABLED === 'true';
-
-const AuthWrapper = ({ children }: { children: ReactNode }) => {
-  return samlAuthEnabled ? (
-    <AuthWithSAML>{children}</AuthWithSAML>
-  ) : (
-    <AuthWithUserpool>{children}</AuthWithUserpool>
-  );
-};
-
+// 閉域構成では Cognito Hosted UI（SAML 認証）が使えないため、ユーザープール認証に固定
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <OnlineStatusProvider>
       <Authenticator.Provider>
-        <AuthWrapper>
+        <AuthWithUserpool>
           <BrowserRouter>
             <ErrorBoundary
               fallbackRender={GlobalErrorFallback}
@@ -33,7 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <App />
             </ErrorBoundary>
           </BrowserRouter>
-        </AuthWrapper>
+        </AuthWithUserpool>
       </Authenticator.Provider>
     </OnlineStatusProvider>
   </React.StrictMode>,

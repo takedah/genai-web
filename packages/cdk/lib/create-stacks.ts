@@ -6,11 +6,19 @@ import { GenerativeAiUseCasesStack } from './generative-ai-use-cases-stack';
 import { GuardrailStack } from './guardrail-stack';
 import { StackInput } from './stack-input';
 
-class DeletionPolicySetter implements cdk.IAspect {
-  constructor(private readonly policy: cdk.RemovalPolicy) {}
+export class DeletionPolicySetter implements cdk.IAspect {
+  constructor(
+    private readonly policy: cdk.RemovalPolicy,
+    // 除外したいリソースタイプ（例: 'AWS::DynamoDB::Table'）。
+    // 除外されたリソースは construct 側で明示設定された RemovalPolicy がそのまま残る。
+    private readonly excludeResourceTypes: string[] = [],
+  ) {}
 
   visit(node: IConstruct): void {
-    if (node instanceof cdk.CfnResource) {
+    if (
+      node instanceof cdk.CfnResource &&
+      !this.excludeResourceTypes.includes(node.cfnResourceType)
+    ) {
       node.applyRemovalPolicy(this.policy);
     }
   }
@@ -37,17 +45,17 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
       region: params.region,
     },
     params,
-    crossRegionReferences: true,
   });
 
   // Guardrail
+  // 閉域モードでは region === modelRegion を強制しているため（closed-network-stack.ts のガード）、
+  // 全スタックが同一リージョンとなりクロスリージョン参照は発生しない
   const guardrail = params.guardrailEnabled
     ? new GuardrailStack(app, `GuardrailStack${params.env}`, {
         env: {
           account: params.account,
           region: params.modelRegion,
         },
-        crossRegionReferences: true,
       })
     : null;
 
@@ -62,7 +70,6 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
       },
       description: 'Genai Web Application Stack (Closed Network)',
       params: params,
-      crossRegionReferences: true,
       // Closed Network resources
       vpc: closedNetworkStack.vpc,
       apiGatewayVpcEndpoint: closedNetworkStack.apiGatewayVpcEndpoint,
@@ -75,8 +82,10 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
 
   generativeAiUseCasesStack.addDependency(closedNetworkStack);
 
+  // DynamoDB テーブルは databaseRemovalPolicy パラメーターで RemovalPolicy を制御しているため、
+  // この Aspect による一括 DESTROY の対象から除外する（除外しないと RETAIN 指定が上書きされてしまう）
   cdk.Aspects.of(generativeAiUseCasesStack).add(
-    new DeletionPolicySetter(cdk.RemovalPolicy.DESTROY),
+    new DeletionPolicySetter(cdk.RemovalPolicy.DESTROY, ['AWS::DynamoDB::Table']),
   );
 
   // Apply Environment tags to all stacks

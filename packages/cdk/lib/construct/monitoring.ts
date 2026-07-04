@@ -1,6 +1,13 @@
 import { aws_chatbot as chatbot, Duration } from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import { FargateService } from 'aws-cdk-lib/aws-ecs';
+import {
+  ApplicationLoadBalancer,
+  ApplicationTargetGroup,
+  HttpCodeElb,
+  HttpCodeTarget,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import { Construct } from 'constructs';
@@ -13,6 +20,11 @@ export interface MonitoringProps {
   slackEnabled: boolean;
   slackChannelId?: string;
   slackWorkspaceId?: string;
+
+  // 閉域構成のフロントエンド配信レイヤー（ALB + ECS Fargate）の監視対象（オプション）
+  alb?: ApplicationLoadBalancer;
+  albTargetGroup?: ApplicationTargetGroup;
+  fargateService?: FargateService;
 }
 
 const PERIOD_MINUTES = 10;
@@ -103,6 +115,87 @@ export class Monitoring extends Construct {
     highErrorRateAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(this.alertTopic));
     serverErrorAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(this.alertTopic));
     serviceUnavailableAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(this.alertTopic));
+
+    // 閉域構成のフロントエンド配信レイヤー（ALB + ECS Fargate）のアラーム
+    // CloudFront 廃止に伴い、配信レイヤーの障害検知も自前で行う必要がある
+    const webAlarms: cloudwatch.Alarm[] = [];
+
+    if (props.alb) {
+      webAlarms.push(
+        new cloudwatch.Alarm(this, 'AlbElb5xx', {
+          alarmDescription:
+            `[環境: ${props.appEnvName}] フロントエンド配信の ALB が 5xx を返しています！\n` +
+            '（ELB 自身が生成したエラー。ターゲット全滅・接続失敗など）\n' +
+            '確認事項:\n' +
+            '- ECS タスクの稼働状況・ヘルスチェック結果\n' +
+            '- ALB のターゲットグループの状態',
+          metric: props.alb.metrics.httpCodeElb(HttpCodeElb.ELB_5XX_COUNT, {
+            statistic: cloudwatch.Stats.SUM,
+            period: Duration.minutes(PERIOD_MINUTES),
+          }),
+          threshold: THRESHOLD,
+          evaluationPeriods: 1,
+          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        }),
+        new cloudwatch.Alarm(this, 'AlbTarget5xx', {
+          alarmDescription:
+            `[環境: ${props.appEnvName}] フロントエンド配信サーバーが 5xx を返しています！\n` +
+            '確認事項:\n' +
+            '- ECS タスク（fargate-s3-server）のログ\n' +
+            '- S3（Web バケット）へのアクセス可否・VPC エンドポイントの状態',
+          metric: props.alb.metrics.httpCodeTarget(HttpCodeTarget.TARGET_5XX_COUNT, {
+            statistic: cloudwatch.Stats.SUM,
+            period: Duration.minutes(PERIOD_MINUTES),
+          }),
+          threshold: THRESHOLD,
+          evaluationPeriods: 1,
+          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        }),
+      );
+    }
+
+    if (props.albTargetGroup) {
+      webAlarms.push(
+        new cloudwatch.Alarm(this, 'AlbUnhealthyHost', {
+          alarmDescription:
+            `[環境: ${props.appEnvName}] フロントエンド配信の ECS タスクがヘルスチェックに失敗しています！\n` +
+            '確認事項:\n' +
+            '- ECS タスク（fargate-s3-server）のログ・再起動状況\n' +
+            '- デプロイ直後の場合はサーキットブレーカーによるロールバックの有無',
+          metric: props.albTargetGroup.metrics.unhealthyHostCount({
+            statistic: cloudwatch.Stats.MAXIMUM,
+            period: Duration.minutes(5),
+          }),
+          threshold: 1,
+          comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+          evaluationPeriods: 2,
+          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        }),
+      );
+    }
+
+    if (props.fargateService) {
+      webAlarms.push(
+        new cloudwatch.Alarm(this, 'FargateHighCpu', {
+          alarmDescription:
+            `[環境: ${props.appEnvName}] フロントエンド配信の ECS サービスの CPU 使用率が高止まりしています！\n` +
+            '（オートスケール目標 50% を大きく超過。スケールが追いついていない可能性）\n' +
+            '確認事項:\n' +
+            '- タスク数が maxCapacity（20）に達していないか\n' +
+            '- 異常なリクエスト増がないか（ALB アクセスログ）',
+          metric: props.fargateService.metricCpuUtilization({
+            period: Duration.minutes(PERIOD_MINUTES),
+          }),
+          threshold: 80,
+          evaluationPeriods: 1,
+          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        }),
+      );
+    }
+
+    for (const alarm of webAlarms) {
+      alarm.addAlarmAction(new cloudwatch_actions.SnsAction(this.alertTopic));
+    }
 
     // Slack設定がある場合のみChatbot作成
     if (props.slackEnabled && props.slackChannelId && props.slackWorkspaceId) {
