@@ -1,4 +1,4 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
@@ -41,5 +41,27 @@ export class ClosedNetworkStack extends Stack {
     this.vpc = closedVpc.vpc;
     this.apiGatewayVpcEndpoint = closedVpc.apiGatewayVpcEndpoint;
     this.hostedZone = closedVpc.hostedZone;
+
+    // デプロイ後に別の CloudFormation スタックでオンプレミス向けルートなどを
+    // 追加するためのエクスポート。ルートは CDK 作成のルートテーブルへ AWS::EC2::Route で追加する
+    new CfnOutput(this, 'VpcId', {
+      value: this.vpc.vpcId,
+      description: 'Closed network VPC ID (for TGW attachment)',
+      exportName: `${this.stackName}-VpcId`,
+    });
+
+    this.vpc.isolatedSubnets.forEach((subnet, index) => {
+      new CfnOutput(this, `IsolatedSubnetId${index}`, {
+        value: subnet.subnetId,
+        description: `Isolated subnet ID in ${subnet.availabilityZone} (for TGW attachment)`,
+        exportName: `${this.stackName}-SubnetId-${subnet.availabilityZone}`,
+      });
+
+      new CfnOutput(this, `IsolatedSubnetRouteTableId${index}`, {
+        value: subnet.routeTable.routeTableId,
+        description: `Route table ID of isolated subnet in ${subnet.availabilityZone} (add on-premises routes here)`,
+        exportName: `${this.stackName}-RouteTableId-${subnet.availabilityZone}`,
+      });
+    });
   }
 }
