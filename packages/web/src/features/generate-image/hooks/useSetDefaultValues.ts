@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { useChat } from '@/hooks/useChat';
-import { MODELS } from '@/models';
+import { MODELS, resolveDefaultModelId } from '@/models';
 import { useGenerateImageStore } from '../stores/useGenerateImageStore';
 import { GenerateImagePageQueryParams } from '../types';
 
@@ -14,7 +14,7 @@ export const useSetDefaultValues = () => {
   const modelId = getModelId();
 
   useEffect(() => {
-    const defaultModelId = !modelId ? modelIds[0] : modelId;
+    const defaultModelId = !modelId ? resolveDefaultModelId() : modelId;
     const defaultImageGenModelId = !imageGenModelId ? imageGenModelIds[0] : imageGenModelId;
 
     if (search !== '') {

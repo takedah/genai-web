@@ -57,7 +57,9 @@ describe('LandingForm', () => {
     it('renders the support text', () => {
       renderComponent();
 
-      const supportText = screen.getByText('例）"国会答弁を検索したい"、"法制度について詳しく調べたい"、"引き継ぎ作業をやりたいので適切なプロンプトを考えて"');
+      const supportText = screen.getByText(
+        '例）"国会答弁を検索したい"、"法制度について詳しく調べたい"、"引き継ぎ作業をやりたいので適切なプロンプトを考えて"',
+      );
       expect(supportText).toBeDefined();
     });
 

@@ -32,6 +32,11 @@ export const batchCreateMessages = async (
   const expire_at = Math.floor(Date.now() / 1000) + TTL_DAYS * 24 * 60 * 60;
 
   const items: RecordedMessage[] = messages.map((m: ToBeRecordedMessage, i: number) => {
+    // 配列が存在し非空のときだけ Item に含める。金額値（number 型）はそのまま DDB に保存される。
+    const usageCostHistory =
+      Array.isArray(m.usageCostHistory) && m.usageCostHistory.length > 0
+        ? m.usageCostHistory
+        : undefined;
     return {
       id: chatId,
       createdDate: m.createdDate ?? `${createdDate + i}#0`,
@@ -45,6 +50,7 @@ export const batchCreateMessages = async (
       usecase: m.usecase,
       llmType: m.llmType ?? '',
       expire_at,
+      ...(usageCostHistory !== undefined ? { usageCostHistory } : {}),
     };
   });
   await dynamoDbDocument.send(

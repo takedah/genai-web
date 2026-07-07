@@ -19,11 +19,77 @@ export const ChatNotificationDialog = (props: Props) => {
     <CustomDialog isOpen={isOpen} onClose={onClose} position='top'>
       <CustomDialogPanel className='max-w-3xl!'>
         <CustomDialogHeader onClose={onClose} hasClose>
-          生成AI利用時の注意事項
+          AIモデルの選び方と注意事項
         </CustomDialogHeader>
         <CustomDialogBody>
           <div className='flex flex-col gap-4'>
-            <p>このアプリは生成AIを使っています。適切に使うために、以下を確認してください。</p>
+            <h3 className='mt-4 text-std-20B-150'>AIモデルの選び方</h3>
+            <p>目的に応じてAIモデルを選べます。</p>
+            <table className='w-full border border-solid-gray-420'>
+              <colgroup>
+                <col className='border border-solid-gray-420 border-r-black bg-solid-gray-100' />
+                <col className='border border-solid-gray-420' />
+                <col className='border border-solid-gray-420' />
+              </colgroup>
+              <thead>
+                <tr className='border-b border-black divide-x divide-solid-gray-536 bg-solid-gray-100'>
+                  <th
+                    className='border-b border-r border-solid-gray-500 px-4 py-5 text-start align-top'
+                    scope='col'
+                  >
+                    モデル
+                  </th>
+                  <th className='px-4 py-5 text-start align-top' scope='col'>
+                    一言説明
+                  </th>
+                  <th className='px-4 py-5 text-start align-top' scope='col'>
+                    向いている業務
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className='border-b border-solid-gray-420'>
+                  <th
+                    className='border-b border-solid-gray-500 px-4 py-5 text-start align-top'
+                    scope='row'
+                  >
+                    Opus 4.8
+                  </th>
+                  <td className='px-4 py-5 align-top'>最上位モデル</td>
+                  <td className='px-4 py-5 align-top'>複雑な推論・何十手も先を読む自律作業</td>
+                </tr>
+                <tr className='border-b border-solid-gray-420'>
+                  <th
+                    className='border-b border-solid-gray-500 px-4 py-5 text-start align-top'
+                    scope='row'
+                  >
+                    Sonnet 4.6
+                  </th>
+                  <td className='px-4 py-5 align-top'>バランス型</td>
+                  <td className='px-4 py-5 align-top'>幅広い業務全般。長文処理にも対応</td>
+                </tr>
+                <tr className='border-b border-solid-gray-420'>
+                  <th
+                    className='border-b border-solid-gray-500 px-4 py-5 text-start align-top'
+                    scope='row'
+                  >
+                    Haiku 4.5
+                  </th>
+                  <td className='px-4 py-5 align-top'>高速・低コスト</td>
+                  <td className='px-4 py-5 align-top'>分類・要約・情報抽出などの定型処理</td>
+                </tr>
+                <tr className='border-b border-solid-gray-420'>
+                  <th
+                    className='border-b border-solid-gray-500 px-4 py-5 text-start align-top'
+                    scope='row'
+                  >
+                    Nova Lite
+                  </th>
+                  <td className='px-4 py-5 align-top'>軽量モデル</td>
+                  <td className='px-4 py-5 align-top'>大量処理、シンプルなタスク</td>
+                </tr>
+              </tbody>
+            </table>
             <h3 className='mt-4 text-std-20B-150'>生成AIで起こりうること</h3>
             <p>生成AIは便利ですが、以下のような問題が起こることがあります。</p>
             <List spacing='4'>

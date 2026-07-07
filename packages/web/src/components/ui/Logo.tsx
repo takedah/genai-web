@@ -9,7 +9,7 @@ const logoTypographyStyles = 'text-std-20B-150 leading-120! text-black';
 export const Logo = (props: Props) => {
   const { isLandingPage } = props;
   return (
-    <div className='relative flex gap-2 md:gap-1 items-center lg:gap-4'>
+    <div className='relative flex gap-2 items-center lg:gap-4'>
       {isLandingPage ? (
         <h1 className={`${logoTypographyStyles}`}>ここにロゴが入る</h1>
       ) : (

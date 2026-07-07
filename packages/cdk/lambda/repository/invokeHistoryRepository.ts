@@ -1,6 +1,7 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { DeleteCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { InvokeExAppHistory } from 'genai-web';
+import { InvokeExAppHistory, UsageMetadata } from 'genai-web';
+import { summarizeFromUsageMetadata } from '../utils/estimatedCostSummary';
 import { dynamoDbDocument, INVOKE_HISTORY_TABLE_NAME, TTL_DAYS } from './client';
 
 const s3 = new S3Client({});
@@ -127,8 +128,29 @@ const saveFilesToS3 = async (data: any, baseS3Prefix: string, postfix: 'request'
   return typeof data === 'string' ? JSON.stringify(targetData) : targetData;
 };
 
+// 保存値（JSON 文字列）から UsageMetadata[] を安全に復元する。
+const parseUsageMetadata = (raw: unknown): UsageMetadata[] | undefined => {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'string' || raw.length === 0) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.warn('Failed to parse usageMetadata JSON, treating as undefined');
+    return undefined;
+  }
+  if (!Array.isArray(parsed)) {
+    // 旧仕様で `{}` が保存されているケースが存在する（外部アプリが返さなかった場合）。
+    return undefined;
+  }
+  return parsed.length > 0 ? (parsed as UsageMetadata[]) : undefined;
+};
+
 const itemToInvokeExAppHistory = (item: Record<string, any>): InvokeExAppHistory => {
   const splitedPk = item.pk.split('#');
+  const usageMetadata = parseUsageMetadata(item.usageMetadata);
+  const totalEstimatedCost =
+    usageMetadata !== undefined ? summarizeFromUsageMetadata(usageMetadata) : undefined;
   return {
     teamId: splitedPk[0],
     teamName: item.teamName,
@@ -142,6 +164,9 @@ const itemToInvokeExAppHistory = (item: Record<string, any>): InvokeExAppHistory
     progress: item.progress ?? '',
     artifacts: item.artifacts,
     sessionId: item.sessionId,
+    predictedTitle: item.predictedTitle,
+    ...(usageMetadata !== undefined ? { usageMetadata } : {}),
+    ...(totalEstimatedCost !== undefined ? { totalEstimatedCost } : {}),
   };
 };
 
@@ -181,6 +206,7 @@ export const createInvokeExAppHistory = async (
     exAppName,
     status,
     baseS3Prefix, // S3 prefixを保存
+    predictedTitle: '',
     expire_at,
   };
 
@@ -320,6 +346,21 @@ export const findInvokeExAppHistory = async (
       history: itemToInvokeExAppHistory(res.Items[0]),
     };
   }
+};
+
+export const updateInvokeExAppHistoryTitle = async (
+  id: string,
+  createdDate: string,
+  predictedTitle: string,
+): Promise<void> => {
+  const command = new UpdateCommand({
+    TableName: INVOKE_HISTORY_TABLE_NAME,
+    Key: { pk: id, sk: createdDate },
+    UpdateExpression: 'set #predictedTitle = :predictedTitle',
+    ExpressionAttributeNames: { '#predictedTitle': 'predictedTitle' },
+    ExpressionAttributeValues: { ':predictedTitle': predictedTitle },
+  });
+  await dynamoDbDocument.send(command);
 };
 
 export const deleteInvokeExAppHistory = async (

@@ -1,9 +1,9 @@
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Amplify } from 'aws-amplify';
 import { signInWithRedirect } from 'aws-amplify/auth';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { Button } from '../ui/dads/Button';
-import { ProgressIndicator } from '../ui/dads/ProgressIndicator';
+import { ProgressIndicator, ProgressIndicatorSpinner } from '../ui/dads/ProgressIndicator';
 
 const samlCognitoDomainName: string = import.meta.env.VITE_APP_SAML_COGNITO_DOMAIN_NAME;
 
@@ -87,6 +87,8 @@ export const AuthWithSAML = (props: Props) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | undefined>(undefined);
+  const loadingId = useId();
+  const redirectingId = useId();
 
   const signIn = (providerName: string) => {
     signInWithRedirect({
@@ -177,7 +179,10 @@ export const AuthWithSAML = (props: Props) => {
   if (loading) {
     return (
       <div className='fixed inset-0 m-auto grid h-screen w-screen place-content-center'>
-        <ProgressIndicator isLarge={true} label='読み込み中...' />
+        <ProgressIndicator type='stacked' aria-labelledby={loadingId}>
+          <ProgressIndicatorSpinner size='lg' />
+          <span id={loadingId}>読み込み中...</span>
+        </ProgressIndicator>
       </div>
     );
   }
@@ -185,7 +190,10 @@ export const AuthWithSAML = (props: Props) => {
   if (!authenticated) {
     return (
       <div className='fixed inset-0 m-auto grid h-screen w-screen place-content-center'>
-        <ProgressIndicator label='ログインページにリダイレクトします' />
+        <ProgressIndicator type='stacked' aria-labelledby={redirectingId}>
+          <ProgressIndicatorSpinner size='lg' />
+          <span id={redirectingId}>ログインページにリダイレクトします</span>
+        </ProgressIndicator>
       </div>
     );
   }

@@ -14,6 +14,8 @@ import {
   CommonWebAcl,
   Database,
   Monitoring,
+  PasswordResetApi,
+  PasswordResetDatabase,
   Transcribe,
   Web,
 } from './construct';
@@ -44,6 +46,7 @@ export class GenerativeAiUseCasesStack extends Stack {
     process.env.overrideWarningsEnabled = 'false';
 
     const params = props.params;
+    const passwordResetEnabled = params.emailMfaRequired;
 
     // KMS Key for encryption (CMEK)
     const encryptionKey = new EncryptionKey(this, 'EncryptionKey', {
@@ -79,6 +82,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       samlIdentityProviderNames,
       customEmailSender: params.customEmailSender ?? null,
       emailMfaRequired: params.emailMfaRequired,
+      passwordPolicy: params.passwordPolicy,
       reauthenticationIntervalDays: params.reauthenticationIntervalDays,
       appEnv: params.appEnv,
     });
@@ -92,6 +96,16 @@ export class GenerativeAiUseCasesStack extends Stack {
           : cdk.RemovalPolicy.DESTROY,
     });
     database.table.tableName;
+
+    const passwordResetDatabase = passwordResetEnabled
+      ? new PasswordResetDatabase(this, 'PasswordResetDatabase', {
+          encryptionKey: encryptionKey.key,
+          removalPolicy:
+            params.databaseRemovalPolicy === 'RETAIN'
+              ? cdk.RemovalPolicy.RETAIN
+              : cdk.RemovalPolicy.DESTROY,
+        })
+      : undefined;
 
     // Bedrock Inference Profiles for cost allocation tagging
     // Creates Application Inference Profiles with Environment tags for each model
@@ -125,6 +139,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       table: database.table,
       guardrailIdentify: props.guardrailIdentifier,
       guardrailVersion: props.guardrailVersion,
+      costConversion: params.costConversion,
     });
     api.predictStreamFunction.grantInvoke(auth.systemAdminRole);
     api.predictStreamFunction.grantInvoke(auth.teamAdminRole);
@@ -146,6 +161,11 @@ export class GenerativeAiUseCasesStack extends Stack {
         params.databaseRemovalPolicy === 'RETAIN'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
+      modelRegion: params.modelRegion,
+      modelIds: params.modelIds,
+      crossAccountBedrockRoleArn: params.crossAccountBedrockRoleArn,
+      inferenceProfileMap: inferenceProfiles?.profileMapping,
+      costConversion: params.costConversion,
     });
 
     // TeamAccessControl API のポリシーを各ロールにアタッチ
@@ -281,6 +301,8 @@ export class GenerativeAiUseCasesStack extends Stack {
       userPoolClientId: auth.client.userPoolClientId,
       idPoolId: auth.idPool.attrId,
       selfSignUpEnabled: params.selfSignUpEnabled,
+      emailMfaRequired: params.emailMfaRequired,
+      passwordPolicy: params.passwordPolicy,
       samlAuthEnabled: params.samlAuthEnabled,
       samlCognitoDomainName: params.samlCognitoDomainName,
       samlCognitoFederatedIdentityPrimaryProviderName:
@@ -293,8 +315,10 @@ export class GenerativeAiUseCasesStack extends Stack {
       webAclId: props.webAclId,
       modelRegion: api.modelRegion,
       modelIds: api.modelIds,
+      defaultModelId: params.defaultModelId,
       imageGenerationModelIds: api.imageGenerationModelIds,
       endpointNames: api.endpointNames,
+      recentlyUsedAppsEnabled: params.recentlyUsedAppsEnabled,
       // Frontend
       hiddenUseCases: params.hiddenUseCases,
       govais_for_homepage: params.govais_for_homepage,
@@ -308,6 +332,20 @@ export class GenerativeAiUseCasesStack extends Stack {
       // Maintenance Mode
       maintenance: params.maintenance,
     });
+
+    if (passwordResetDatabase && params.customEmailSender) {
+      new PasswordResetApi(this, 'PasswordResetApi', {
+        api: api.api,
+        passwordResetTable: passwordResetDatabase.table,
+        emailHashIndexName: passwordResetDatabase.emailHashIndexName,
+        userPool: auth.userPool,
+        sesIdentityName: params.customEmailSender.sesIdentityName,
+        sesFromAddress: params.customEmailSender.fromAddress,
+        sesConfigurationSetName: params.customEmailSender.sesConfigurationSetName,
+        sesTenantName: auth.sesTenantName,
+        passwordPolicy: params.passwordPolicy,
+      });
+    }
 
     // SAML有効かつカスタムドメインがない場合、CloudFront URL をコールバックURLに設定
     if (params.samlAuthEnabled && !params.hostName && samlIdentityProviderNames?.length) {
@@ -458,6 +496,14 @@ export class GenerativeAiUseCasesStack extends Stack {
       value: params.selfSignUpEnabled.toString(),
     });
 
+    new CfnOutput(this, 'EmailMfaRequired', {
+      value: params.emailMfaRequired.toString(),
+    });
+
+    new CfnOutput(this, 'PasswordPolicy', {
+      value: JSON.stringify(params.passwordPolicy),
+    });
+
     new CfnOutput(this, 'ModelRegion', {
       value: api.modelRegion,
     });
@@ -508,6 +554,10 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new CfnOutput(this, 'TopChatSystemPromptTitle', {
       value: Buffer.from(params.top_chat_system_prompt_title).toString('base64'),
+    });
+
+    new CfnOutput(this, 'RecentlyUsedAppsEnabled', {
+      value: params.recentlyUsedAppsEnabled.toString(),
     });
 
     // DynamoDB Table Names

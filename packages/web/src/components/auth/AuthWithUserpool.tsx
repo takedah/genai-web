@@ -4,9 +4,27 @@ import { type SignInInput, signIn } from 'aws-amplify/auth';
 import { I18n } from 'aws-amplify/utils';
 import React, { useEffect, useRef } from 'react';
 import { APP_TITLE } from '@/constants';
+import {
+  isCustomPasswordResetEnabled,
+  PASSWORD_POLICY,
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  PASSWORD_RESET_COMPLETE_PATH,
+  PASSWORD_RESET_REQUEST_PATH,
+} from '@/features/password-reset/constants';
 import { PageTitle } from '../PageTitle';
+import { Button } from '../ui/dads/Button';
 
 const selfSignUpEnabled: boolean = import.meta.env.VITE_APP_SELF_SIGN_UP_ENABLED === 'true';
+const emailMfaRequired: boolean = import.meta.env.VITE_APP_EMAIL_MFA_REQUIRED === 'true';
+const samlAuthEnabled: boolean = import.meta.env.VITE_APP_SAMLAUTH_ENABLED === 'true';
+const customPasswordResetEnabled = isCustomPasswordResetEnabled(emailMfaRequired, samlAuthEnabled);
+const passwordPolicyMinimumLengthErrorKey = `Password must have at least ${PASSWORD_POLICY.minLength} characters`;
+const passwordPolicyConstraintErrorKey = `1 validation error detected: Value at 'password' failed to satisfy constraint: Member must have length greater than or equal to ${PASSWORD_POLICY.minLength}`;
+
+export const isUserPoolPublicPath = (pathname: string, customPasswordResetEnabled: boolean) =>
+  pathname === '/signed-out' ||
+  (customPasswordResetEnabled &&
+    (pathname === PASSWORD_RESET_REQUEST_PATH || pathname === PASSWORD_RESET_COMPLETE_PATH));
 
 type Props = {
   children: React.ReactNode;
@@ -51,8 +69,8 @@ const AuthWithUserpoolContent = (props: Props) => {
     prevRoute.current = route;
   }, [route]);
 
-  // サインアウト後のページは認証不要でレンダリング
-  if (window.location.pathname === '/signed-out') {
+  // サインアウト後のページとカスタムパスワードリセットは認証不要でレンダリング
+  if (isUserPoolPublicPath(window.location.pathname, customPasswordResetEnabled)) {
     return <>{children}</>;
   }
 
@@ -83,6 +101,19 @@ const AuthWithUserpoolContent = (props: Props) => {
               </h2>
             );
           },
+          ...(customPasswordResetEnabled
+            ? {
+                Footer() {
+                  return (
+                    <div className='my-4 text-center'>
+                      <Button variant='text' size='lg' asChild>
+                        <a href={PASSWORD_RESET_REQUEST_PATH}>パスワードをお忘れですか？</a>
+                      </Button>
+                    </div>
+                  );
+                },
+              }
+            : {}),
         },
         SignUp: {
           Header() {
@@ -204,19 +235,20 @@ export const AuthWithUserpool = (props: Props) => {
       'Invalid verification code provided, please try again.':
         '無効な確認コードです。もう一度お試しください。',
       'Your passwords must match': 'パスワードが一致していません',
-      'Password must have at least 8 characters': 'パスワードは8文字以上である必要があります',
+      [passwordPolicyMinimumLengthErrorKey]: PASSWORD_POLICY_ERROR_MESSAGE,
       'Password does not conform to policy: Password not long enough':
-        'パスワードは8文字以上を入力してください (8文字以上の大文字小文字を含む英数字)',
+        PASSWORD_POLICY_ERROR_MESSAGE,
       'Password does not conform to policy: Password must have uppercase characters':
-        'パスワードには大文字を含めてください (8文字以上の大文字小文字を含む英数字)',
+        PASSWORD_POLICY_ERROR_MESSAGE,
       'Password does not conform to policy: Password must have lowercase characters':
-        'パスワードには小文字を含めてください (8文字以上の大文字小文字を含む英数字)',
+        PASSWORD_POLICY_ERROR_MESSAGE,
       'Password does not conform to policy: Password must have numeric characters':
-        'パスワードには数字を含めてください (8文字以上の大文字小文字を含む英数字)',
+        PASSWORD_POLICY_ERROR_MESSAGE,
       'Password does not conform to policy: Password must have symbol characters':
-        'パスワードには記号を含めてください (8文字以上の大文字小文字を含む英数字)',
+        PASSWORD_POLICY_ERROR_MESSAGE,
+      [passwordPolicyConstraintErrorKey]: PASSWORD_POLICY_ERROR_MESSAGE,
       "1 validation error detected: Value at 'password' failed to satisfy constraint: Member must have length greater than or equal to 6":
-        'パスワードは8文字以上、大文字小文字を含む英数字を指定してください',
+        PASSWORD_POLICY_ERROR_MESSAGE,
       'Attempt limit exceeded, please try after some time.':
         '試行回数の上限を超えました。しばらくしてから再度お試しください。',
       // MFA 関連

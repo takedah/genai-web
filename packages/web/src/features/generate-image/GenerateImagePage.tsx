@@ -19,8 +19,8 @@ import { MODELS } from '@/models';
 import { GeneratedImages } from './components/GeneratedImages';
 import { GenerateImageAssistant } from './components/GenerateImageAssistant';
 import { GenerateImageInput } from './components/GenerateImageInput';
-import { GenerateImageStickyHeader } from './components/GenerateImageStickyHeader';
 import { ImageGeneratorForm } from './components/ImageGeneratorForm';
+import { ModelSelector } from './components/ModelSelector';
 import { SketchMaskDialogs } from './components/SketchMaskDialogs';
 import { Canvas } from './types';
 
@@ -125,7 +125,9 @@ export const GenerateImagePage = () => {
 
         <div className='flex justify-between gap-12 xl:gap-16'>
           <div className='flex min-w-0 flex-1 flex-col'>
-            <GenerateImageStickyHeader />
+            <div className='flex items-center gap-4 border-b border-b-solid-gray-800 py-2.5 lg:gap-6'>
+              <ModelSelector />
+            </div>
 
             <div className='flex-1 pt-4 pb-6 px-2'>
               <GenerateImageAssistant

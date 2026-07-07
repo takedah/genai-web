@@ -4,9 +4,25 @@ import { produce } from 'immer';
 import { useCallback } from 'react';
 import { createWithEqualityFn as create } from 'zustand/traditional';
 import * as fileApi from '@/lib/fileApi';
+import { convertSizeToBytes } from '@/utils/convertSizeToBytes';
 
 const extractBaseURL = (url: string) => {
   return url.split(/[?#]/)[0];
+};
+
+// Converse の text 系 document（中身が UTF-8 でないと Unsupported MIME type になる）
+const UTF8_REQUIRED_EXTENSIONS = ['.csv', '.txt', '.md', '.html'];
+
+const isUtf8RequiredFile = (fileName: string) =>
+  UTF8_REQUIRED_EXTENSIONS.includes(('.' + fileName.split('.').pop()).toLowerCase());
+
+const isValidUtf8 = (bytes: ArrayBuffer) => {
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const useFilesState = create<{
@@ -90,6 +106,34 @@ const useFilesState = create<{
       }),
     );
 
+    // doc・image は Base64 エンコード後のサイズで検証する。Base64 の文字列長は
+    // 元データ長から厳密に算出できる（4 * ceil(n/3)）ため、FileReader での実変換は
+    // 行わず file.size から計算する（表示側 ChatInput と同じ式・不要な I/O 回避）。
+    // video は S3 URI 送信でペイロードに乗らないため生サイズで検証する。
+    const toBase64Size = (byteLength: number) => 4 * Math.ceil(byteLength / 3);
+
+    // 拡張子（大文字小文字を区別しない）が許可されているか
+    const lowerAccept = accept.map((ext) => ext.toLowerCase());
+    const isFileTypeAllowed = (fileName: string) =>
+      lowerAccept.includes(('.' + fileName.split('.').pop()).toLowerCase());
+
+    // テキスト系の中身が UTF-8 かを Promise.all で先に評価する（map 内で async を使うため）。
+    // 許可外・サイズ超過・読み込み失敗は対象外（undefined）とし、無駄な全バイト読み込みと
+    // Promise.all の reject を避ける。
+    const maxDocBase64Bytes = convertSizeToBytes(`${fileLimit.maxFileSizeMB || 0}MB`);
+    const isValidUtf8Results = await Promise.all(
+      uploadedFiles.map(async (uploadedFile) => {
+        if (!isFileTypeAllowed(uploadedFile.file.name)) return undefined;
+        if (!isUtf8RequiredFile(uploadedFile.file.name)) return undefined;
+        if (toBase64Size(uploadedFile.file.size) > maxDocBase64Bytes) return undefined;
+        try {
+          return isValidUtf8(await uploadedFile.file.arrayBuffer());
+        } catch {
+          return undefined;
+        }
+      }),
+    );
+
     // アップロードされたファイルの検証
     const updatedFiles: UploadedFileType[] = uploadedFiles.map((uploadedFile, idx) => {
       const errorMessages: string[] = [];
@@ -101,12 +145,18 @@ const useFilesState = create<{
         );
       }
 
+      // テキスト系で UTF-8 でないファイルをフィルタリング
+      if (isValidUtf8Results[idx] === false) {
+        errorMessages.push(
+          'ファイルの形式が UTF-8 形式ではありません。 UTF-8 形式に変換後、再度お試しください。',
+        );
+      }
+
       // 許可されたファイルタイプをフィルタリング
-      const mediaFormat = ('.' + uploadedFile.file.name.split('.').pop()) as string;
-      const isFileTypeAllowed = accept.includes(mediaFormat);
+      // 拡張子は大文字小文字を区別せず比較する（例: ".MD" も ".md" として扱う）
       if (accept && accept.length === 0) {
         errorMessages.push(`このモデルはファイルに対応していません。`);
-      } else if (!isFileTypeAllowed) {
+      } else if (!isFileTypeAllowed(uploadedFile.file.name)) {
         errorMessages.push(
           `${uploadedFile.file.name} は許可されていない拡張子です。利用できる拡張子は ${accept.join(', ')} です`,
         );
@@ -119,10 +169,16 @@ const useFilesState = create<{
         return fileLimit.maxFileSizeMB;
       };
       const maxSizeMB = getMaxFileSizeMB(uploadedFile.file.type) || 0;
-      const isFileSizeAllowed = uploadedFile.file.size <= maxSizeMB * 1e6;
-      if (!isFileSizeAllowed) {
+      const isVideo = uploadedFile.file.type.includes('video');
+      // doc・image は Base64 後サイズを MiB 基準（convertSizeToBytes('4.5MB') = 4,718,592 バイト）で、
+      // video は生サイズを従来どおり 10進 MB（maxSizeMB * 1e6）で比較する。
+      const sizeBytes = isVideo ? uploadedFile.file.size : toBase64Size(uploadedFile.file.size);
+      const maxSizeBytes = isVideo ? maxSizeMB * 1e6 : convertSizeToBytes(`${maxSizeMB}MB`);
+      if (sizeBytes > maxSizeBytes) {
         errorMessages.push(
-          `${uploadedFile.file.name} は最大ファイルサイズ ${maxSizeMB} MB を超えています。`,
+          isVideo
+            ? `${uploadedFile.file.name} は最大ファイルサイズ ${maxSizeMB} MB を超えています。`
+            : `${uploadedFile.file.name} は最大ファイルサイズ ${maxSizeMB} MB（Base64 エンコード後）を超えています。`,
         );
       }
 

@@ -10,6 +10,7 @@ import {
   ToBeRecordedMessage,
   UnrecordedMessage,
   UploadedFileType,
+  UsageCostEntry,
 } from 'genai-web';
 import { produce } from 'immer';
 import { useEffect, useMemo } from 'react';
@@ -17,7 +18,7 @@ import { SWRInfiniteKeyedMutator } from 'swr/infinite';
 import { createWithEqualityFn as create } from 'zustand/traditional';
 import { createChat, createMessages, predictStream, predictTitle } from '@/lib/chatApi';
 import { getS3Uri } from '@/lib/fileApi';
-import { findModelByModelId, MODELS } from '@/models';
+import { findModelByModelId, resolveDefaultModelId } from '@/models';
 import { getPrompter } from '../prompts';
 import { useChatApi } from './useChatApi';
 import { useChatList } from './useChatList';
@@ -34,6 +35,70 @@ export type GenerateOptions = {
   overrideModelType?: Model['type'];
   setSessionId?: (sessionId: string) => void;
   base64Cache?: Record<string, string>;
+  // 添付ファイルを Lambda ペイロードに base64 で同梱せず、S3 URI（s3://bucket/key）として送る。
+  // Lambda 側が S3 から取得して Converse に渡す（chat 経路でのみ true）。
+  sendFilesAsS3?: boolean;
+};
+
+// メッセージの extraData を LLM 推論用の形式に変換する関数
+export const formatMessageProperties = (
+  messages: ShownMessage[],
+  uploadedFiles?: UploadedFileType[],
+  extraData?: ExtraData[],
+  base64Cache?: Record<string, string>,
+  sendFilesAsS3?: boolean,
+): UnrecordedMessage[] => {
+  return messages.map((m) => {
+    const convertedFiles: ExtraData[] | undefined = m.extraData
+      ?.flatMap((data): ExtraData => {
+        if (data.type === 'video' || sendFilesAsS3) {
+          // video は常に、chat 経路（sendFilesAsS3）では image/file も
+          // base64 をペイロードに乗せず S3 URI として送る（Lambda が S3 から取得）。
+          // s3Url が空（アップロード未完了等）だと getS3Uri が例外を投げるため、
+          // 空はそのまま落とし後段の filter で除外する。
+          const s3Url = data.source.data;
+          return {
+            type: data.type,
+            name: data.name,
+            source: {
+              type: 's3',
+              mediaType: data.source.mediaType,
+              data: s3Url ? getS3Uri(s3Url) : '',
+            },
+          };
+        } else {
+          // Otherwise (image and file) send base64 encoded data
+          // 推論する際は"data:image/png..." のといった情報は必要ないため、削除する
+          const base64EncodedData =
+            uploadedFiles
+              ?.find((uploadedFile) => uploadedFile.s3Url === data.source.data)
+              ?.base64EncodedData?.replace(/^data:(.*,)?/, '') ??
+            base64Cache?.[data.source.data]?.replace(/^data:(.*,)?/, '');
+
+          // Base64 エンコードされた画像情報を設定する
+          return {
+            type: data.type,
+            name: data.name,
+            source: {
+              type: 'base64',
+              mediaType: data.source.mediaType,
+              data: base64EncodedData ?? '',
+            },
+          };
+        }
+      })
+      .filter((data) => {
+        if (!data.source.data) {
+          return false;
+        }
+        return true;
+      });
+    return {
+      role: m.role,
+      content: m.content,
+      extraData: [...(convertedFiles ?? []), ...(extraData ?? [])],
+    };
+  });
 };
 
 const useChatStore = create<{
@@ -238,64 +303,6 @@ const useChatStore = create<{
     });
   };
 
-  const formatMessageProperties = (
-    messages: ShownMessage[],
-    uploadedFiles?: UploadedFileType[],
-    extraData?: ExtraData[],
-    base64Cache?: Record<string, string>,
-  ): UnrecordedMessage[] => {
-    return messages.map((m) => {
-      // LLM で推論する形式に extraData を変換する
-      const convertedFiles: ExtraData[] | undefined = m.extraData
-        ?.flatMap((data): ExtraData => {
-          if (data.type === 'video') {
-            // Send S3 location for video
-            // https:// 形式の S3 URL から s3:// 形式の S3 URI に変換する
-            const s3Uri = getS3Uri(data.source.data ?? '');
-            return {
-              type: data.type,
-              name: data.name,
-              source: {
-                type: 's3',
-                mediaType: data.source.mediaType,
-                data: s3Uri,
-              },
-            };
-          } else {
-            // Otherwise (image and file) send base64 encoded data
-            // 推論する際は"data:image/png..." のといった情報は必要ないため、削除する
-            const base64EncodedData =
-              uploadedFiles
-                ?.find((uploadedFile) => uploadedFile.s3Url === data.source.data)
-                ?.base64EncodedData?.replace(/^data:(.*,)?/, '') ??
-              base64Cache?.[data.source.data]?.replace(/^data:(.*,)?/, '');
-
-            // Base64 エンコードされた画像情報を設定する
-            return {
-              type: data.type,
-              name: data.name,
-              source: {
-                type: 'base64',
-                mediaType: data.source.mediaType,
-                data: base64EncodedData ?? '',
-              },
-            };
-          }
-        })
-        .filter((data) => {
-          if (!data.source.data) {
-            return false;
-          }
-          return true;
-        });
-      return {
-        role: m.role,
-        content: m.content,
-        extraData: [...(convertedFiles ?? []), ...(extraData ?? [])],
-      };
-    });
-  };
-
   const omitUnusedMessageProperties = (messages: ShownMessage[]): UnrecordedMessage[] => {
     return messages.map((m) => {
       return {
@@ -337,6 +344,39 @@ const useChatStore = create<{
     });
   };
 
+  // 最新 assistant メッセージの usageCostHistory に 1 ターン分のエントリを追加する。
+  const appendUsageCostEntry = (id: string, entry: UsageCostEntry) => {
+    set((state) => {
+      return {
+        chats: produce(state.chats, (draft) => {
+          const messages = draft[id]?.messages;
+          if (!messages || messages.length === 0) return;
+          const last = messages[messages.length - 1];
+          if (last.role !== 'assistant') return;
+          if (!last.usageCostHistory) {
+            last.usageCostHistory = [];
+          }
+          last.usageCostHistory.push(entry);
+        }),
+      };
+    });
+  };
+
+  // retry 開始時に当該 assistant メッセージの usageCostHistory を空配列で初期化する
+  const resetUsageCostHistory = (id: string) => {
+    set((state) => {
+      return {
+        chats: produce(state.chats, (draft) => {
+          const messages = draft[id]?.messages;
+          if (!messages || messages.length === 0) return;
+          const last = messages[messages.length - 1];
+          if (last.role !== 'assistant') return;
+          last.usageCostHistory = [];
+        }),
+      };
+    });
+  };
+
   const getStopReason = (id: string) => {
     const chat = get().chats[id];
     if (chat) {
@@ -361,10 +401,10 @@ const useChatStore = create<{
       overrideModelType,
       setSessionId = () => {},
       base64Cache,
+      sendFilesAsS3,
     } = options;
 
-    const { modelIds } = MODELS;
-    const modelId = localStorage.getItem('modelId_v20260218') ?? modelIds[0];
+    const modelId = sessionStorage.getItem('modelId') ?? resolveDefaultModelId();
     const model = findModelByModelId(modelId);
 
     if (!model) {
@@ -432,6 +472,7 @@ const useChatStore = create<{
           chats: newChats,
         };
       });
+      resetUsageCostHistory(id);
     }
 
     // メッセージの前処理（例：ログからの footnote の削除）
@@ -445,6 +486,7 @@ const useChatStore = create<{
       uploadedFiles,
       extraData,
       base64Cache,
+      sendFilesAsS3,
     );
 
     const stream = predictStream({
@@ -479,6 +521,16 @@ const useChatStore = create<{
           // SessionId
           if (payload.sessionId) {
             setSessionId(payload.sessionId);
+          }
+
+          // Metadata（usage / estimatedCost）。1 ターン分を usageCostHistory に積む。
+          if (payload.metadata) {
+            appendUsageCostEntry(id, {
+              usage: payload.metadata.usage,
+              ...(payload.metadata.estimatedCost !== undefined
+                ? { estimatedCost: payload.metadata.estimatedCost }
+                : {}),
+            });
           }
         }
       }

@@ -129,6 +129,10 @@ describe('customEmailSender and emailMfaRequired parameter validation', () => {
       const params = stackInputSchema.parse({
         ...baseParams,
         emailMfaRequired: true,
+        customEmailSender: {
+          sesIdentityName: 'example.go.jp',
+          fromAddress: 'noreply@example.go.jp',
+        },
       });
 
       expect(params.emailMfaRequired).toBe(true);
@@ -179,6 +183,10 @@ describe('customEmailSender and emailMfaRequired parameter validation', () => {
         ...baseParams,
         emailMfaRequired: true,
         samlAuthEnabled: false,
+        customEmailSender: {
+          sesIdentityName: 'example.go.jp',
+          fromAddress: 'noreply@example.go.jp',
+        },
       });
 
       expect(params.emailMfaRequired).toBe(true);
@@ -187,22 +195,14 @@ describe('customEmailSender and emailMfaRequired parameter validation', () => {
   });
 
   describe('emailMfaRequired + customEmailSender 組み合わせ', () => {
-    test('emailMfaRequired: true + customEmailSender: null は成功する（警告のみ）', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const params = stackInputSchema.parse({
-        ...baseParams,
-        emailMfaRequired: true,
-        customEmailSender: null,
-      });
-
-      expect(params.emailMfaRequired).toBe(true);
-      expect(params.customEmailSender).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('emailMfaRequired is true but customEmailSender is not configured'),
-      );
-
-      consoleSpy.mockRestore();
+    test('emailMfaRequired: true + customEmailSender: null はバリデーションエラーになる', () => {
+      expect(() =>
+        stackInputSchema.parse({
+          ...baseParams,
+          emailMfaRequired: true,
+          customEmailSender: null,
+        }),
+      ).toThrow('customEmailSender is required when emailMfaRequired is true');
     });
 
     test('emailMfaRequired: true + customEmailSender 設定済みでは警告が出ない', () => {

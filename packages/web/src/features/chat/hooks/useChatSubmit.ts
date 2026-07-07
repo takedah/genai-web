@@ -4,6 +4,8 @@ import { useChatStore } from '@/features/chat/stores/useChatStore';
 import { useChat } from '@/hooks/useChat';
 import { useFiles } from '@/hooks/useFiles';
 import { usePrompter } from '@/hooks/usePrompter';
+import { isRecentlyUsedAppsEnabled, useRecordRecentlyUsedApp } from '@/hooks/useRecentlyUsedApps';
+import { GENU_APP_METAS } from '@/utils/getAvailableGenuApps';
 import { useFileUploadable } from './useFileUploadable';
 
 type UseChatReturn = ReturnType<typeof useChat>;
@@ -32,6 +34,7 @@ export const useChatSubmit = ({
   const { prompter } = usePrompter();
   const { fileUploadable } = useFileUploadable();
   const { state } = useLocation();
+  const recordRecentlyUsedApp = useRecordRecentlyUsedApp();
 
   const currentSystemContext = getCurrentSystemContext();
 
@@ -43,7 +46,23 @@ export const useChatSubmit = ({
     postChat(prompter.chatPrompt({ content }), {
       uploadedFiles: fileUploadable ? uploadedFiles : undefined,
       base64Cache,
-    });
+      // chat 経路: 添付ファイルは S3 URI で送り、Lambda 側で取得させる
+      sendFilesAsS3: true,
+    })
+      .then(() => {
+        if (isRecentlyUsedAppsEnabled) {
+          const meta = GENU_APP_METAS.chat;
+          recordRecentlyUsedApp({
+            kind: 'genu',
+            genuKind: 'chat',
+            title: meta.label,
+            path: '/chat',
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('postChat failed', error);
+      });
     setContent('');
     clearFiles();
   }, [
@@ -59,6 +78,7 @@ export const useChatSubmit = ({
     uploadedFiles,
     setContent,
     clearFiles,
+    recordRecentlyUsedApp,
   ]);
 
   useEffect(() => {
@@ -78,7 +98,7 @@ export const useChatSubmit = ({
   }, [shouldAutoSubmit, content, inputSystemContext, loading, onSend, setShouldAutoSubmit, state]);
 
   const onRetry = useCallback(() => {
-    retryGeneration({ base64Cache });
+    retryGeneration({ base64Cache, sendFilesAsS3: true });
   }, [retryGeneration, base64Cache]);
 
   return { onSend, onRetry };

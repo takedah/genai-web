@@ -29,7 +29,7 @@ export const ChatHints = () => {
         <div>
           <dt className='mb-2 text-std-18B-160'>ファイルを添付して質問する</dt>
           <dd>
-            資料や文書をファイルに添付してAIに質問できます（4.5MBまで）。文書の要約・翻訳・分析など、ファイルの内容を踏まえた詳細な回答が得られます。対応形式はJPEG/PNG/WebP/GIF形式の画像、PDF/テキスト/CSV/HTML/Markdown/Word/Excel形式のドキュメントです。
+            資料や文書をファイルに添付してAIに質問できます（1ファイルあたり4.5MBまで。Base64エンコード後のサイズで、元のサイズより約1.3倍大きくなります）。文書の要約・翻訳・分析など、ファイルの内容を踏まえた詳細な回答が得られます。対応形式はJPEG/PNG/WebP/GIF形式の画像、PDF/テキスト/CSV/HTML/Markdown/Word/Excel形式のドキュメントです。
           </dd>
         </div>
       </dl>

@@ -67,7 +67,7 @@
     overflow-x: clip;
     overflow-y: auto;
     scrollbar-gutter: stable;
-    scroll-padding-block: var(--header-height);
+    scroll-padding-top: var(--header-height);
     /* override @aws-amplify/ui-react style */
     scroll-behavior: auto !important;
   }
@@ -288,7 +288,12 @@
   /* Code block */
 
   .prose :where(pre) {
-    @apply my-4 overflow-x-auto rounded-8 border border-transparent bg-solid-gray-800 px-3 py-4 text-solid-gray-50;
+    @apply overflow-x-auto;
+  }
+
+  /* shiki が出力する <pre class="shiki"> は Markdown の PreRenderer 側で枠を付けるため除外 */
+  .prose :where(pre):not(.shiki) {
+    @apply my-4 rounded-8 border border-solid-gray-420 bg-white p-4 text-solid-gray-900;
   }
 
   .prose :where(pre) code {

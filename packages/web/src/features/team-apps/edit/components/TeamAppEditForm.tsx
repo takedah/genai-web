@@ -183,7 +183,7 @@ export const TeamAppEditForm = (props: Props) => {
           APIキー<RequirementBadge isOptional>※任意</RequirementBadge>
         </Label>
         <SupportText id={`team-app-api-key-support`}>
-          APIキーの更新が必要な場合のみ入力してください
+          APIエンドポイントの変更をした場合は新たなAPIキーを入力してください
         </SupportText>
         <Input
           id={`team-app-api-key`}

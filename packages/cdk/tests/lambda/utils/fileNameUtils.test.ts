@@ -33,14 +33,14 @@ describe('toSafeDocumentName', () => {
       expect(toSafeDocumentName(filename)).toBe(toSafeDocumentName(filename));
     });
 
-    it('US1: 全角スペース（U+3000）は _ に変換される', () => {
+    it('全角スペース（U+3000）は _ に変換される', () => {
       const filename = 'テスト\u3000資料.pdf';
       const result = toSafeDocumentName(filename);
       expect(result).not.toContain('\u3000');
       expect(result).toMatch(/_[0-9a-f]{8}$/);
     });
 
-    it('US1: 全角スペースを含むファイル名はハッシュが付与される', () => {
+    it('全角スペースを含むファイル名はハッシュが付与される', () => {
       const result = toSafeDocumentName('テスト\u3000資料.pdf');
       expect(result).toMatch(/_[0-9a-f]{8}$/);
     });
@@ -62,7 +62,7 @@ describe('toSafeDocumentName', () => {
     });
   });
 
-  describe('US2: 複数ファイルの衝突回避', () => {
+  describe('複数ファイルの衝突回避', () => {
     it('異なるファイル名は異なるハッシュを持つ', () => {
       const result1 = toSafeDocumentName('テスト資料A.pdf');
       const result2 = toSafeDocumentName('テスト資料B.pdf');
@@ -83,7 +83,7 @@ describe('toSafeDocumentName', () => {
     });
   });
 
-  describe('US3: 会話をまたいだ一意性', () => {
+  describe('会話をまたいだ一意性', () => {
     it('同じファイル名に異なるインデックスを付与すると一意になる', () => {
       const filename = 'テスト資料.pdf';
       const baseName = toSafeDocumentName(filename);

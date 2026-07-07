@@ -1,14 +1,29 @@
 import { StopReason } from '@aws-sdk/client-bedrock-runtime';
 import { Chat } from './chat';
+import { EstimatedCostSummary } from './cost';
 import { GenerateImageParams } from './image';
-import { Model, RecordedMessage, ToBeRecordedMessage, UnrecordedMessage } from './message';
+import {
+  ChatUsage,
+  Model,
+  RecordedMessage,
+  ToBeRecordedMessage,
+  UnrecordedMessage,
+} from './message';
 import { SystemContext } from './systemContext';
+
+// 1 ターン分の usage と推定コストをまとめてストリームで返す集合体。
+export type Metadata = {
+  usage: ChatUsage;
+  estimatedCost?: EstimatedCostSummary;
+};
 
 export type StreamingChunk = {
   text: string;
   trace?: string;
   stopReason?: StopReason | 'error';
   sessionId?: string;
+  // metadata イベント受信時のみ付与される（messageStop の後に届く）。
+  metadata?: Metadata;
 };
 
 export type Pagination<T> = {

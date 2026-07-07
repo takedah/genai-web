@@ -56,6 +56,16 @@ interface TeamAccessControlProps {
    * - RETAIN: Table will be retained when the stack is deleted
    */
   removalPolicy?: RemovalPolicy;
+  modelRegion: string;
+  modelIds: string[];
+  crossAccountBedrockRoleArn?: string | null;
+  inferenceProfileMap?: { [modelId: string]: string };
+  // chat と同じ環境変数を配布する。未指定時は空文字 / 0 / [] にフォールバック。
+  costConversion?: {
+    toCurrency: string;
+    rate: number;
+    allowedFromCurrencies: string[];
+  };
 }
 
 /**  Class for construct of authorization resources. */
@@ -70,6 +80,11 @@ export class TeamAccessControl extends Construct {
   public readonly invokeExAppFunction: NodejsFunction;
   public readonly getArtifactFileFunction: NodejsFunction;
   private readonly appEnv: string;
+  private readonly costConversionEnv: {
+    COST_CONVERSION_TO_CURRENCY: string;
+    COST_CONVERSION_RATE: string;
+    COST_CONVERSION_ALLOWED_FROM: string;
+  };
 
   constructor(scope: Construct, id: string, props: TeamAccessControlProps) {
     super(scope, id);
@@ -77,6 +92,13 @@ export class TeamAccessControl extends Construct {
     const { userPool } = props;
     this.userPoolId = userPool.userPoolId;
     this.appEnv = props.envName || '';
+
+    this.costConversionEnv = {
+      COST_CONVERSION_TO_CURRENCY: props.costConversion?.toCurrency ?? '',
+      COST_CONVERSION_RATE: (props.costConversion?.rate ?? 0).toString(),
+      COST_CONVERSION_ALLOWED_FROM: (props.costConversion?.allowedFromCurrencies ?? []).join(','),
+    };
+    const costConversionEnv = this.costConversionEnv;
 
     // LogLevelの文字列を cdkが提供する型に変換
     const applicationLogLevel = props.logLevel as ApplicationLogLevel;
@@ -443,6 +465,13 @@ export class TeamAccessControl extends Construct {
         TTL_DAYS: props.dynamoDbTtlDays.toString(),
         APP_ENV: this.appEnv,
         USER_IDENTIFIER_HMAC_KEY_ID: userIdentifierHmacKey.key.keyId,
+        MODEL_REGION: props.modelRegion,
+        MODEL_IDS: JSON.stringify(props.modelIds),
+        CROSS_ACCOUNT_BEDROCK_ROLE_ARN: props.crossAccountBedrockRoleArn ?? '',
+        ...costConversionEnv,
+        ...(props.inferenceProfileMap
+          ? { INFERENCE_PROFILE_MAP: JSON.stringify(props.inferenceProfileMap) }
+          : {}),
       },
       memorySize: 256,
       loggingFormat: LoggingFormat.JSON,
@@ -502,6 +531,13 @@ export class TeamAccessControl extends Construct {
         APP_ENV: this.appEnv,
         USER_IDENTIFIER_HMAC_KEY_ID: userIdentifierHmacKey.key.keyId,
         USER_POOL_ID: this.userPoolId,
+        MODEL_REGION: props.modelRegion,
+        MODEL_IDS: JSON.stringify(props.modelIds),
+        CROSS_ACCOUNT_BEDROCK_ROLE_ARN: props.crossAccountBedrockRoleArn ?? '',
+        ...costConversionEnv,
+        ...(props.inferenceProfileMap
+          ? { INFERENCE_PROFILE_MAP: JSON.stringify(props.inferenceProfileMap) }
+          : {}),
       },
       memorySize: 256,
       loggingFormat: LoggingFormat.JSON,
@@ -538,6 +574,28 @@ export class TeamAccessControl extends Construct {
         },
       }),
     );
+
+    // Bedrock permissions for title prediction
+    if (
+      typeof props.crossAccountBedrockRoleArn !== 'string' ||
+      props.crossAccountBedrockRoleArn === ''
+    ) {
+      const bedrockPolicy = new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: ['*'],
+        actions: ['bedrock:InvokeModel'],
+      });
+      invokeExAppFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+      pollExAppStatusFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+    } else {
+      const assumeRolePolicy = new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['sts:AssumeRole'],
+        resources: [props.crossAccountBedrockRoleArn],
+      });
+      invokeExAppFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
+      pollExAppStatusFunction.role?.addToPrincipalPolicy(assumeRolePolicy);
+    }
 
     NagSuppressions.addResourceSuppressions(
       invokeExAppFunction.role!,
@@ -902,6 +960,8 @@ export class TeamAccessControl extends Construct {
         EXAPP_TABLE_NAME: this.exAppTable.tableName,
         INVOKE_HISTORY_TABLE_NAME: this.invokeExAppHistoryTable.tableName,
         APP_ENV: this.appEnv,
+        // 履歴取得 API などでも summarizeFromUsageMetadata 経由で converted を付与するため
+        ...this.costConversionEnv,
       },
     });
     this.table.grantReadWriteData(lambdaFunc);

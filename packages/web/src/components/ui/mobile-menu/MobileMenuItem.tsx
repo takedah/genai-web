@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { Link, useLocation } from 'react-router';
+import { LinkExternalLinkIcon } from '@/components/ui/dads/Link';
 
 const baseClassName =
   "flex min-h-11 items-center rounded-4 py-1 pr-2 pl-4 hover:bg-solid-gray-50 hover:underline hover:underline-offset-[calc(3/16*1rem)] focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-0 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset aria-[current='page']:bg-blue-100! aria-[current='page']:font-bold aria-[current='page']:text-blue-1000! aria-current:bg-blue-100! aria-current:font-bold aria-current:text-blue-1000!";
@@ -9,6 +10,12 @@ type MobileMenuItemLinkProps = {
   label: string;
   to: string;
   disableParentAriaCurrent?: boolean;
+};
+
+type MobileMenuItemLinkExternalProps = {
+  className?: string;
+  label: string;
+  to: string;
 };
 
 type MobileMenuItemButtonProps = {
@@ -44,6 +51,21 @@ export const MobileMenuItemLink = (props: MobileMenuItemLinkProps) => {
   );
 };
 
+export const MobileMenuItemLinkExternal = (props: MobileMenuItemLinkExternalProps) => {
+  const { className, label, to } = props;
+
+  return (
+    <a className={`${baseClassName} ${className ?? ''}`} href={to} target='_blank' rel='noreferrer'>
+      <div className='flex w-full items-center justify-between'>
+        <span>
+          {label}
+          <LinkExternalLinkIcon />
+        </span>
+      </div>
+    </a>
+  );
+};
+
 export const MobileMenuItemButton = (props: MobileMenuItemButtonProps) => {
   const { className, label, onClick } = props;
 
@@ -53,9 +75,9 @@ export const MobileMenuItemButton = (props: MobileMenuItemButtonProps) => {
       className={`${baseClassName} w-full text-left ${className ?? ''}`}
       onClick={onClick}
     >
-      <div className='flex w-full items-center justify-between'>
+      <span className='flex w-full items-center justify-between'>
         <span>{label}</span>
-      </div>
+      </span>
     </button>
   );
 };

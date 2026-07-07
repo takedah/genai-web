@@ -4,8 +4,9 @@ cdk.out/
 /*/dist/**
 ToDo.md
 !.gitkeep
-.env
+.env.*
 security-report/
+tmp/
 
 
 # MkDocs documentation

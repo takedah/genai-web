@@ -176,6 +176,24 @@ describe('getInvokeExAppHistory Lambda handler', () => {
     expect(body.error).toBe('パラメータが不正です。');
   });
 
+  it('履歴が見つからない場合は404エラーを返す', async () => {
+    vi.mocked(findTeamById).mockResolvedValue(mockTeam);
+    vi.mocked(findExAppById).mockResolvedValue(mockExApp);
+    vi.mocked(findInvokeExAppHistory).mockResolvedValue({ history: null });
+
+    const event = createEvent({
+      teamId: mockTeamId,
+      exAppId: mockExAppId,
+      createdDate: mockCreatedDate,
+    });
+
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(404);
+    const body = JSON.parse(result.body);
+    expect(body.error).toBe('履歴が見つかりませんでした。');
+  });
+
   it('ExAppが見つからない場合は400エラーを返す', async () => {
     vi.mocked(findTeamById).mockResolvedValue(mockTeam);
     vi.mocked(findExAppById).mockResolvedValue(null);
@@ -191,6 +209,58 @@ describe('getInvokeExAppHistory Lambda handler', () => {
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
     expect(body.error).toBe('パラメータが不正です。');
+  });
+
+  it('repository が usageMetadata と totalEstimatedCost を返した場合、レスポンスにそのまま含まれる', async () => {
+    const historyWithCost = {
+      history: {
+        ...mockHistory.history,
+        usageMetadata: [
+          {
+            estimatedCostInfo: { estimatedCost: 0.3, currency: 'USD' },
+            modelVersion: 'gemini-2',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 50, promptTokenCount: 100, totalTokenCount: 150 },
+          },
+        ],
+        totalEstimatedCost: { totalCost: 0.3, currency: 'USD' },
+      },
+    };
+    vi.mocked(findTeamById).mockResolvedValue(mockTeam);
+    vi.mocked(findExAppById).mockResolvedValue(mockExApp);
+    vi.mocked(findInvokeExAppHistory).mockResolvedValue(historyWithCost);
+
+    const event = createEvent({
+      teamId: mockTeamId,
+      exAppId: mockExAppId,
+      createdDate: mockCreatedDate,
+    });
+
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body.history.usageMetadata).toEqual(historyWithCost.history.usageMetadata);
+    expect(body.history.totalEstimatedCost).toEqual({ totalCost: 0.3, currency: 'USD' });
+  });
+
+  it('旧履歴アイテム（usageMetadata なし）でも壊れずに返る（後方互換）', async () => {
+    vi.mocked(findTeamById).mockResolvedValue(mockTeam);
+    vi.mocked(findExAppById).mockResolvedValue(mockExApp);
+    vi.mocked(findInvokeExAppHistory).mockResolvedValue(mockHistory);
+
+    const event = createEvent({
+      teamId: mockTeamId,
+      exAppId: mockExAppId,
+      createdDate: mockCreatedDate,
+    });
+
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body.history.usageMetadata).toBeUndefined();
+    expect(body.history.totalEstimatedCost).toBeUndefined();
   });
 
   it('予期しないエラーが発生した場合は500エラーを返す', async () => {

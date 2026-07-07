@@ -25,8 +25,15 @@ export const predictStreamHandler = async (
 
   try {
     const model = resolveAllowedTextModel(event.model);
-    for await (const token of api[model.type].invokeStream?.(model, event.messages, event.id) ??
-      []) {
+    // 添付ファイルの S3 取得時に所有者チェックへ使う Cognito Identity ID。
+    // InvokeWithResponseStreamCommand 経由の呼び出しで context.identity に伝播する。
+    const identityId = context.identity?.cognitoIdentityId;
+    for await (const token of api[model.type].invokeStream?.(
+      model,
+      event.messages,
+      event.id,
+      identityId,
+    ) ?? []) {
       responseStream.write(token);
     }
   } catch (error) {

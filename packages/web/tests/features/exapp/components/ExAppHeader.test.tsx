@@ -19,23 +19,48 @@ describe('ExAppHeader', () => {
   };
 
   it('renders exAppName as h1', () => {
-    const { getByRole } = render(<MemoryRouter><ExAppHeader exApp={mockExApp} /></MemoryRouter>);
+    const { getByRole } = render(
+      <MemoryRouter>
+        <ExAppHeader exApp={mockExApp} teamId='team-123' exAppId='app-123' />
+      </MemoryRouter>,
+    );
 
     const heading = getByRole('heading', { level: 1 });
     expect(heading).toBeDefined();
-    expect(heading.textContent).toBe('テストアプリ');
+    expect(heading.textContent).toBe('テストアプリ（概要・注意事項）');
   });
 
-  it('renders howToUse markdown content', () => {
-    const { getByText } = render(<MemoryRouter><ExAppHeader exApp={mockExApp} /></MemoryRouter>);
+  it('renders tabs with correct links', () => {
+    const { getByRole } = render(
+      <MemoryRouter>
+        <ExAppHeader exApp={mockExApp} teamId='team-123' exAppId='app-123' />
+      </MemoryRouter>,
+    );
 
-    expect(getByText(/これはテストアプリの使い方です。/)).toBeDefined();
+    const nav = getByRole('navigation', { name: 'テストアプリの目次' });
+    expect(nav).toBeDefined();
   });
 
-  it('does not render howToUse when empty string', () => {
-    const exAppWithoutHowToUse = { ...mockExApp, howToUse: '' };
-    const { queryByText } = render(<MemoryRouter><ExAppHeader exApp={exAppWithoutHowToUse} /></MemoryRouter>);
+  it('marks description tab as selected', () => {
+    const { getByText } = render(
+      <MemoryRouter>
+        <ExAppHeader exApp={mockExApp} teamId='team-123' exAppId='app-123' />
+      </MemoryRouter>,
+    );
 
-    expect(queryByText(/これはテストアプリの使い方です。/)).toBeNull();
+    const descriptionTab = getByText('概要・注意事項');
+    expect(descriptionTab.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('renders invoke tab as a link with correct href', () => {
+    const { getByRole } = render(
+      <MemoryRouter>
+        <ExAppHeader exApp={mockExApp} teamId='team-123' exAppId='app-123' />
+      </MemoryRouter>,
+    );
+
+    const invokeLink = getByRole('link', { name: 'アプリ実行' });
+    expect(invokeLink).toBeDefined();
+    expect(invokeLink.getAttribute('href')).toBe('/apps/team-123/app-123/invoke');
   });
 });

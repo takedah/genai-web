@@ -17,9 +17,11 @@ import {
   FileUploadInput,
 } from '@/components/ui/dads/FileUpload';
 import { formatSize } from '@/components/ui/dads/FileUpload/utils/formatSize';
+import { SupportText } from '@/components/ui/dads/SupportText';
 import { AttachmentIcon } from '@/components/ui/icons/AttachmentIcon';
 import { SendIcon } from '@/components/ui/icons/SendIcon';
 import { LoadingButton } from '@/components/ui/LoadingButton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 import { useChatStore } from '@/features/chat/stores/useChatStore';
 import { useChat } from '@/hooks/useChat';
 import { useFiles } from '@/hooks/useFiles';
@@ -152,131 +154,150 @@ export const ChatInput = (props: Props) => {
             ? '調べたいことやお困りごとなど、何でも入力してみましょう'
             : '追加で質問や不明点などあれば返答してみましょう'}
         </h2>
-        <div className='relative flex items-end bg-white'>
-          <div className='flex w-full flex-col gap-2'>
-            <AutoResizeTextarea
-              id='chat-input'
-              className='resize-none'
-              rows={isInitialChat ? 3 : 1}
-              required
-              placeholder=''
-              aria-labelledby='chat-input-heading'
-              aria-describedby='chat-input-error chat-input-file-error'
-              onPaste={fileUpload ? handlePaste : undefined}
-              onKeyDown={(e) => {
-                if (isSubmitKey(e)) {
-                  e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
-                }
-              }}
-              {...register('content', {
-                onChange: (e) => {
-                  setValue('content', e.target.value);
-                  setContent(e.target.value);
-                },
-              })}
-            />
-            {(errors.content || fileErrorMessage) && (
-              <ul className='p-0 list-none space-y-0.5'>
-                {errors.content && (
-                  <li>
-                    <ErrorText id='chat-input-error'>＊{errors.content.message}</ErrorText>
-                  </li>
-                )}
-                {fileErrorMessage && (
-                  <li>
-                    <ErrorText id='chat-input-file-error'>＊{fileErrorMessage}</ErrorText>
-                  </li>
-                )}
-              </ul>
-            )}
+        <div className='relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-x-2 bg-white'>
+          <AutoResizeTextarea
+            id='chat-input'
+            className='resize-none col-start-1 row-start-1 py-[calc(11/16*1rem)]!'
+            rows={isInitialChat ? 3 : 1}
+            required
+            placeholder=''
+            aria-labelledby='chat-input-heading'
+            aria-describedby='chat-input-error chat-input-file-error'
+            onPaste={fileUpload ? handlePaste : undefined}
+            onKeyDown={(e) => {
+              if (isSubmitKey(e)) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+            {...register('content', {
+              onChange: (e) => {
+                setValue('content', e.target.value);
+                setContent(e.target.value);
+              },
+            })}
+          />
 
-            <div className='flex w-full justify-start items-start gap-6'>
-              {fileUpload && (
-                <FileUpload className='flex-1' hasError={errorMessages.length > 0}>
-                  <FileUploadInput
-                    ref={fileInputRef}
-                    onChange={onChangeFiles}
-                    accept={accept?.join(',')}
-                    multiple
-                  />
+          {(errors.content || fileErrorMessage) && (
+            <ul className='col-span-full row-start-2 mt-2 p-0 list-none space-y-0.5'>
+              {errors.content && (
+                <li>
+                  <ErrorText id='chat-input-error'>＊{errors.content.message}</ErrorText>
+                </li>
+              )}
+              {fileErrorMessage && (
+                <li>
+                  <ErrorText id='chat-input-file-error'>＊{fileErrorMessage}</ErrorText>
+                </li>
+              )}
+            </ul>
+          )}
+
+          {fileUpload && (
+            <>
+              <FileUploadInput
+                ref={fileInputRef}
+                onChange={onChangeFiles}
+                accept={accept?.join(',')}
+                multiple
+              />
+              <Tooltip>
+                <TooltipTrigger asChild ref={attachButtonRef}>
                   <Button
-                    ref={attachButtonRef}
                     variant='outline'
                     type='button'
                     size='md'
                     aria-describedby='chat-input-file-error'
-                    className='inline-flex justify-center items-center gap-1 group-data-[has-error=true]/file-upload:border-error-1'
+                    className={`col-start-2 row-start-1 shrink-0 inline-flex min-w-12! justify-center items-center px-2! ${errorMessages.length > 0 ? 'border-error-1' : ''}`}
                     onClick={handleClickFileUpload}
                   >
-                    <AttachmentIcon aria-hidden={true} className='shrink-0' />
-                    添付するファイルを選択（4.5MBまで）
+                    <AttachmentIcon
+                      aria-label={`添付するファイルを選択（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MBまで）`}
+                      role='img'
+                      className='shrink-0'
+                    />
                   </Button>
+                </TooltipTrigger>
+                <TooltipContent aria-hidden={true}>
+                  添付するファイルを選択
+                  <br />
+                  {`（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MBまで）`}
+                </TooltipContent>
+              </Tooltip>
 
-                  {uploadedFiles.length > 0 && (
-                    <FileUploadFileList className='mt-2! py-2 pl-2 overflow-y-auto max-h-48 -ml-2 -mr-[calc(168/16*1rem)] overscroll-contain [scrollbar-gutter:stable]'>
-                      {uploadedFiles.map((uploadedFile, idx) => (
-                        <FileUploadFileItem
-                          key={idx}
-                          hasError={uploadedFile.errorMessages.length > 0}
+              {uploadedFiles.length > 0 && (
+                <FileUpload className='col-span-full row-start-3 mt-2'>
+                  <SupportText className='mt-1.5'>
+                    ※表示されるファイルサイズはBase64エンコード後の値です（元のサイズより約1.3倍大きくなります）
+                  </SupportText>
+                  <FileUploadFileList className='mt-2! py-2 pl-2 overflow-y-auto max-h-48 -ml-2 overscroll-contain [scrollbar-gutter:stable]'>
+                    {uploadedFiles.map((uploadedFile, idx) => (
+                      <FileUploadFileItem
+                        key={idx}
+                        hasError={uploadedFile.errorMessages.length > 0}
+                      >
+                        <FileUploadFileMarker />
+                        <FileUploadFileInfo>
+                          <p>
+                            <FileUploadFileName id={`attached-file-${idx}-name`}>
+                              {uploadedFile.name}
+                            </FileUploadFileName>
+                            <FileUploadFileMeta>
+                              {/* Base64 変換後のサイズを表示し、検証基準（new Blob([base64]).size）と一致させる。
+                                Base64 の文字列長は厳密に 4 * ceil(n/3) バイト。 */}
+                              <span>{formatSize(4 * Math.ceil(uploadedFile.file.size / 3))}</span>（
+                              <span>
+                                {(4 * Math.ceil(uploadedFile.file.size / 3)).toLocaleString()}
+                              </span>
+                              バイト）
+                            </FileUploadFileMeta>
+                          </p>
+                          {uploadedFile.errorMessages.length > 0 &&
+                            uploadedFile.errorMessages.map((error) => <p key={error}>＊{error}</p>)}
+                        </FileUploadFileInfo>
+                        <Button
+                          id={`attached-file-${idx}-remove`}
+                          type='button'
+                          variant='text'
+                          size='xs'
+                          className='-order-1 shrink-0 min-w-14 min-h-[calc(30/16*1rem)] text-oln-16B-100'
+                          onClick={() => {
+                            if (uploadedFile.uploading || uploadedFile.deleting) return;
+                            deleteFile(uploadedFile.s3Url ?? '', idx);
+                          }}
+                          aria-labelledby={
+                            uploadedFile.deleting
+                              ? undefined
+                              : `attached-file-${idx}-remove attached-file-${idx}-name`
+                          }
                         >
-                          <FileUploadFileMarker />
-                          <FileUploadFileInfo>
-                            <p>
-                              <FileUploadFileName id={`attached-file-${idx}-name`}>
-                                {uploadedFile.name}
-                              </FileUploadFileName>
-                              <FileUploadFileMeta>
-                                <span>{formatSize(uploadedFile.file.size)}</span>（
-                                <span>
-                                  {Math.ceil((uploadedFile.file.size * 4) / 3).toLocaleString()}
-                                </span>
-                                バイト）
-                              </FileUploadFileMeta>
-                            </p>
-                            {uploadedFile.errorMessages.length > 0 &&
-                              uploadedFile.errorMessages.map((error) => (
-                                <p key={error}>＊{error}</p>
-                              ))}
-                          </FileUploadFileInfo>
-                          <Button
-                            id={`attached-file-${idx}-remove`}
-                            type='button'
-                            variant='text'
-                            size='xs'
-                            className='-order-1 shrink-0 min-w-14 min-h-[calc(30/16*1rem)] text-oln-16B-100'
-                            onClick={() => {
-                              if (uploadedFile.uploading || uploadedFile.deleting) return;
-                              deleteFile(uploadedFile.s3Url ?? '', idx);
-                            }}
-                            aria-labelledby={
-                              uploadedFile.deleting
-                                ? undefined
-                                : `attached-file-${idx}-remove attached-file-${idx}-name`
-                            }
-                          >
-                            {uploadedFile.deleting ? '解除中' : '解除'}
-                          </Button>
-                        </FileUploadFileItem>
-                      ))}
-                    </FileUploadFileList>
-                  )}
+                          {uploadedFile.deleting ? '解除中' : '解除'}
+                        </Button>
+                      </FileUploadFileItem>
+                    ))}
+                  </FileUploadFileList>
                 </FileUpload>
               )}
+            </>
+          )}
 
-              <LoadingButton
-                type='submit'
-                variant='solid-fill'
-                size='md'
-                disabled={disabledSend}
-                onClick={() => {}}
-                className='shrink-0 ml-auto inline-flex justify-center items-center gap-1 min-w-36'
-              >
+          <LoadingButton
+            type='submit'
+            variant='solid-fill'
+            size='md'
+            disabled={disabledSend}
+            onClick={() => {}}
+            className='col-start-3 row-start-1 shrink-0 gap-1! px-3! min-w-24!'
+          >
+            {loading ? (
+              '生成中'
+            ) : (
+              <>
                 <SendIcon aria-hidden={true} className='shrink-0' />
-                {loading ? '生成中...' : '送信'}
-              </LoadingButton>
-            </div>
-          </div>
+                送信
+              </>
+            )}
+          </LoadingButton>
         </div>
       </form>
     </div>

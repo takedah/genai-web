@@ -1,5 +1,8 @@
 import { PiFileX, PiImageLight } from 'react-icons/pi';
-import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
+import {
+  ProgressIndicator,
+  ProgressIndicatorSpinner,
+} from '@/components/ui/dads/ProgressIndicator';
 
 type CommonProps = {
   alt?: string;
@@ -34,7 +37,9 @@ const Base64ImageContent = (props: ContentProps) => {
 
   if (!imageBase64 || imageBase64 === '') {
     return loading ? (
-      <ProgressIndicator />
+      <ProgressIndicator type='inlined' aria-label='読み込み中'>
+        <ProgressIndicatorSpinner size='sm' />
+      </ProgressIndicator>
     ) : (
       <PiImageLight role='img' aria-label='画像未生成' className='size-3/4 text-solid-gray-420' />
     );

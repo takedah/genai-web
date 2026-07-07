@@ -16,6 +16,7 @@ type SupportTextPosition = 'top' | 'bottom';
 type Option = {
   value: string;
   label: string;
+  description?: string;
 };
 
 type Props = {
@@ -23,10 +24,10 @@ type Props = {
   label?: string;
   labelClassName?: string;
   buttonClassName?: string;
+  optionsClassName?: string;
   value: string;
   options: Option[];
   description?: string;
-  isFullWidth?: boolean;
   isVertical?: boolean;
   selectSize?: SelectBlockSize;
   onChange: (value: string) => void;
@@ -56,12 +57,12 @@ export const CustomSelect = (props: Props) => {
     label,
     labelClassName,
     buttonClassName,
+    optionsClassName,
     description,
     value,
     options,
     onChange,
     isVertical,
-    isFullWidth,
     selectSize = 'sm',
   } = props;
 
@@ -86,7 +87,7 @@ export const CustomSelect = (props: Props) => {
         <Listbox value={value} onChange={onChange}>
           <div className='relative'>
             <ListboxButton
-              className={`group/button relative rounded-4 border border-solid-gray-600 bg-white pr-10 pl-3 text-left text-solid-gray-800 hover:border-black focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid data-[select-size=lg]:h-14 data-[select-size=md]:h-12 data-[select-size=sm]:h-10 ${isFullWidth ? 'w-full' : 'w-fit'} ${buttonClassName ?? ''}`}
+              className={`group/button relative rounded-4 border border-solid-gray-600 bg-white pr-10 pl-3 text-left text-solid-gray-800 hover:border-black focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid data-[select-size=lg]:h-14 data-[select-size=md]:h-12 data-[select-size=sm]:h-10 w-fit ${buttonClassName ?? ''}`}
               data-select-size={selectSize}
             >
               <span className='block truncate'>{selectedLabel}</span>
@@ -99,7 +100,12 @@ export const CustomSelect = (props: Props) => {
               </span>
             </ListboxButton>
             <ListboxOptions
-              className={`absolute z-10 mt-0.5 max-h-60 overflow-auto rounded-8 border border-solid-gray-420 bg-white py-1 text-dns-16N-130 shadow-1 focus:outline-hidden has-[>:nth-child(7)]:rounded-r-none ${isFullWidth ? 'w-full' : 'w-fit'}`}
+              // anchor positions the menu via Floating UI so it flips/shifts to stay
+              // within the viewport on narrow screens. --anchor-gap sets the offset from
+              // the button. Width is capped to the viewport (minus a small margin) since
+              // shifting alone cannot fit a menu that is wider than the screen.
+              anchor='bottom start'
+              className={`z-10 max-w-[calc(100vw-2rem)] w-fit overflow-auto rounded-8 border border-solid-gray-420 bg-white py-1 text-dns-16N-130 shadow-1 [--anchor-gap:calc(2/16*1rem)] focus:outline-hidden ${optionsClassName ?? ''}`}
             >
               {options.map((option, idx) => (
                 // NOTE: The `focus` state of ListboxOptions in Headless UI v2 is same as `active` state.
@@ -107,17 +113,30 @@ export const CustomSelect = (props: Props) => {
                 <ListboxOption
                   key={`${option.value}-${idx}`}
                   className={({ focus }) =>
-                    `relative h-9 py-2 pr-4 pl-10 text-solid-gray-800 select-none hover:bg-solid-gray-50 hover:underline hover:underline-offset-[calc(3/16*1rem)] data-selected:bg-blue-50! data-selected:text-blue-1000! ${focus ? '[:root[data-headlessui-focus-visible]_&]:bg-yellow-300 [:root[data-headlessui-focus-visible]_&]:ring-[calc(6/16*1rem)] [:root[data-headlessui-focus-visible]_&]:ring-yellow-300 [:root[data-headlessui-focus-visible]_&]:outline-4 [:root[data-headlessui-focus-visible]_&]:-outline-offset-4 [:root[data-headlessui-focus-visible]_&]:outline-black [:root[data-headlessui-focus-visible]_&]:outline-solid [:root[data-headlessui-focus-visible]_&]:ring-inset' : ''} `
+                    `group relative min-h-9 py-3 pr-4 pl-10 select-none text-dns-17N-130 hover:bg-solid-gray-50 data-selected:bg-blue-50! data-selected:text-blue-1000! ${focus ? '[:root[data-headlessui-focus-visible]_&]:bg-yellow-300 [:root[data-headlessui-focus-visible]_&]:ring-[calc(6/16*1rem)] [:root[data-headlessui-focus-visible]_&]:ring-yellow-300 [:root[data-headlessui-focus-visible]_&]:outline-4 [:root[data-headlessui-focus-visible]_&]:-outline-offset-4 [:root[data-headlessui-focus-visible]_&]:outline-black [:root[data-headlessui-focus-visible]_&]:outline-solid [:root[data-headlessui-focus-visible]_&]:ring-inset' : ''} `
                   }
                   value={option.value}
                 >
-                  {({ selected }) => (
+                  {({ focus, selected }) => (
                     <>
-                      <span className={`block truncate ${selected ? 'font-700' : 'font-400'}`}>
+                      <span
+                        className={`block truncate group-hover:underline group-hover:underline-offset-[calc(3/16*1rem)] ${selected ? 'text-blue-1000 font-700' : 'text-solid-gray-900 font-400'}`}
+                      >
                         {option.label}
                       </span>
+                      {option.description && (
+                        // When this option is focused via keyboard, the root carries
+                        // data-headlessui-focus-visible. Darken the description to
+                        // solid-gray-900 in that case for better contrast. Selected
+                        // options force blue-1000 so the selected state always wins.
+                        <span
+                          className={`block mt-1 text-dns-16N-130 ${selected ? 'text-blue-1000!' : 'text-solid-gray-600'} ${focus ? '[:root[data-headlessui-focus-visible]_&]:text-solid-gray-900' : ''}`}
+                        >
+                          {option.description}
+                        </span>
+                      )}
                       {selected ? (
-                        <span className='absolute inset-y-0 left-0 flex items-center pl-3 text-blue-1000'>
+                        <span className='absolute top-3 left-0 flex h-lh items-center pl-3 text-blue-1000'>
                           <PiCheck aria-hidden={true} className='size-5' />
                         </span>
                       ) : null}
