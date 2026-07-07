@@ -24,7 +24,7 @@ export const handler = createApiHandler(async (event) => {
 
   const exApp = await findExAppById(teamId, exAppId);
   if (!exApp) {
-    throw new HttpError(400, 'AIアプリが見つかりませんでした。');
+    throw new HttpError(404, 'AIアプリが見つかりませんでした。');
   }
 
   return { statusCode: 200, body: exApp };

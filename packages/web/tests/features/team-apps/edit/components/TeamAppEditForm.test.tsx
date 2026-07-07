@@ -637,7 +637,9 @@ describe('TeamAppEditForm', () => {
     it('has support text for API key field indicating optional update', () => {
       renderWithRouter();
 
-      const supportText = screen.getByText(/APIキーの更新が必要な場合のみ入力してください/);
+      const supportText = screen.getByText(
+        /APIエンドポイントの変更をした場合は新たなAPIキーを入力してください/,
+      );
       expect(supportText).toBeDefined();
     });
   });

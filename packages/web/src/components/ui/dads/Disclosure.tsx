@@ -19,7 +19,7 @@ export const DisclosureSummary = (props: DisclosureSummaryProps) => {
 
   return (
     <summary
-      className={`group/summary flex w-fit cursor-default items-start justify-start gap-2  marker:[content:''] hover:underline hover:underline-offset-[calc(3/16*1rem)] focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid [&::-webkit-details-marker]:hidden ${className ?? ''}`}
+      className={`group/summary flex w-fit cursor-default items-start justify-start gap-2 marker:[content:''] hover:underline hover:underline-offset-[calc(3/16*1rem)] focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid [&::-webkit-details-marker]:hidden ${className ?? ''}`}
       {...rest}
     >
       <svg

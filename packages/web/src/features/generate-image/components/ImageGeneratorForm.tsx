@@ -185,7 +185,8 @@ export const ImageGeneratorForm = (props: Props) => {
           label='モデル'
           labelClassName='text-std-16B-170 mt-0!'
           isVertical
-          isFullWidth
+          buttonClassName='w-full'
+          optionsClassName='w-(--button-width)!'
           value={imageGenModelId}
           onChange={setImageGenModelId}
           options={imageGenModelIds.map((m) => {
@@ -197,7 +198,8 @@ export const ImageGeneratorForm = (props: Props) => {
             label='サイズ'
             labelClassName='text-std-16B-170 mt-0!'
             isVertical
-            isFullWidth
+            buttonClassName='w-full'
+            optionsClassName='w-(--button-width)!'
             value={resolution.value}
             onChange={(value: string) => {
               const selectedResolution = resolutionPresets.find(
@@ -291,7 +293,8 @@ export const ImageGeneratorForm = (props: Props) => {
             label='GenerationMode'
             labelClassName='text-std-16B-170'
             isVertical
-            isFullWidth
+            buttonClassName='w-full'
+            optionsClassName='w-(--button-width)!'
             options={modeOptions}
             value={generationMode}
             onChange={(v) => setGenerationMode(v as AmazonUIImageGenerationMode)}
@@ -399,12 +402,13 @@ export const ImageGeneratorForm = (props: Props) => {
                 label='プリセットパレット'
                 labelClassName='text-std-16B-170'
                 isVertical
+                buttonClassName='w-full'
+                optionsClassName='w-(--button-width)!'
                 options={COLORS_OPTIONS}
                 value={COLORS_OPTIONS.find((option) => option.value === colors)?.value || ''}
                 onChange={(value) => {
                   setColors(value);
                 }}
-                isFullWidth
               />
             </div>
 
@@ -473,10 +477,11 @@ export const ImageGeneratorForm = (props: Props) => {
               label='コントロールモード'
               labelClassName='text-std-16B-170'
               isVertical
+              buttonClassName='w-full'
+              optionsClassName='w-(--button-width)!'
               options={CONTROL_MODE_OPTIONS}
               value={controlMode}
               onChange={(v) => setControlMode(v as ControlMode)}
-              isFullWidth
             />
             <Disclosure className='mt-2'>
               <DisclosureSummary>コントロールモードの各項目について</DisclosureSummary>
@@ -499,7 +504,8 @@ export const ImageGeneratorForm = (props: Props) => {
                 labelClassName='text-std-16B-170'
                 className='mb-2'
                 isVertical
-                isFullWidth
+                buttonClassName='w-full'
+                optionsClassName='w-(--button-width)!'
                 options={STYLE_PRESET_OPTIONS}
                 value={stylePreset}
                 onChange={setStylePreset}

@@ -28,10 +28,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('active が false の場合はメッセージを設定しない', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ active: false, loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ active: false, loading: false }),
+    });
 
     rerender(createDefaultProps({ active: false, loading: true }));
 
@@ -39,10 +38,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('ローディング開始時に生成中メッセージを表示する', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     rerender(createDefaultProps({ loading: true }));
 
@@ -56,15 +54,12 @@ describe('useLiveStatusMessage', () => {
       completed: '画像の生成が完了しました',
     };
 
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      {
-        initialProps: createDefaultProps({
-          loading: false,
-          messages: customMessages,
-        }),
-      },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({
+        loading: false,
+        messages: customMessages,
+      }),
+    });
 
     rerender(createDefaultProps({ loading: true, messages: customMessages }));
     expect(result.current.liveStatusMessage).toBe('AIが画像を生成しています...');
@@ -74,10 +69,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('5秒後に継続メッセージを表示する', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     rerender(createDefaultProps({ loading: true }));
     expect(result.current.liveStatusMessage).toBe('AIが回答を生成しています...');
@@ -102,10 +96,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('継続メッセージは5秒おきに繰り返し読み上げられる', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     rerender(createDefaultProps({ loading: true }));
 
@@ -130,10 +123,9 @@ describe('useLiveStatusMessage', () => {
 
   describe('ローディング完了時', () => {
     it('completed メッセージを表示する', () => {
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        { initialProps: createDefaultProps({ loading: false }) },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({ loading: false }),
+      });
 
       rerender(createDefaultProps({ loading: true }));
       rerender(createDefaultProps({ loading: false }));
@@ -142,10 +134,9 @@ describe('useLiveStatusMessage', () => {
     });
 
     it('error がある場合はエラーメッセージを表示する', () => {
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        { initialProps: createDefaultProps({ loading: false }) },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({ loading: false }),
+      });
 
       const messagesWithError = {
         loading: 'AIが回答を生成しています...',
@@ -168,10 +159,9 @@ describe('useLiveStatusMessage', () => {
         empty: 'AIの回答がありません。',
       };
 
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        { initialProps: createDefaultProps({ loading: false, messages: emptyMessages }) },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({ loading: false, messages: emptyMessages }),
+      });
 
       rerender(createDefaultProps({ loading: true, messages: emptyMessages }));
       rerender(createDefaultProps({ loading: false, messages: emptyMessages }));
@@ -180,10 +170,9 @@ describe('useLiveStatusMessage', () => {
     });
 
     it('完了メッセージは5秒後にクリアされる', () => {
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        { initialProps: createDefaultProps({ loading: false }) },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({ loading: false }),
+      });
 
       rerender(createDefaultProps({ loading: true }));
       rerender(createDefaultProps({ loading: false }));
@@ -200,15 +189,12 @@ describe('useLiveStatusMessage', () => {
 
   describe('startDelay', () => {
     it('startDelay が指定されている場合、遅延後に開始メッセージを表示する', () => {
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        {
-          initialProps: createDefaultProps({
-            loading: false,
-            startDelay: 1000,
-          }),
-        },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({
+          loading: false,
+          startDelay: 1000,
+        }),
+      });
 
       rerender(createDefaultProps({ loading: true, startDelay: 1000 }));
 
@@ -223,15 +209,12 @@ describe('useLiveStatusMessage', () => {
     });
 
     it('startDelay 中にローディングが完了した場合、開始メッセージはスキップされる', () => {
-      const { result, rerender } = renderHook(
-        (props: Props) => useLiveStatusMessage(props),
-        {
-          initialProps: createDefaultProps({
-            loading: false,
-            startDelay: 2000,
-          }),
-        },
-      );
+      const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+        initialProps: createDefaultProps({
+          loading: false,
+          startDelay: 2000,
+        }),
+      });
 
       rerender(createDefaultProps({ loading: true, startDelay: 2000 }));
 
@@ -262,10 +245,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('loading 中の再レンダリングではタイマーがリセットされない', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     rerender(createDefaultProps({ loading: true }));
 
@@ -287,10 +269,9 @@ describe('useLiveStatusMessage', () => {
   it('アンマウント時にタイマーがクリアされる', () => {
     const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
 
-    const { rerender, unmount } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { rerender, unmount } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     rerender(createDefaultProps({ loading: true }));
 
@@ -302,10 +283,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('loading 中に active が false になるとタイマーがクリアされメッセージが空になる', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ active: true, loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ active: true, loading: false }),
+    });
 
     // ローディング開始
     rerender(createDefaultProps({ active: true, loading: true }));
@@ -323,10 +303,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('active が false→true に戻った後、loading の変化を正しく検出する', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ active: true, loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ active: true, loading: false }),
+    });
 
     // ローディング開始
     rerender(createDefaultProps({ active: true, loading: true }));
@@ -353,10 +332,9 @@ describe('useLiveStatusMessage', () => {
   });
 
   it('ローディングが連続して開始・停止・開始した場合に正しく動作する', () => {
-    const { result, rerender } = renderHook(
-      (props: Props) => useLiveStatusMessage(props),
-      { initialProps: createDefaultProps({ loading: false }) },
-    );
+    const { result, rerender } = renderHook((props: Props) => useLiveStatusMessage(props), {
+      initialProps: createDefaultProps({ loading: false }),
+    });
 
     // 1回目のローディング開始
     rerender(createDefaultProps({ loading: true }));

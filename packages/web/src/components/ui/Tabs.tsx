@@ -8,15 +8,17 @@ type TabItem = {
   key?: string;
   icon?: ReactNode;
   content?: ReactNode;
+  state?: unknown;
 };
 
 type Props = {
   title: string;
   items: TabItem[];
+  className?: string;
 };
 
 export const Tabs = (props: Props) => {
-  const { title, items } = props;
+  const { title, items, className } = props;
 
   const baseClassNames =
     'relative z-0 inline-flex gap-2 justify-center items-center text-oln-14B-100 px-4 py-6 group hover:bg-solid-gray-50 md:text-oln-16B-100 md:px-8 md:py-6 aria-[current=page]:cursor-default aria-[current=page]:bg-white';
@@ -27,8 +29,8 @@ export const Tabs = (props: Props) => {
     'focus-visible:z-10 focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300';
 
   return (
-    <nav aria-label={`${title}の目次`} className='pb-3'>
-      <div className='-mx-1.5 mt-4 w-full overflow-x-auto p-1.5'>
+    <nav aria-label={`${title}の目次`} className={`${className ?? ''}`}>
+      <div className='-mx-1.5 w-full overflow-x-auto p-1.5'>
         <ul className='flex w-full min-w-max items-end whitespace-nowrap border-b border-solid-gray-420'>
           {items.map((item) => (
             <li key={`tab-${item.title}`}>
@@ -38,7 +40,11 @@ export const Tabs = (props: Props) => {
                   {item.title}
                 </span>
               ) : (
-                <Link className={`${baseClassNames} ${focusedClassNames}`} to={item.href}>
+                <Link
+                  className={`${baseClassNames} ${focusedClassNames}`}
+                  to={item.href}
+                  state={item.state}
+                >
                   {item.icon}
                   {item.title}
                 </Link>

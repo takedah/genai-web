@@ -1,5 +1,6 @@
 import { CloudFrontToS3, CloudFrontToS3Props } from '@aws-solutions-constructs/aws-cloudfront-s3';
 import { NodejsBuild } from '@cdklabs/deploy-time-build';
+import type { PasswordPolicySettings } from '@genai-web/common';
 import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
@@ -36,9 +37,12 @@ export interface WebProps {
   idPoolId: string;
   predictStreamFunctionArn: string;
   selfSignUpEnabled: boolean;
+  emailMfaRequired: boolean;
+  passwordPolicy: PasswordPolicySettings;
   webAclId?: string;
   modelRegion: string;
   modelIds: string[];
+  defaultModelId: string;
   imageGenerationModelIds: string[];
   endpointNames: string[];
   samlAuthEnabled: boolean;
@@ -51,6 +55,7 @@ export interface WebProps {
   hostName?: string | null;
   domainName?: string | null;
   hostedZoneId?: string | null;
+  recentlyUsedAppsEnabled: boolean;
   hiddenUseCases: HiddenUseCases;
   govais_for_homepage: z.infer<typeof govaiForHomepage>[];
   topChatSystemPrompt: string;
@@ -325,8 +330,11 @@ function handler(event) {
         VITE_APP_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_PREDICT_STREAM_FUNCTION_ARN: props.predictStreamFunctionArn,
         VITE_APP_SELF_SIGN_UP_ENABLED: props.selfSignUpEnabled.toString(),
+        VITE_APP_EMAIL_MFA_REQUIRED: props.emailMfaRequired.toString(),
+        VITE_APP_PASSWORD_POLICY: JSON.stringify(props.passwordPolicy),
         VITE_APP_MODEL_REGION: props.modelRegion,
         VITE_APP_MODEL_IDS: JSON.stringify(props.modelIds),
+        VITE_APP_DEFAULT_MODEL_ID: props.defaultModelId,
         VITE_APP_IMAGE_MODEL_IDS: JSON.stringify(props.imageGenerationModelIds),
         VITE_APP_ENDPOINT_NAMES: JSON.stringify(props.endpointNames),
         VITE_APP_SAMLAUTH_ENABLED: props.samlAuthEnabled.toString(),
@@ -336,6 +344,7 @@ function handler(event) {
         VITE_APP_SAML_COGNITO_FEDERATED_IDENTITY_ADDITIONAL_PROVIDER_NAMES: JSON.stringify(
           props.samlCognitoFederatedIdentityAdditionalProviderNames ?? [],
         ),
+        VITE_APP_RECENTLY_USED_APPS_ENABLED: props.recentlyUsedAppsEnabled.toString(),
         VITE_APP_HIDDEN_USE_CASES: JSON.stringify(props.hiddenUseCases),
         VITE_APP_GOVAIS_FOR_HOMEPAGE: JSON.stringify(props.govais_for_homepage),
         VITE_APP_TOP_CHAT_SYSTEM_PROMPT: props.topChatSystemPrompt,

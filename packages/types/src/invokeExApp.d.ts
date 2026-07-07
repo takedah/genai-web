@@ -1,3 +1,5 @@
+import { EstimatedCostSummary } from './cost';
+
 export type InvokeExAppRequest = {
   teamId: string;
   exAppId: string;
@@ -7,11 +9,24 @@ export type InvokeExAppRequest = {
   // リクエストBodyの型定義には含めない
 };
 
+// 実データ準拠のオブジェクト型。最小ガード（estimatedCost のみ必須）で
+// プロバイダ間差異を吸収する。`[extra: string]: unknown` で未知フィールドを破棄せず透過。
+export type EstimatedCostInfo = {
+  estimatedCost: number;
+  currency?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  inputToken1KUnitPrice?: number;
+  outputToken1KUnitPrice?: number;
+  [extra: string]: unknown;
+};
+
 export type UsageMetadata = {
-  estimatedCostInfo?: string;
+  estimatedCostInfo?: EstimatedCostInfo;
   modelVersion: string;
   requestCount: number;
   tokens: {
+    // Gemini 系命名（外部アプリ応答透過用）。chat の ChatUsage とは別系統。
     candidatesTokenCount: number;
     promptTokenCount: number;
     totalTokenCount: number;
@@ -29,6 +44,7 @@ export type InvokeExAppResponse = {
     processingStartedAt: string;
   };
   usageMetadata?: UsageMetadata[];
+  totalEstimatedCost?: EstimatedCostSummary;
 };
 
 export type Artifact = {
@@ -51,6 +67,9 @@ export type InvokeExAppHistory = {
   progress: string;
   artifacts?: Artifact[];
   sessionId?: string;
+  predictedTitle?: string;
+  usageMetadata?: UsageMetadata[];
+  totalEstimatedCost?: EstimatedCostSummary;
 };
 
 export type ListInvokeExAppHistoriesRequest = {
@@ -65,5 +84,5 @@ export type ListInvokeExAppHistoriesResponse = {
 };
 
 export type GetInvokeExAppHistoryResponse = {
-  history: InvokeExAppHistory | null;
+  history: InvokeExAppHistory;
 };

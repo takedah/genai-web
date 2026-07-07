@@ -1,4 +1,5 @@
 import { PrimaryKey } from './base';
+import { EstimatedCostSummary } from './cost';
 
 export type Role = 'system' | 'user' | 'assistant';
 
@@ -15,6 +16,25 @@ export type MessageAttributes = {
   feedback: string;
 };
 
+export type ChatUsage = {
+  model: string;
+  provider?: string;
+  // コスト計算には別途非キャッシュ生値を用いる。
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  latencyMs?: number;
+};
+
+// 1 生成 = 1 エントリ。assistant メッセージは UsageCostEntry[] (n セット) を保持する。
+export type UsageCostEntry = {
+  usage: ChatUsage;
+  // pricing 未定義 / usage 不在では undefined。
+  estimatedCost?: EstimatedCostSummary;
+};
+
 export type UnrecordedMessage = {
   role: Role;
   // テキスト
@@ -23,6 +43,9 @@ export type UnrecordedMessage = {
   trace?: string;
   extraData?: ExtraData[];
   llmType?: string;
+  // 1 生成 = 1 要素の usage / estimatedCost 履歴（n セット保存）。
+  // 後方互換のため optional。継承先 (RecordedMessage / ToBeRecordedMessage) でも有効。
+  usageCostHistory?: UsageCostEntry[];
 };
 
 export type ExtraData = {

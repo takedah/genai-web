@@ -80,7 +80,7 @@ export const LandingForm = () => {
               type='submit'
               size='md'
               variant='solid-fill'
-              className='inline-flex justify-center items-center gap-1'
+              className='inline-flex justify-center items-center gap-1 px-3! min-w-24'
             >
               <SendIcon aria-hidden={true} className='shrink-0' />
               送信

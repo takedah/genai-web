@@ -20,5 +20,9 @@ export const handler = createApiHandler(async (event) => {
   const userId = getUserId(event);
   const response = await findInvokeExAppHistory(teamId, exAppId, userId, createdDate);
 
+  if (!response?.history) {
+    throw new HttpError(404, '履歴が見つかりませんでした。');
+  }
+
   return { statusCode: 200, body: response };
 });

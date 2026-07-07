@@ -1,0 +1,60 @@
+{
+  "models": {
+    "jp.anthropic.claude-opus-4-8": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 5.5 },
+        "outputTokens": { "unitPrice": 27.5 },
+        "cacheReadInputTokens": { "unitPrice": 0.55 },
+        "cacheWriteInputTokens": { "unitPrice": 6.875 }
+      }
+    },
+    "jp.anthropic.claude-sonnet-4-6": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 3.3 },
+        "outputTokens": { "unitPrice": 16.5 },
+        "cacheReadInputTokens": { "unitPrice": 0.33 },
+        "cacheWriteInputTokens": { "unitPrice": 4.125 }
+      }
+    },
+    "jp.anthropic.claude-sonnet-4-5-20250929-v1:0": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 3.3 },
+        "outputTokens": { "unitPrice": 16.5 },
+        "cacheReadInputTokens": { "unitPrice": 0.33 },
+        "cacheWriteInputTokens": { "unitPrice": 4.125 }
+      }
+    },
+    "jp.anthropic.claude-haiku-4-5-20251001-v1:0": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 1.1 },
+        "outputTokens": { "unitPrice": 5.5 },
+        "cacheReadInputTokens": { "unitPrice": 0.11 },
+        "cacheWriteInputTokens": { "unitPrice": 1.375 }
+      }
+    },
+    "amazon.nova-lite-v1:0": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 0.072 },
+        "outputTokens": { "unitPrice": 0.288 }
+      }
+    },
+    "jp.amazon.nova-2-lite-v1:0": {
+      "currency": "USD",
+      "pricingUnit": 1000000,
+      "tokenCategories": {
+        "inputTokens": { "unitPrice": 0.396 },
+        "outputTokens": { "unitPrice": 3.311 }
+      }
+    }
+  }
+}

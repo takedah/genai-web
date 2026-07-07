@@ -34,6 +34,17 @@ describe('authorizeOwnedKey', () => {
     ).toBe(false);
   });
 
+  test('Identity Id は大小を区別して比較する (大文字化したなりすましは false)', () => {
+    const id = 'us-east-1:abcd1234-eeee-eeee-eeee-eeeeeeeeeeee';
+    expect(authorizeOwnedKey(`${id.toUpperCase()}/uuid/file.png`, id)).toBe(false);
+  });
+
+  test('先頭セグメントのみ一致を見る (後続に被害者 id を含めても不一致)', () => {
+    // {attacker}/{victim}/... のように後続へ victim を仕込んでも先頭で弾く
+    const victim = 'us-east-1:victim-eeee-eeee-eeee-eeeeeeeeeeee';
+    expect(authorizeOwnedKey(`us-east-1:attacker/${victim}/file.png`, victim)).toBe(false);
+  });
+
   test('空キーは false', () => {
     expect(authorizeOwnedKey('', 'us-east-1:abc')).toBe(false);
   });

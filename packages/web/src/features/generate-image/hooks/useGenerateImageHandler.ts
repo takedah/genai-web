@@ -1,8 +1,11 @@
 import type { GenerateImageParams } from 'genai-web';
 import { useGenerateImage } from '@/features/generate-image/hooks/useGenerateImage';
 import { useGenerateImageStore } from '@/features/generate-image/stores/useGenerateImageStore';
+import { isRecentlyUsedAppsEnabled, useRecordRecentlyUsedApp } from '@/hooks/useRecentlyUsedApps';
+import { useResolveAppPath } from '@/hooks/useResolveAppPath';
 import type { ApiError } from '@/lib/fetcher';
 import { MODELS } from '@/models';
+import { GENU_APP_METAS } from '@/utils/getAvailableGenuApps';
 import { AMAZON_ADVANCED_GENERATION_MODE, GENERATION_MODES, MODEL_INFO } from '../constants';
 import { generateRandomSeed } from '../utils/generateRandomSeed';
 
@@ -42,6 +45,8 @@ export const useGenerateImageHandler = (
 
   const { generateImage } = useGenerateImage();
   const { imageGenModels } = MODELS;
+  const recordRecentlyUsedApp = useRecordRecentlyUsedApp();
+  const { resolveGenUAppPath } = useResolveAppPath();
 
   const [width, height] = resolution.label.split('x').map((v) => Number(v));
 
@@ -59,6 +64,8 @@ export const useGenerateImageHandler = (
       setGenerating(false);
       return;
     }
+
+    let anySuccess = false;
 
     const promises = new Array(imageSample).fill('').map((_, idx) => {
       let _seed = seed[idx];
@@ -138,6 +145,7 @@ export const useGenerateImageHandler = (
       )
         .then((res) => {
           setImage(idx, res);
+          anySuccess = true;
         })
         .catch((e: ApiError) => {
           setImageError(idx, (e.data as { message?: string })?.message ?? e.message);
@@ -147,6 +155,16 @@ export const useGenerateImageHandler = (
     await Promise.all(promises).finally(() => {
       setGenerating(false);
     });
+
+    if (isRecentlyUsedAppsEnabled && anySuccess) {
+      const meta = GENU_APP_METAS.image;
+      recordRecentlyUsedApp({
+        kind: 'genu',
+        genuKind: 'image',
+        title: meta.label,
+        path: resolveGenUAppPath('image'),
+      });
+    }
   };
 
   const onClickRandomSeed = (selectedImageIndex: number) => {

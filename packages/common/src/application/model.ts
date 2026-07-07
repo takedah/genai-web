@@ -30,14 +30,22 @@ export const modelMetadata: Record<string, ModelMetadata> = {
   'jp.anthropic.claude-haiku-4-5-20251001-v1:0': {
     flags: MODEL_FEATURE.TEXT_DOC_IMAGE_REASONING,
     displayName: 'Claude Haiku 4.5',
+    description: '高速・低コスト。分類などの定型処理が得意',
   },
   'jp.anthropic.claude-sonnet-4-5-20250929-v1:0': {
     flags: MODEL_FEATURE.TEXT_DOC_IMAGE_REASONING,
     displayName: 'Claude Sonnet 4.5',
+    description: '一世代前のバランス型。長文対応は標準的',
   },
   'jp.anthropic.claude-sonnet-4-6': {
     flags: MODEL_FEATURE.TEXT_DOC_IMAGE_REASONING,
     displayName: 'Claude Sonnet 4.6',
+    description: 'バランス型。長い文章の処理も得意',
+  },
+  'jp.anthropic.claude-opus-4-8': {
+    flags: MODEL_FEATURE.TEXT_DOC_IMAGE_REASONING,
+    displayName: 'Claude Opus 4.8',
+    description: '最上位モデル。複雑な推論・難題向き',
   },
   'anthropic.claude-3-5-sonnet-20241022-v2:0': {
     flags: MODEL_FEATURE.TEXT_DOC_IMAGE,
@@ -212,6 +220,7 @@ export const modelMetadata: Record<string, ModelMetadata> = {
       ...MODEL_FEATURE.LIGHT,
     },
     displayName: 'Nova Lite',
+    description: '軽量モデル。低コストで大量処理',
   },
   'amazon.nova-micro-v1:0': {
     flags: {

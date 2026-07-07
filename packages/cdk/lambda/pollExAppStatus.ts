@@ -1,6 +1,10 @@
 import { Logger } from '@aws-lambda-powertools/logger';
 import { SQSEvent, SQSRecord } from 'aws-lambda';
-import { updateInvokeExAppHistory } from './repository/invokeHistoryRepository';
+import {
+  findInvokeExAppHistory,
+  updateInvokeExAppHistory,
+  updateInvokeExAppHistoryTitle,
+} from './repository/invokeHistoryRepository';
 import { getApiKeyValue } from './utils/apiKey';
 import {
   assertPublicStatusUrl,
@@ -8,6 +12,7 @@ import {
   UnsafeExAppUrlError,
   type ValidatedExAppUrl,
 } from './utils/exAppUrlSecurity';
+import { predictExAppTitle } from './utils/predictExAppTitle';
 import { changeMessageVisibility } from './utils/sqsApi';
 import { truncate } from './utils/truncate';
 
@@ -135,6 +140,33 @@ export const handler = async (event: SQSEvent): Promise<void> => {
           result,
           baseS3Prefix,
         );
+
+        if (status === 'COMPLETED') {
+          try {
+            const outputsStr =
+              typeof result.outputs === 'string'
+                ? result.outputs
+                : JSON.stringify(result.outputs || {});
+
+            // SQS メッセージに inputs がないため DynamoDB から取得
+            const [teamId, exAppId, userId] = dbId.split('#');
+            const historyResult = await findInvokeExAppHistory(
+              teamId,
+              exAppId,
+              userId,
+              createdDate,
+            );
+            const historyInputs = historyResult.history?.inputs || {};
+
+            const title = await predictExAppTitle(historyInputs, outputsStr);
+            if (title) {
+              await updateInvokeExAppHistoryTitle(dbId, createdDate, title);
+            }
+          } catch (e) {
+            logger.error('Failed to predict title for ExApp history', e as Error);
+          }
+        }
+
         // 処理が終了（COMPLETE/ERROR）したので、正常終了する。EventSourceMappingによりSQSのキューは削除される
       } else if (status === 'IN_PROGRESS') {
         // 進行中ならDynamoDBを更新 (ファイル保存はリポジトリ層に委譲)

@@ -2,12 +2,17 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { CloudWatchClient } from '@aws-sdk/client-cloudwatch';
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import type { UsageMetadata } from 'genai-web';
 import { findExAppById } from './repository/exAppRepository';
-import { createInvokeExAppHistory } from './repository/invokeHistoryRepository';
+import {
+  createInvokeExAppHistory,
+  updateInvokeExAppHistoryTitle,
+} from './repository/invokeHistoryRepository';
 import { findTeamById } from './repository/teamRepository';
 import { getApiKeyValue } from './utils/apiKey';
 import { resolveIdentityId } from './utils/cognitoIdentity';
 import { COMMON_TEAM_ID } from './utils/constants';
+import { summarizeFromUsageMetadata } from './utils/estimatedCostSummary';
 import {
   assertPublicEndpointUrl,
   isExAppUrlValidationError,
@@ -18,6 +23,7 @@ import {
 import { createResponse } from './utils/http';
 import { HttpError } from './utils/httpError';
 import { classifyErrorType, publishErrorMetrics, publishSuccessMetrics } from './utils/monitoring';
+import { predictExAppTitle } from './utils/predictExAppTitle';
 import { isSystemAdmin, isTeamUser } from './utils/teamRole';
 import { truncate } from './utils/truncate';
 import { generateStableUserId } from './utils/userIdentifier';
@@ -235,6 +241,28 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           envName: APP_ENV,
         });
       }
+
+      // 外部アプリ応答（信頼境界外）の usageMetadata は最小ガードしてから合算ヘルパに渡す。
+      // 計算失敗・currency 混在・usageMetadata 不在では undefined（フェイルセーフ）。
+      if (response.status < 400 && isRecord(responseBody)) {
+        try {
+          const rawUsageMetadata = (responseBody as { usageMetadata?: unknown }).usageMetadata;
+          if (Array.isArray(rawUsageMetadata)) {
+            const totalEstimatedCost = summarizeFromUsageMetadata(
+              rawUsageMetadata as UsageMetadata[],
+            );
+            if (totalEstimatedCost !== undefined) {
+              (responseBody as { totalEstimatedCost?: unknown }).totalEstimatedCost =
+                totalEstimatedCost;
+            }
+          }
+        } catch (e) {
+          logger.warn('Failed to summarize totalEstimatedCost for sync invoke response', {
+            error: e,
+          });
+        }
+      }
+
       return createResponse(response.status, JSON.stringify(responseBody));
     }
   } catch (error) {
@@ -267,5 +295,20 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       status,
       sessionId,
     );
+
+    if (status === 'COMPLETED') {
+      try {
+        const outputsStr =
+          typeof responseBody.outputs === 'string'
+            ? responseBody.outputs
+            : JSON.stringify(responseBody.outputs || {});
+        const title = await predictExAppTitle(inputs, outputsStr);
+        if (title) {
+          await updateInvokeExAppHistoryTitle(dbId, createdDate, title);
+        }
+      } catch (e) {
+        logger.error('Failed to predict title for ExApp history', e as Error);
+      }
+    }
   }
 };

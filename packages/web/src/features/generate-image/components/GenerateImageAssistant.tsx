@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { PiLightbulbFilamentBold, PiWarningFill } from 'react-icons/pi';
 import { useLocation } from 'react-router';
 import { Button } from '@/components/ui/dads/Button';
-import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
+import {
+  ProgressIndicator,
+  ProgressIndicatorSpinner,
+} from '@/components/ui/dads/ProgressIndicator';
 import { Ul } from '@/components/ui/dads/Ul';
 import { useGenerateImageStore } from '@/features/generate-image/stores/useGenerateImageStore';
 import { useChat } from '@/hooks/useChat';
@@ -23,6 +26,8 @@ export const GenerateImageAssistant = (props: Props) => {
   const [isPresetGenerating, setIsPresetGenerating] = useState(false);
   const { scrollTopAnchorRef, scrollBottomAnchorRef } = useScreen({ useWindowScroll: true });
   const { scrollableContainer, setFollowing } = useFollow();
+  const generatingPromptId = useId();
+  const generatingImageId = useId();
 
   useEffect(() => {
     if (loading) {
@@ -174,7 +179,7 @@ export const GenerateImageAssistant = (props: Props) => {
             c.role === 'user' ? (
               <article key={idx} className='bg-solid-gray-50 p-4 rounded-12 lg:p-6'>
                 <h2 className='sr-only'>あなたの質問</h2>
-                <div className='whitespace-pre-wrap'>{c.content}</div>
+                <div className='whitespace-pre-wrap wrap-break-word'>{c.content}</div>
               </article>
             ) : (
               <article
@@ -198,7 +203,10 @@ export const GenerateImageAssistant = (props: Props) => {
                 )}
                 {c.content.prompt === null && !c.content.error && (
                   <div className='flex items-center gap-2'>
-                    <ProgressIndicator label='プロンプト生成中' />
+                    <ProgressIndicator type='inlined' aria-labelledby={generatingPromptId}>
+                      <ProgressIndicatorSpinner size='sm' />
+                      <span id={generatingPromptId}>プロンプト生成中</span>
+                    </ProgressIndicator>
                   </div>
                 )}
                 {c.content.prompt !== null &&
@@ -209,7 +217,10 @@ export const GenerateImageAssistant = (props: Props) => {
                         プロンプト生成完了
                       </div>
                       <div className='mt-2 flex items-center gap-1'>
-                        <ProgressIndicator label='画像生成中' />
+                        <ProgressIndicator type='inlined' aria-labelledby={generatingImageId}>
+                          <ProgressIndicatorSpinner size='sm' />
+                          <span id={generatingImageId}>画像生成中</span>
+                        </ProgressIndicator>
                       </div>
                     </>
                   ) : (

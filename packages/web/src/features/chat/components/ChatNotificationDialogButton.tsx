@@ -16,7 +16,7 @@ export const ChatNotificationDialogButton = (props: ChatNotificationDialogButton
       aria-haspopup='dialog'
     >
       <InfoIcon aria-hidden={true} className='shrink-0 mt-[calc(3/16*1rem)]' />
-      生成AI利用時の注意事項
+      AIモデルの選び方と注意事項
     </button>
   );
 };

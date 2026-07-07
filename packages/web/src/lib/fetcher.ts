@@ -24,6 +24,10 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
+interface ApiClientOptions {
+  withAuth?: boolean;
+}
+
 const buildUrl = (base: string, path: string, params?: RequestOptions['params']): string => {
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -50,19 +54,25 @@ const parseResponseBody = async <T>(res: Response): Promise<T> => {
   }
 };
 
-const getAuthHeaders = async (hasBody: boolean): Promise<Record<string, string>> => {
-  const token = (await fetchAuthSession()).tokens?.idToken?.toString();
+const getRequestHeaders = async (
+  hasBody: boolean,
+  withAuth: boolean,
+): Promise<Record<string, string>> => {
   const headers: Record<string, string> = {};
   if (hasBody) {
     headers['Content-Type'] = 'application/json';
   }
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (withAuth) {
+    const token = (await fetchAuthSession()).tokens?.idToken?.toString();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
   return headers;
 };
 
-const createApiClient = (baseURL: string) => {
+const createApiClient = (baseURL: string, options: ApiClientOptions = {}) => {
+  const withAuth = options.withAuth ?? true;
   const request = async <T>(
     method: string,
     path: string,
@@ -70,11 +80,11 @@ const createApiClient = (baseURL: string) => {
     options?: RequestOptions,
   ): Promise<ApiResponse<T>> => {
     const url = buildUrl(baseURL, path, options?.params);
-    const authHeaders = await getAuthHeaders(body !== undefined);
+    const requestHeaders = await getRequestHeaders(body !== undefined, withAuth);
 
     const res = await fetch(url, {
       method,
-      headers: { ...authHeaders, ...options?.headers },
+      headers: { ...requestHeaders, ...options?.headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -101,6 +111,10 @@ const createApiClient = (baseURL: string) => {
 export const teamApi = createApiClient(import.meta.env.VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT);
 
 export const genUApi = createApiClient(import.meta.env.VITE_APP_API_ENDPOINT);
+
+export const genUPublicApi = createApiClient(import.meta.env.VITE_APP_API_ENDPOINT, {
+  withAuth: false,
+});
 
 export const teamApiFetcher = <T>(url: string): Promise<T> =>
   teamApi.get<T>(url).then((res) => res.data);

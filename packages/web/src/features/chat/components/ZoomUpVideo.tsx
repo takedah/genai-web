@@ -1,8 +1,8 @@
 import { useId, useRef } from 'react';
 import { PiPlayFill, PiSpinnerGap, PiX } from 'react-icons/pi';
+import { ButtonIcon } from '@/components/ui/ButtonIcon';
+import { CloseIcon, HamburgerMenuButton } from '@/components/ui/dads/HamburgerMenuButton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
-import { ButtonIcon } from '../../../components/ui/ButtonIcon';
-import { CloseIcon, HamburgerMenuButton } from '../../../components/ui/dads/HamburgerMenuButton';
 
 type Props = {
   className?: string;

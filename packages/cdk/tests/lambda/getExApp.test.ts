@@ -225,7 +225,7 @@ describe('getExApp Lambda handler', () => {
 
     const result = await handler(event);
 
-    expect(result.statusCode).toBe(400);
+    expect(result.statusCode).toBe(404);
     expect(JSON.parse(result.body)).toEqual({
       error: 'AIアプリが見つかりませんでした。',
     });

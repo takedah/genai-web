@@ -69,7 +69,7 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * 同一アカウントの検証済み SES Domain Identity を利用してメールを送信する設定
    * SES Tenant によるレピュテーション分離、Cognito Custom Email Sender Lambda Trigger を利用
    *
-   * sesIdentityArn: 同一アカウントの検証済み SES Domain Identity ARN
+   * sesIdentityName: 同一アカウントの検証済み SES Domain Identity 名
    * fromAddress: 送信元メールアドレス（SES で検証済みのドメイン）
    *
    * SES Tenant 名は appEnv から自動生成されます（genai-${appEnv} 形式）
@@ -77,15 +77,16 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * 設定パターン:
    * - 既存動作維持: コメントアウトのまま（customEmailSender 未設定）
    * - Custom Sender のみ: customEmailSender を設定、emailMfaRequired は false
-   * - MFA のみ: emailMfaRequired を true に設定（Cognito デフォルトメール使用、50通/日制限あり）
    * - フル構成: customEmailSender + emailMfaRequired: true
+   *
+   * 注意: emailMfaRequired を true にする場合は customEmailSender が必須です
    *
    * 前提条件:
    * - SES Domain Identity が同一アカウントで検証済みであること
    * - 本番環境では SES サンドボックス解除が必要
    */
   // customEmailSender: {
-  //   sesIdentityArn: 'arn:aws:ses:ap-northeast-1:123456789012:identity/example.go.jp',
+  //   sesIdentityName: 'example.go.jp',
   //   fromAddress: 'noreply@example.go.jp',
   // },
 
@@ -95,7 +96,7 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * デフォルト: false
    * true にすると userid/password ユーザーのログイン時に Email MFA を必須化
    * SAML/フェデレーテッドユーザーには適用されません（AWS仕様）
-   * 注意: customEmailSender 未設定の場合、Cognito デフォルトメール（50通/日制限）で MFA コードが送信されます
+   * 注意: true にする場合は customEmailSender の設定が必須です
    */
   // emailMfaRequired: true,
 
@@ -108,6 +109,20 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * 設定可能範囲: 1〜365日
    */
   // reauthenticationIntervalDays: 7,
+
+  /**
+   * パスワードポリシー
+   * オプション
+   * デフォルト: minLength 8 / lowercase, uppercase, digits, symbols 全て必須
+   * Cognito User Pool とカスタムパスワード再設定画面の両方に反映されます
+   */
+  // passwordPolicy: {
+  //   minLength: 8,
+  //   requireLowercase: true,
+  //   requireUppercase: true,
+  //   requireDigits: true,
+  //   requireSymbols: true,
+  // },
 
   /**
    * SAML Cognitoドメイン名

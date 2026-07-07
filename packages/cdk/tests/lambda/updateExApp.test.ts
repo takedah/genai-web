@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { afterAll, beforeEach, describe, expect, type MockedFunction, test, vi } from 'vitest';
 import { handler } from '../../lambda/updateExApp';
-import { updateExApp } from '../../lambda/repository/exAppRepository';
+import { findExAppById, updateExApp } from '../../lambda/repository/exAppRepository';
 import * as teamRole from '../../lambda/utils/teamRole';
 import * as apiKey from '../../lambda/utils/apiKey';
 import {
@@ -33,6 +33,7 @@ vi.mock('../../lambda/utils/exAppUrlSecurity', async (importOriginal) => {
   };
 });
 
+const mockedFindExAppById = findExAppById as MockedFunction<typeof findExAppById>;
 const mockedUpdateExApp = updateExApp as MockedFunction<typeof updateExApp>;
 const mockedIsSystemAdmin = teamRole.isSystemAdmin as MockedFunction<
   typeof teamRole.isSystemAdmin
@@ -73,6 +74,48 @@ function createValidRequestBody() {
   };
 }
 
+function createExistingExApp(endpoint = 'https://api.example.com/updated') {
+  const now = Date.now().toString();
+  return {
+    teamId: 'test-team-id',
+    exAppId: 'target-exapp-id',
+    exAppName: '更新前のアプリ',
+    description: '更新前のアプリの概要',
+    howToUse: '更新前のアプリの使い方',
+    endpoint,
+    apiKey: '',
+    placeholder: '{"input": "current"}',
+    config: '{"model": "current"}',
+    systemPrompt: '更新前のプロンプト',
+    systemPromptKeyName: 'system',
+    copyable: false,
+    status: 'published' as const,
+    createdDate: now,
+    updatedDate: now,
+  };
+}
+
+function createUpdatedExApp(endpoint = 'https://api.example.com/updated') {
+  const now = Date.now().toString();
+  return {
+    teamId: 'test-team-id',
+    exAppId: 'target-exapp-id',
+    exAppName: '更新後のアプリ',
+    description: '更新後のアプリの概要',
+    howToUse: '更新後のアプリの使い方',
+    endpoint,
+    apiKey: '',
+    placeholder: '{"input": "updated"}',
+    config: '{"model": "updated"}',
+    systemPrompt: '更新後のプロンプト',
+    systemPromptKeyName: 'system',
+    copyable: false,
+    status: 'published' as const,
+    createdDate: now,
+    updatedDate: now,
+  };
+}
+
 function createAPIGatewayProxyEvent(
   body: unknown | null,
   teamId?: string,
@@ -98,6 +141,7 @@ describe('updateExApp Lambda handler', () => {
     mockedAssertPublicEndpointUrl.mockResolvedValue({
       url: new URL('https://api.example.com/updated'),
     });
+    mockedFindExAppById.mockResolvedValue(createExistingExApp());
   });
 
   test('システム管理者がExAppを正常に更新できる', async () => {
@@ -132,6 +176,7 @@ describe('updateExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(200);
     expect(mockedAssertPublicEndpointUrl).toHaveBeenCalledWith('https://api.example.com/updated');
+    expect(mockedFindExAppById).toHaveBeenCalledWith(teamId, exAppId);
     expect(mockedUpdateExApp).toHaveBeenCalled();
     expect(mockedSetApiKey).not.toHaveBeenCalled();
 
@@ -209,6 +254,94 @@ describe('updateExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(200);
     expect(mockedSetApiKey).toHaveBeenCalledWith(teamId, exAppId, 'new-api-key', expect.any(String));
+  });
+
+  test('APIエンドポイントのURLシリアライズ結果だけが異なる場合は変更扱いにしない', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'target-exapp-id';
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindExAppById.mockResolvedValue(createExistingExApp('https://api.example.com'));
+    mockedAssertPublicEndpointUrl.mockResolvedValue({
+      url: new URL('https://api.example.com'),
+    });
+    mockedUpdateExApp.mockResolvedValue(createUpdatedExApp('https://api.example.com'));
+
+    const event = createAPIGatewayProxyEvent(
+      { ...createValidRequestBody(), endpoint: 'https://api.example.com' },
+      teamId,
+      exAppId,
+    );
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    expect(mockedUpdateExApp).toHaveBeenCalled();
+    expect(mockedSetApiKey).not.toHaveBeenCalled();
+  });
+
+  test('APIエンドポイント変更時にAPIキーが未指定の場合は400エラーを返す', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'target-exapp-id';
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindExAppById.mockResolvedValue(createExistingExApp('https://api.example.com/current'));
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'APIエンドポイントを変更する場合はAPIキーを再入力してください。',
+    });
+    expect(mockedUpdateExApp).not.toHaveBeenCalled();
+    expect(mockedSetApiKey).not.toHaveBeenCalled();
+  });
+
+  test('APIエンドポイント変更時にAPIキーが指定された場合は更新できる', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'target-exapp-id';
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindExAppById.mockResolvedValue(createExistingExApp('https://api.example.com/current'));
+    mockedUpdateExApp.mockResolvedValue(createUpdatedExApp());
+    mockedSetApiKey.mockResolvedValue(undefined);
+
+    const event = createAPIGatewayProxyEvent(
+      { ...createValidRequestBody(), apiKey: 'new-api-key' },
+      teamId,
+      exAppId,
+    );
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    expect(mockedUpdateExApp).toHaveBeenCalled();
+    expect(mockedSetApiKey).toHaveBeenCalledWith(teamId, exAppId, 'new-api-key', expect.any(String));
+  });
+
+  test('対象のExAppが存在しない場合は404エラーを返す', async () => {
+    const teamId = 'test-team-id';
+    const exAppId = 'target-exapp-id';
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedFindExAppById.mockResolvedValue(null);
+
+    const event = createAPIGatewayProxyEvent(createValidRequestBody(), teamId, exAppId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(404);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'AIアプリが見つかりません。',
+    });
+    expect(mockedUpdateExApp).not.toHaveBeenCalled();
+    expect(mockedSetApiKey).not.toHaveBeenCalled();
   });
 
   test('管理者でない場合は403エラーを返す', async () => {

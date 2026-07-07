@@ -1,3 +1,4 @@
+import { passwordPolicyInputSchema } from '@genai-web/common';
 import { z } from 'zod';
 
 /**
@@ -92,6 +93,7 @@ export const stackInputSchema = z
       })
       .nullish(),
     emailMfaRequired: z.boolean().default(false),
+    passwordPolicy: passwordPolicyInputSchema,
     reauthenticationIntervalDays: z.number().min(1).max(365).default(7),
     samlCognitoDomainName: z.string().nullish(),
     samlCognitoFederatedIdentityPrimaryProviderName: z.string().nullish(),
@@ -126,11 +128,14 @@ export const stackInputSchema = z
         'jp.anthropic.claude-haiku-4-5-20251001-v1:0',
         'jp.anthropic.claude-sonnet-4-5-20250929-v1:0',
       ]),
+    defaultModelId: z.string().default('jp.anthropic.claude-sonnet-4-6'),
     imageGenerationModelIds: z.array(z.string()).default(['amazon.nova-canvas-v1:0']),
     endpointNames: z.array(z.string()).default([]),
     crossAccountBedrockRoleArn: z.string().nullish(),
     // Guardrail
     guardrailEnabled: z.boolean().default(false),
+    // Recently used AI apps (LandingPage section)
+    recentlyUsedAppsEnabled: z.boolean().default(false),
     // Flows
     flows: z
       .array(
@@ -205,6 +210,16 @@ export const stackInputSchema = z
 
     // Maintenance Mode
     maintenance: z.boolean().default(false),
+
+    costConversion: z
+      .object({
+        // 変換後通貨（例: 'JPY'）。未設定なら converted を付与しない。
+        toCurrency: z.string().default(''),
+        // 適用レート（変換元通貨あたり converted 通貨の量）。0 以下や非有限値なら converted なし。
+        rate: z.number().default(0),
+        allowedFromCurrencies: z.array(z.string()).default([]),
+      })
+      .default({ toCurrency: '', rate: 0, allowedFromCurrencies: [] }),
   })
   .refine(
     (data) => {
@@ -228,15 +243,8 @@ export const stackInputSchema = z
         'samlCognitoFederatedIdentityPrimaryProviderName is required when samlAuthEnabled is true',
     },
   )
-  .transform((data) => {
-    if (data.emailMfaRequired && !data.customEmailSender) {
-      console.warn(
-        'WARNING: emailMfaRequired is true but customEmailSender is not configured. ' +
-          'MFA codes will be sent via Cognito default email (50 emails/day limit). ' +
-          'For production use, configure customEmailSender.',
-      );
-    }
-    return data;
+  .refine((data) => !(data.emailMfaRequired && !data.customEmailSender), {
+    message: 'customEmailSender is required when emailMfaRequired is true',
   });
 
 export type StackInput = z.infer<typeof stackInputSchema>;

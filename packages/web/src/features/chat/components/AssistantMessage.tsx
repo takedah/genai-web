@@ -4,9 +4,13 @@ import { useLocation } from 'react-router';
 import { Markdown } from '@/components/Markdown';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
 import { Button } from '@/components/ui/dads/Button';
-import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
+import {
+  ProgressIndicator,
+  ProgressIndicatorSpinner,
+} from '@/components/ui/dads/ProgressIndicator';
 import { ReplayIcon } from '@/components/ui/icons/ReplayIcon';
 import { FileCard } from '@/features/chat/components/FileCard';
+import { MessageUsageCost } from '@/features/chat/components/MessageUsageCost';
 import { ZoomUpImage } from '@/features/chat/components/ZoomUpImage';
 import { ZoomUpVideo } from '@/features/chat/components/ZoomUpVideo';
 import { useFiles } from '@/hooks/useFiles';
@@ -113,11 +117,14 @@ export const AssistantMessage = ({
             <div ref={copyTextRef}>
               <Markdown prefix={`${idx}`}>{typingTextOutput}</Markdown>
             </div>
-            {loading && <ProgressIndicator className='my-0.5' />}
+            {loading && (
+              <ProgressIndicator className='my-0.5' type='inlined' aria-label='読み込み中'>
+                <ProgressIndicatorSpinner size='sm' />
+              </ProgressIndicator>
+            )}
 
-            <div className='mt-2 text-right text-std-16N-175 text-solid-gray-536 lg:mb-0'>
-              {chatContent.llmType}
-            </div>
+            <div className='mt-4 text-right text-solid-gray-600 lg:mb-0'>{chatContent.llmType}</div>
+            {!loading && <MessageUsageCost usageCostHistory={chatContent.usageCostHistory} />}
           </div>
         </div>
 
@@ -136,9 +143,11 @@ export const AssistantMessage = ({
                 </Button>
               )}
               <ButtonCopy
-                className='mr-0.5'
                 text={chatContent.content || ''}
+                label='回答をコピー'
+                copiedLabel='コピー完了'
                 targetRef={copyTextRef}
+                className='mr-0.5 min-w-[calc(150/16*1rem)]'
               />
             </>
           )}

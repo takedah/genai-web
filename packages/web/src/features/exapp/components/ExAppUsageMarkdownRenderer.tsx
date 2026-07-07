@@ -8,8 +8,8 @@ import remarkGfm from 'remark-gfm';
 import { Disclosure, DisclosureSummary } from '@/components/ui/dads/Disclosure';
 import { ErrorText } from '@/components/ui/dads/ErrorText';
 import { Link } from '@/components/ui/dads/Link';
-import { remarkDirectiveFilter } from '../utils/remarkDirectiveFilter';
-import { MermaidRenderer } from './MermaidRenderer';
+import { MermaidRenderer } from '../invoke/components/MermaidRenderer';
+import { remarkDirectiveFilter } from '../invoke/utils/remarkDirectiveFilter';
 
 type Props = {
   content: string;

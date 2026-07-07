@@ -47,9 +47,19 @@ export const findModelDisplayNameByModelId = (modelId: string): string => {
   return displayName;
 };
 
+export const findModelDescriptionByModelId = (modelId: string): string | undefined =>
+  modelMetadata[modelId]?.description;
+
 export const MODELS = {
   modelIds: [...bedrockModelIds, ...endpointNames],
   modelMetadata,
   imageGenModelIds: imageGenModelIds,
   imageGenModels: imageGenModels,
+};
+
+const configuredDefaultModelId = (import.meta.env.VITE_APP_DEFAULT_MODEL_ID ?? '').trim();
+
+export const resolveDefaultModelId = (): string => {
+  const { modelIds } = MODELS;
+  return modelIds.includes(configuredDefaultModelId) ? configuredDefaultModelId : modelIds[0];
 };

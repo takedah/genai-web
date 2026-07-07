@@ -8,10 +8,16 @@ const { mockSqsSend, mockRequestValidatedExAppUrl } = vi.hoisted(() => ({
 
 vi.mock('../../lambda/repository/invokeHistoryRepository', () => ({
   updateInvokeExAppHistory: vi.fn(),
+  updateInvokeExAppHistoryTitle: vi.fn(),
+  findInvokeExAppHistory: vi.fn(),
 }));
 
 vi.mock('../../lambda/utils/apiKey', () => ({
   getApiKeyValue: vi.fn(),
+}));
+
+vi.mock('../../lambda/utils/predictExAppTitle', () => ({
+  predictExAppTitle: vi.fn(),
 }));
 
 vi.mock('../../lambda/utils/exAppUrlSecurity', async (importOriginal) => {
@@ -31,8 +37,13 @@ vi.mock('@aws-sdk/client-sqs', () => ({
 }));
 
 import { handler } from '../../lambda/pollExAppStatus';
-import { updateInvokeExAppHistory } from '../../lambda/repository/invokeHistoryRepository';
+import {
+  findInvokeExAppHistory,
+  updateInvokeExAppHistory,
+  updateInvokeExAppHistoryTitle,
+} from '../../lambda/repository/invokeHistoryRepository';
 import { getApiKeyValue } from '../../lambda/utils/apiKey';
+import { predictExAppTitle } from '../../lambda/utils/predictExAppTitle';
 import {
   assertPublicStatusUrl,
   requestValidatedExAppUrl,
@@ -106,6 +117,11 @@ describe('pollExAppStatus Lambda handler', () => {
     vi.clearAllMocks();
     vi.mocked(getApiKeyValue).mockResolvedValue(mockApiKey);
     vi.mocked(updateInvokeExAppHistory).mockResolvedValue(undefined);
+    vi.mocked(updateInvokeExAppHistoryTitle).mockResolvedValue(undefined);
+    vi.mocked(findInvokeExAppHistory).mockResolvedValue({
+      history: { inputs: { text: 'test input' }, outputs: 'test output' } as any,
+    });
+    vi.mocked(predictExAppTitle).mockResolvedValue('テストタイトル');
     vi.mocked(assertPublicStatusUrl).mockResolvedValue(mockValidatedStatusUrl);
     mockSqsSend.mockResolvedValue({});
   });
@@ -140,6 +156,66 @@ describe('pollExAppStatus Lambda handler', () => {
         mockResponse,
         mockBaseS3Prefix,
       );
+    });
+
+    it('COMPLETED状態の場合、タイトル予測が実行される', async () => {
+      const mockResponse = {
+        status: 'COMPLETED',
+        outputs: 'success result',
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createSqsEvent([createSqsRecord()]);
+      await handler(event);
+
+      expect(predictExAppTitle).toHaveBeenCalledWith(
+        { text: 'test input' },
+        'success result',
+      );
+      expect(updateInvokeExAppHistoryTitle).toHaveBeenCalled();
+    });
+
+    it('COMPLETED状態でタイトルが空の場合、updateInvokeExAppHistoryTitleが呼ばれない', async () => {
+      vi.mocked(predictExAppTitle).mockResolvedValue('');
+      const mockResponse = {
+        status: 'COMPLETED',
+        outputs: 'success result',
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createSqsEvent([createSqsRecord()]);
+      await handler(event);
+
+      expect(predictExAppTitle).toHaveBeenCalled();
+      expect(updateInvokeExAppHistoryTitle).not.toHaveBeenCalled();
+    });
+
+    it('COMPLETED状態でタイトル予測が失敗しても正常終了する', async () => {
+      vi.mocked(findInvokeExAppHistory).mockRejectedValue(new Error('DynamoDB error'));
+      const mockResponse = {
+        status: 'COMPLETED',
+        outputs: 'success result',
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createSqsEvent([createSqsRecord()]);
+      await expect(handler(event)).resolves.toBeUndefined();
+
+      expect(updateInvokeExAppHistory).toHaveBeenCalled();
+      expect(updateInvokeExAppHistoryTitle).not.toHaveBeenCalled();
+    });
+
+    it('ERROR状態の場合、タイトル予測が実行されない', async () => {
+      const mockResponse = {
+        status: 'ERROR',
+        outputs: { error: 'Something went wrong' },
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createSqsEvent([createSqsRecord()]);
+      await handler(event);
+
+      expect(predictExAppTitle).not.toHaveBeenCalled();
     });
 
     it('ERROR状態の場合、DynamoDBを更新して正常終了する', async () => {

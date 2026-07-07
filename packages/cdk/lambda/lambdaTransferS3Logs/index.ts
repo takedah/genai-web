@@ -418,7 +418,7 @@ export const handler = async (event: any) => {
       return {
         statusCode: 500,
         body: JSON.stringify({
-          message: 'Error: No S3 bucket name provided. env:' + JSON.stringify(process.env, null, 2),
+          message: 'Required S3 environment variables are not provided: S3_BUCKET_NAME, S3_PREFIX.',
         }),
       };
     }

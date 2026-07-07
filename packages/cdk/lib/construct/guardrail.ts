@@ -1,20 +1,22 @@
-import { aws_bedrock as bedrock, Lazy, Names } from 'aws-cdk-lib';
+import { aws_bedrock as bedrock } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+
+export interface GuardrailProps {
+  appEnv: string;
+}
 
 export class Guardrail extends Construct {
   public readonly guardrailIdentifier: string;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: GuardrailProps) {
     super(scope, id);
-
-    const suffix = Lazy.string({ produce: () => Names.uniqueId(this) });
 
     const cfnGuardrail = new bedrock.CfnGuardrail(this, `guardrail`, {
       blockedInputMessaging:
         '禁止された入力を検出しました。会話を最初からやり直すか、管理者にお問い合わせください。',
       blockedOutputsMessaging:
         'システムが禁じている内容の出力を検出しました。会話を最初からやり直すか、管理者にお問い合わせください。',
-      name: `Guardrail-${suffix}`,
+      name: `Guardrail-${props.appEnv}`,
       sensitiveInformationPolicyConfig: {
         // NAME, DRIVER_ID は日本のものが機能しないので設定しない
         // CA_*, US_*, UK_* はそれぞれの国固有のものなので設定しない
