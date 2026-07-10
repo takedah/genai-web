@@ -1,13 +1,15 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockSqsSend, mockCloudWatchSend, mockFetch } = vi.hoisted(() => ({
-  mockSqsSend: vi.fn(),
-  mockCloudWatchSend: vi.fn(),
-  mockFetch: vi.fn(),
-}));
-
-global.fetch = mockFetch;
+const { mockSqsSend, mockCloudWatchSend, mockRequestValidatedExAppUrl, mockSendMessageCommand } =
+  vi.hoisted(() => ({
+    mockSqsSend: vi.fn(),
+    mockCloudWatchSend: vi.fn(),
+    mockRequestValidatedExAppUrl: vi.fn(),
+    mockSendMessageCommand: vi.fn(function SendMessageCommandMock(this: unknown, input: unknown) {
+      return input;
+    }),
+  }));
 
 vi.mock('../../lambda/repository/exAppRepository', () => ({
   findExAppById: vi.fn(),
@@ -44,11 +46,25 @@ vi.mock('../../lambda/utils/monitoring', () => ({
   publishSuccessMetrics: vi.fn(),
 }));
 
+vi.mock('../../lambda/utils/exAppUrlSecurity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lambda/utils/exAppUrlSecurity')>();
+  return {
+    ...actual,
+    assertPublicEndpointUrl: vi.fn(),
+    requestValidatedExAppUrl: mockRequestValidatedExAppUrl,
+    resolveRelativeStatusUrl: vi.fn((statusUrl, endpoint) => ({
+      ...endpoint,
+      url: new URL(statusUrl, endpoint.url),
+    })),
+    toRelativeStatusUrl: vi.fn((url: URL) => `${url.pathname}${url.search}`),
+  };
+});
+
 vi.mock('@aws-sdk/client-sqs', () => ({
   SQSClient: class {
     send = mockSqsSend;
   },
-  SendMessageCommand: vi.fn(),
+  SendMessageCommand: mockSendMessageCommand,
 }));
 
 vi.mock('@aws-sdk/client-cloudwatch', () => ({
@@ -66,6 +82,12 @@ import { getApiKeyValue } from '../../lambda/utils/apiKey';
 import { generateStableUserId } from '../../lambda/utils/userIdentifier';
 import { resolveIdentityId } from '../../lambda/utils/cognitoIdentity';
 import {
+  assertPublicEndpointUrl,
+  requestValidatedExAppUrl,
+  resolveRelativeStatusUrl,
+  UnsafeExAppUrlError,
+} from '../../lambda/utils/exAppUrlSecurity';
+import {
   classifyErrorType,
   publishErrorMetrics,
   publishSuccessMetrics,
@@ -80,6 +102,9 @@ describe('invokeExApp Lambda handler', () => {
   const mockApiKey = 'test-api-key';
   const mockEndpoint = 'https://api.example.com/invoke';
   const mockIdToken = 'mock-id-token';
+  const mockValidatedEndpoint = {
+    url: new URL(mockEndpoint),
+  };
 
   const mockTeam = {
     teamId: mockTeamId,
@@ -130,6 +155,24 @@ describe('invokeExApp Lambda handler', () => {
     ...overrides,
   });
 
+  const createMockResponse = (
+    status: number,
+    body: unknown,
+    options?: { jsonError?: Error; text?: string },
+  ) => ({
+    status,
+    ok: status >= 200 && status < 300,
+    json: vi.fn().mockImplementation(() => {
+      if (options?.jsonError) {
+        return Promise.reject(options.jsonError);
+      }
+      return Promise.resolve(body);
+    }),
+    text: vi
+      .fn()
+      .mockResolvedValue(options?.text ?? (typeof body === 'string' ? body : JSON.stringify(body))),
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(generateStableUserId).mockResolvedValue(mockStableUserId);
@@ -143,14 +186,16 @@ describe('invokeExApp Lambda handler', () => {
     vi.mocked(classifyErrorType).mockReturnValue('CLIENT_ERROR');
     vi.mocked(publishErrorMetrics).mockResolvedValue(undefined);
     vi.mocked(publishSuccessMetrics).mockResolvedValue(undefined);
+    vi.mocked(assertPublicEndpointUrl).mockResolvedValue(mockValidatedEndpoint);
+    vi.mocked(resolveRelativeStatusUrl).mockImplementation((statusUrl, endpoint) => ({
+      ...endpoint,
+      url: new URL(statusUrl, endpoint.url),
+    }));
   });
 
   it('同期レスポンス（200）の場合、正常に結果を返す', async () => {
     const mockResponse = { outputs: 'AI response' };
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);
@@ -160,9 +205,10 @@ describe('invokeExApp Lambda handler', () => {
     expect(body).toEqual(mockResponse);
     expect(generateStableUserId).toHaveBeenCalledWith(mockUserId);
     expect(findExAppById).toHaveBeenCalledWith(mockTeamId, mockExAppId);
+    expect(assertPublicEndpointUrl).toHaveBeenCalledWith(mockEndpoint);
     expect(getApiKeyValue).toHaveBeenCalled();
-    expect(mockFetch).toHaveBeenCalledWith(
-      mockEndpoint,
+    expect(requestValidatedExAppUrl).toHaveBeenCalledWith(
+      mockValidatedEndpoint,
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -177,11 +223,8 @@ describe('invokeExApp Lambda handler', () => {
   });
 
   it('非同期レスポンス（202）の場合、SQSにメッセージを送信する', async () => {
-    const mockResponse = { status_url: 'https://api.example.com/status/123' };
-    mockFetch.mockResolvedValue({
-      status: 202,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    const mockResponse = { status_url: '/status/123' };
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(202, mockResponse));
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);
@@ -189,23 +232,26 @@ describe('invokeExApp Lambda handler', () => {
     expect(result.statusCode).toBe(202);
     const body = JSON.parse(result.body);
     expect(body).toEqual(mockResponse);
+    expect(resolveRelativeStatusUrl).toHaveBeenCalledWith('/status/123', mockValidatedEndpoint);
+    expect(mockSqsSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        MessageBody: expect.stringContaining('"statusUrl":"/status/123"'),
+      }),
+    );
     expect(createInvokeExAppHistory).toHaveBeenCalled();
   });
 
   it('sessionIdが正しいUUID v4形式の場合、リクエストに含まれる', async () => {
     const validSessionId = '550e8400-e29b-41d4-a716-446655440000';
     const mockResponse = { outputs: 'AI response' };
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
     const event = createEvent(createValidBody({ sessionId: validSessionId }));
     const result: APIGatewayProxyResult = await handler(event);
 
     expect(result.statusCode).toBe(200);
-    expect(mockFetch).toHaveBeenCalledWith(
-      mockEndpoint,
+    expect(requestValidatedExAppUrl).toHaveBeenCalledWith(
+      mockValidatedEndpoint,
       expect.objectContaining({
         body: expect.stringContaining(validSessionId),
       }),
@@ -217,10 +263,7 @@ describe('invokeExApp Lambda handler', () => {
     vi.mocked(isTeamUser).mockResolvedValue(false);
 
     const mockResponse = { outputs: 'AI response' };
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);
@@ -233,10 +276,7 @@ describe('invokeExApp Lambda handler', () => {
     vi.mocked(isTeamUser).mockResolvedValue(false);
 
     const mockResponse = { outputs: 'AI response' };
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
     const commonTeam = { teamId: commonTeamId, teamName: 'Common Team', createdDate: '1234567890', updatedDate: '1234567890' };
     const commonExApp = { ...mockExApp, teamId: commonTeamId };
@@ -311,10 +351,7 @@ describe('invokeExApp Lambda handler', () => {
 
   it('sessionIdが空文字の場合はsessionIdなしとして正常に処理される', async () => {
     const mockResponse = { outputs: 'AI response' };
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
     const event = createEvent(createValidBody({ sessionId: '' }));
 
@@ -361,12 +398,41 @@ describe('invokeExApp Lambda handler', () => {
     expect(body.outputs).toBe('リクエストされたAIアプリが見つかりませんでした。');
   });
 
+  it('保存済みendpointが安全でない場合はAPIキーを取得せず502エラーを返す', async () => {
+    vi.mocked(assertPublicEndpointUrl).mockRejectedValue(
+      new UnsafeExAppUrlError('APIエンドポイントには公開 IP アドレスを指定してください。'),
+    );
+
+    const event = createEvent(createValidBody());
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(502);
+    const body = JSON.parse(result.body);
+    expect(body.outputs).toBe(
+      'AIアプリのAPIエンドポイントまたはステータスURLが安全ではないため実行できません。',
+    );
+    expect(getApiKeyValue).not.toHaveBeenCalled();
+    expect(requestValidatedExAppUrl).not.toHaveBeenCalled();
+  });
+
+  it('非同期レスポンスのstatus_urlが同一origin相対URLでない場合はSQS送信しない', async () => {
+    vi.mocked(resolveRelativeStatusUrl).mockImplementation(() => {
+      throw new UnsafeExAppUrlError('ステータスURLには同一オリジンの相対パスを指定してください。');
+    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(
+      createMockResponse(202, { status_url: 'https://evil.example/status/123' }),
+    );
+
+    const event = createEvent(createValidBody());
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(502);
+    expect(mockSqsSend).not.toHaveBeenCalled();
+  });
+
   it('外部APIが4xxエラーを返した場合、エラーメトリクスを発行する', async () => {
     const mockErrorResponse = { error: 'Bad Request' };
-    mockFetch.mockResolvedValue({
-      status: 400,
-      json: vi.fn().mockResolvedValue(mockErrorResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(400, mockErrorResponse));
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);
@@ -378,10 +444,7 @@ describe('invokeExApp Lambda handler', () => {
 
   it('外部APIが5xxエラーを返した場合、エラーメトリクスを発行する', async () => {
     const mockErrorResponse = { error: 'Internal Server Error' };
-    mockFetch.mockResolvedValue({
-      status: 500,
-      json: vi.fn().mockResolvedValue(mockErrorResponse),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(500, mockErrorResponse));
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);
@@ -392,11 +455,12 @@ describe('invokeExApp Lambda handler', () => {
   });
 
   it('外部APIのレスポンスがJSONでない場合、テキストとして処理する', async () => {
-    mockFetch.mockResolvedValue({
-      status: 200,
-      json: vi.fn().mockRejectedValue(new Error('Invalid JSON')),
-      text: vi.fn().mockResolvedValue('Plain text response'),
-    });
+    mockRequestValidatedExAppUrl.mockResolvedValue(
+      createMockResponse(200, undefined, {
+        jsonError: new Error('Invalid JSON'),
+        text: 'Plain text response',
+      }),
+    );
 
     const event = createEvent(createValidBody());
     const result: APIGatewayProxyResult = await handler(event);

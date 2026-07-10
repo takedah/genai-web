@@ -1,4 +1,4 @@
-import { RefObject, useRef } from 'react';
+import { Ref, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { Markdown } from '@/components/Markdown';
 import { ButtonCopy } from '@/components/ui/ButtonCopy';
@@ -7,7 +7,7 @@ import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
 import { useChat } from '@/hooks/useChat';
 
 type Props = {
-  scrollableContainer: RefObject<HTMLDivElement | null>;
+  scrollableContainer: Ref<HTMLDivElement>;
   typingTextOutput: string;
   text: string;
 };

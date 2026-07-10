@@ -4,6 +4,10 @@ import { handler } from '../../lambda/createExApp';
 import { createExApp } from '../../lambda/repository/exAppRepository';
 import * as teamRole from '../../lambda/utils/teamRole';
 import * as apiKey from '../../lambda/utils/apiKey';
+import {
+  assertPublicEndpointUrl,
+  UnsafeExAppUrlError,
+} from '../../lambda/utils/exAppUrlSecurity';
 
 vi.mock('../../lambda/repository/exAppRepository');
 vi.mock('../../lambda/utils/teamRole', async (importOriginal) => {
@@ -21,6 +25,13 @@ vi.mock('../../lambda/utils/apiKey', async (importOriginal) => {
     setApiKey: vi.fn(),
   };
 });
+vi.mock('../../lambda/utils/exAppUrlSecurity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lambda/utils/exAppUrlSecurity')>();
+  return {
+    ...actual,
+    assertPublicEndpointUrl: vi.fn(),
+  };
+});
 
 const mockedCreateExApp = createExApp as MockedFunction<typeof createExApp>;
 const mockedIsSystemAdmin = teamRole.isSystemAdmin as MockedFunction<
@@ -31,6 +42,9 @@ const mockedIsTeamAdmin = teamRole.isTeamAdmin as MockedFunction<
 >;
 const mockedSetApiKey = apiKey.setApiKey as MockedFunction<
   typeof apiKey.setApiKey
+>;
+const mockedAssertPublicEndpointUrl = assertPublicEndpointUrl as MockedFunction<
+  typeof assertPublicEndpointUrl
 >;
 
 const originalEnv = process.env;
@@ -81,6 +95,9 @@ function createAPIGatewayProxyEvent(
 describe('createExApp Lambda handler', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockedAssertPublicEndpointUrl.mockResolvedValue({
+      url: new URL('https://api.example.com/test'),
+    });
   });
 
   test('システム管理者がExAppを正常に作成できる', async () => {
@@ -115,6 +132,7 @@ describe('createExApp Lambda handler', () => {
     const result = await handler(event);
 
     expect(result.statusCode).toBe(200);
+    expect(mockedAssertPublicEndpointUrl).toHaveBeenCalledWith('https://api.example.com/test');
     expect(mockedCreateExApp).toHaveBeenCalled();
     expect(mockedSetApiKey).toHaveBeenCalledWith(teamId, 'new-exapp-id', 'test-api-key', expect.any(String));
 
@@ -192,7 +210,7 @@ describe('createExApp Lambda handler', () => {
     });
   });
 
-  test('エンドポイントの形式が不正な場合は400エラーを返す', async () => {
+  test('APIエンドポイントの形式が不正な場合は400エラーを返す', async () => {
     const teamId = 'test-team-id';
 
     mockedIsSystemAdmin.mockReturnValue(true);
@@ -205,8 +223,30 @@ describe('createExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
-      error: 'エンドポイントの形式が不正です。',
+      error: 'APIエンドポイントの形式が不正です。',
     });
+  });
+
+  test('APIエンドポイントが公開HTTPS URLでない場合は400エラーを返す', async () => {
+    const teamId = 'test-team-id';
+
+    mockedIsSystemAdmin.mockReturnValue(true);
+    mockedIsTeamAdmin.mockResolvedValue(false);
+    mockedAssertPublicEndpointUrl.mockRejectedValue(
+      new UnsafeExAppUrlError('APIエンドポイントには公開 IP アドレスを指定してください。'),
+    );
+
+    const body = { ...createValidRequestBody(), endpoint: 'https://127.0.0.1/test' };
+    const event = createAPIGatewayProxyEvent(body, teamId);
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({
+      error: 'APIエンドポイントには公開 HTTPS URL を指定してください。',
+    });
+    expect(mockedCreateExApp).not.toHaveBeenCalled();
+    expect(mockedSetApiKey).not.toHaveBeenCalled();
   });
 
   test('placeholderのJSON形式が不正な場合は400エラーを返す', async () => {
@@ -328,7 +368,7 @@ describe('createExApp Lambda handler', () => {
     });
   });
 
-  test('エンドポイントが文字列でない場合は400エラーを返す', async () => {
+  test('APIエンドポイントが文字列でない場合は400エラーを返す', async () => {
     const teamId = 'test-team-id';
 
     mockedIsSystemAdmin.mockReturnValue(true);
@@ -341,7 +381,7 @@ describe('createExApp Lambda handler', () => {
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
-      error: 'エンドポイントの形式が不正です。',
+      error: 'APIエンドポイントの形式が不正です。',
     });
   });
 

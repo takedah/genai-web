@@ -1,52 +1,56 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
+import { Button } from '@/components/ui/dads/Button';
 import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
-import { ScrollBottomButton } from '@/components/ui/ScrollBottomButton';
 import { APP_TITLE } from '@/constants';
+import { ChatHints } from '@/features/chat/components/ChatHints';
+import { ChatHistorySidebar } from '@/features/chat/components/ChatHistorySidebar';
+import { ChatInput } from '@/features/chat/components/ChatInput';
 import { ChatMessage } from '@/features/chat/components/ChatMessage';
-import { ChatNotificationBanner } from '@/features/chat/components/ChatNotificationBanner';
+import { ChatNotificationDialog } from '@/features/chat/components/ChatNotificationDialog';
+import { ChatStickyHeader } from '@/features/chat/components/ChatStickyHeader';
 import { DialogPromptList } from '@/features/chat/components/DialogPromptList';
 import { DialogSaveSystemContext } from '@/features/chat/components/DialogSaveSystemContext';
 import { FileDrop } from '@/features/chat/components/FileDrop';
-import { MessageInputSection } from '@/features/chat/components/MessageInputSection';
-import { ModelSelector } from '@/features/chat/components/ModelSelector';
-import { SystemPrompt } from '@/features/chat/components/SystemPrompt';
 import { Title } from '@/features/chat/components/Title';
+import { useChatAnnouncementDelay } from '@/features/chat/hooks/useChatAnnouncementDelay';
+import { useChatSubmit } from '@/features/chat/hooks/useChatSubmit';
 import { useChatTitle } from '@/features/chat/hooks/useChatTitle';
 import { useFileUploadable } from '@/features/chat/hooks/useFileUploadable';
 import { useReset } from '@/features/chat/hooks/useReset';
 import { useSetDefaultValues } from '@/features/chat/hooks/useSetDefaultValues';
 import { useChatStore } from '@/features/chat/stores/useChatStore';
 import { useChat } from '@/hooks/useChat';
-import { useFiles } from '@/hooks/useFiles';
 import { useFollow } from '@/hooks/useFollow';
 import { useLiveStatusMessage } from '@/hooks/useLiveStatusMessage';
-import { usePrompter } from '@/hooks/usePrompter';
 import { useScreen } from '@/hooks/useScreen';
 import { useSystemContext } from './hooks/useSystemContext';
 import { ChatPageQueryParams } from './types';
 
 export const ChatPage = () => {
   const {
-    content,
     setContent,
     saveSystemContext,
-    inputSystemContext,
     setInputSystemContext,
+    setSystemContextTitle,
     setIsDragOver,
     shouldAutoSubmit,
-    setShouldAutoSubmit,
+    setHasSent,
   } = useChatStore();
 
-  const { pathname, search } = useLocation();
-  const { clear: clearFiles, uploadedFiles, base64Cache } = useFiles(pathname);
+  const { pathname, search, state } = useLocation();
   const { chatId } = useParams();
-  const { screen, scrollTopAnchorRef, scrollBottomAnchorRef } = useScreen();
+  const navigate = useNavigate();
+  const { scrollTopAnchorRef, scrollBottomAnchorRef } = useScreen({
+    useWindowScroll: true,
+  });
 
   const [showSystemContextDialog, setShowSystemContextDialog] = useState(false);
   const [showPromptListDialog, setShowPromptListDialog] = useState(false);
+  const [isNotificationDialogOpen, setIsNotificationDialogOpen] = useState(false);
   const { systemContextList, onSaveSystemContext, onDeleteSystemContext, onUpdateSystemContext } =
     useSystemContext();
 
@@ -60,12 +64,19 @@ export const ChatPage = () => {
     updateSystemContext,
     getCurrentSystemContext,
     retryGeneration,
+    chatTitle,
   } = useChat(pathname, chatId);
 
   const { scrollableContainer, setFollowing } = useFollow();
-  const { prompter } = usePrompter();
 
   useReset();
+
+  // 履歴を持つチャットのメッセージ読み込み完了時に最下部へスクロール
+  useEffect(() => {
+    if (chatId && !loadingMessages && !isEmpty) {
+      setFollowing(true);
+    }
+  }, [chatId, loadingMessages, isEmpty, setFollowing]);
 
   // 画面遷移時に出力が残る問題の対応
   // メッセージが空の時はテキストをクリア（自動送信時・クエリパラメータ指定時は除く）
@@ -75,63 +86,48 @@ export const ChatPage = () => {
     }
   }, [messages, setContent, shouldAutoSubmit, search]);
 
-  const { title } = useChatTitle();
+  const { title } = useChatTitle(chatTitle);
 
   const { accept, fileUploadable } = useFileUploadable();
 
-  useSetDefaultValues();
+  useSetDefaultValues(systemContextList);
 
   const currentSystemContext = getCurrentSystemContext();
 
-  const onSend = useCallback(() => {
-    if (inputSystemContext !== currentSystemContext) {
-      updateSystemContext(inputSystemContext);
-    }
-    setFollowing(true);
-    postChat(prompter.chatPrompt({ content }), {
-      uploadedFiles: fileUploadable ? uploadedFiles : undefined,
-      base64Cache,
-    });
-    setContent('');
-    clearFiles();
-  }, [
-    content,
-    base64Cache,
-    fileUploadable,
-    setFollowing,
-    inputSystemContext,
-    updateSystemContext,
-    currentSystemContext,
-    prompter,
+  const { onSend, onRetry } = useChatSubmit({
+    pathname,
     postChat,
-    uploadedFiles,
-    setContent,
-    clearFiles,
-  ]);
+    retryGeneration,
+    updateSystemContext,
+    getCurrentSystemContext,
+    loading,
+    setFollowing,
+  });
 
-  useEffect(() => {
-    if (shouldAutoSubmit && content && inputSystemContext && !loading) {
-      onSend();
-      setShouldAutoSubmit(false);
-    }
-  }, [shouldAutoSubmit, content, inputSystemContext, loading, onSend, setShouldAutoSubmit]);
-
-  const onRetry = () => {
-    retryGeneration({ base64Cache });
-  };
-
-  const onReset = () => {
+  const onReset = useCallback(() => {
     clear();
     setContent('');
-  };
+    setSystemContextTitle('');
+    setHasSent(false);
+  }, [clear, setSystemContextTitle, setHasSent, setContent]);
+
+  const onNewChat = useCallback(() => {
+    onReset();
+    navigate('/chat', { state: { shouldReset: true } });
+    document.getElementById('window-title')?.focus();
+  }, [navigate, onReset]);
 
   useEffect(() => {
     // URLにクエリパラメータがある場合は useSetDefaultValues に任せる
     if (search !== '') {
       return;
     }
+    // state に systemContext が含まれる場合は useSetDefaultValues に任せる（トップチャットからの遷移等）
+    if (state?.systemContext) {
+      return;
+    }
     setInputSystemContext(currentSystemContext);
-  }, [currentSystemContext, setInputSystemContext, search]);
+  }, [currentSystemContext, setInputSystemContext, search, state]);
 
   const onClickSamplePrompt = (params: ChatPageQueryParams) => {
     setContent(params.content ?? '');
@@ -146,64 +142,86 @@ export const ChatPage = () => {
 
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
 
-  // トップチャットからの初回遷移時のみアナウンスを遅らせる
-  // （ページタイトル読み上げに約2-3秒かかるため、競合を避ける）
-  const isFromTopChat = search.includes('autoSubmit=true');
-  const hasCompletedFirstLoadRef = useRef(false);
-  const isInitialFromTopChat = isFromTopChat && !hasCompletedFirstLoadRef.current;
-
-  // 初回ローディング完了時にフラグを立てる（ローディング中は遅延を維持）
-  useEffect(() => {
-    if (!loading && isFromTopChat && !hasCompletedFirstLoadRef.current && !isEmpty) {
-      hasCompletedFirstLoadRef.current = true;
-    }
-  }, [loading, isFromTopChat, isEmpty]);
-
-  const START_DELAY_MS = 3000;
+  const { announcementDelay } = useChatAnnouncementDelay({
+    isFromTopChat: !!state?.autoSubmit,
+    loading,
+    isEmpty,
+  });
 
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: lastMessage?.role === 'assistant' || loading,
+    active: lastMessage?.role === 'assistant' || loading,
     loading: loading,
-    content: lastMessage?.content,
-    startDelay: isInitialFromTopChat ? START_DELAY_MS : 0,
+    startDelay: announcementDelay,
+    messages: {
+      loading: 'AIが回答を生成しています...',
+      loadingContinue: 'AIが引き続き回答を生成しています...',
+      completed: lastMessage?.content
+        ? `AIの回答：${lastMessage.content}`
+        : 'AIの回答がありません。',
+    },
   });
 
   return (
     <>
       <PageTitle title={`${title}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='h-full'>
-        <div onDragOver={fileUploadable ? handleDragOver : undefined} className='relative'>
-          <div className='grid h-[calc(100vh-var(--header-height))] grid-rows-[auto_1fr_auto]'>
-            <div className='min-w-0 border-b border-b-black px-4 pt-4 pb-2 lg:px-6'>
-              <Title title={title} />
+      <div
+        onDragOver={fileUploadable ? handleDragOver : undefined}
+        className='relative mx-auto grid grid-cols-1 grid-rows-[auto_1fr] max-w-(--page-width) min-h-[calc(100vh-var(--header-height))] pt-6 px-6 lg:px-8 lg:pt-8'
+      >
+        <div className='lg:mb-3.5'>
+          <BreadcrumbsNav
+            items={
+              chatId
+                ? [
+                    { label: 'ホーム', to: '/' },
+                    { label: 'チャット', to: '/chat' },
+                    { label: title },
+                  ]
+                : [{ label: 'ホーム', to: '/' }, { label: 'チャット' }]
+            }
+            className='mb-4'
+          />
+          <div className='flex flex-wrap min-h-[calc(38/16*1rem)] justify-between items-start gap-x-2 gap-y-4'>
+            <Title title={title} />
+            {!isEmpty && !loadingMessages && (
+              <Button
+                variant='solid-fill'
+                size='md'
+                className='-mt-1 text-nowrap lg:hidden'
+                onClick={onNewChat}
+              >
+                新規チャット
+              </Button>
+            )}
+          </div>
+        </div>
 
-              <FileDrop fileUpload={fileUploadable} accept={accept} />
+        <div className='flex justify-between gap-10 xl:gap-16'>
+          <div className='flex min-w-0 flex-1 max-w-[calc(1056/16*1rem)] flex-col'>
+            <ChatStickyHeader
+              title={title}
+              currentSystemContext={currentSystemContext}
+              onOpenNotificationDialog={() => setIsNotificationDialogOpen(true)}
+              onOpenSystemContextDialog={() => setShowSystemContextDialog(true)}
+              onOpenPromptListDialog={() => setShowPromptListDialog(true)}
+            />
 
-              <ModelSelector />
-
-              <SystemPrompt
-                currentSystemContext={currentSystemContext}
-                setShowSystemContextDialog={setShowSystemContextDialog}
-                setShowPromptListDialog={setShowPromptListDialog}
-              />
-            </div>
-
-            <div className='overflow-x-clip overflow-y-auto [scrollbar-gutter:stable]' ref={screen}>
+            <div className='flex-1 py-4 px-2 lg:pb-6'>
               <div ref={scrollTopAnchorRef} />
 
-              {isEmpty && !loadingMessages && (
-                <div className='relative grid min-h-full w-full place-content-center px-8 py-4'>
-                  <ChatNotificationBanner />
-                </div>
-              )}
-
               {loadingMessages && (
-                <div className='relative grid h-full w-full place-content-center'>
+                <div className='relative grid min-h-[50vh] w-full place-content-center'>
                   <ProgressIndicator isLarge={true} label='読み込み中...' />
                 </div>
               )}
 
-              <div ref={scrollableContainer}>
+              {isEmpty && !loadingMessages && (
+                <div className='grid min-h-full w-full place-content-center py-4'>
+                  <ChatHints />
+                </div>
+              )}
+
+              <div ref={scrollableContainer} className='flex flex-col gap-4'>
                 {!isEmpty &&
                   messages.map((chat, idx) => (
                     <ChatMessage
@@ -216,24 +234,28 @@ export const ChatPage = () => {
                   ))}
               </div>
 
-              {!isEmpty && (
-                <div className='fixed right-4 bottom-28 z-0 lg:right-8'>
-                  <ScrollBottomButton />
-                </div>
-              )}
-
               <div ref={scrollBottomAnchorRef} />
             </div>
 
-            <MessageInputSection
-              onSend={onSend}
-              onReset={onReset}
-              fileUpload={fileUploadable}
-              accept={accept}
-            />
+            <div className='sticky bottom-0 z-1'>
+              <ChatInput onSend={onSend} fileUpload={fileUploadable} accept={accept} />
+            </div>
+          </div>
+
+          <div className='hidden shrink-0 lg:block lg:w-56 xl:w-64'>
+            <div className='sticky top-[calc(var(--header-height))] -mt-4 pt-4 pb-2'>
+              <div className='grid grid-cols-1 grid-rows-[auto_1fr] max-h-[calc(100vh-var(--header-height)-1.5rem)] gap-6'>
+                <Button variant='solid-fill' size='lg' className='w-full' onClick={onNewChat}>
+                  新規チャット
+                </Button>
+                <ChatHistorySidebar />
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <FileDrop fileUpload={fileUploadable} accept={accept} />
 
       <div aria-live='assertive' aria-atomic='true' className='sr-only'>
         {liveStatusMessage}
@@ -243,7 +265,14 @@ export const ChatPage = () => {
         isOpen={showSystemContextDialog}
         systemContext={saveSystemContext}
         onClose={() => setShowSystemContextDialog(false)}
-        onSave={onSaveSystemContext}
+        onSave={async (title, systemContext) => {
+          try {
+            await onSaveSystemContext(title, systemContext);
+            setSystemContextTitle(title);
+          } catch (e) {
+            console.error(e);
+          }
+        }}
       />
 
       <DialogPromptList
@@ -253,6 +282,11 @@ export const ChatPage = () => {
         onClickDeleteSystemContext={onDeleteSystemContext}
         onClickUpdateSystemContext={onUpdateSystemContext}
         onClose={() => setShowPromptListDialog(false)}
+      />
+
+      <ChatNotificationDialog
+        isOpen={isNotificationDialogOpen}
+        onClose={() => setIsNotificationDialogOpen(false)}
       />
     </>
   );

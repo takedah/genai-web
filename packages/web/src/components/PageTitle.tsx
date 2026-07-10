@@ -33,13 +33,13 @@ export const PageTitle = (props: PageTitleProps) => {
         // Safari で「戻る」「進む」が読み上げられた後にちょうどよく読み上げられるのが300ms後くらい
         // 環境によって変わる可能性はあるので、その時は調整する
         await sleep(300);
-        newTitle.focus();
+        newTitle.focus({ preventScroll: true });
       }
     } else {
       titleElement.blur();
       titleElement.textContent = titleText;
       await sleep(100);
-      titleElement.focus();
+      titleElement.focus({ preventScroll: true });
     }
   }, []);
 

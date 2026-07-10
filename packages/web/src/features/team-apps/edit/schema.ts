@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isJSON } from '@/utils/isJSON';
+import { isValidHttpsEndpointUrl } from '../utils/endpointUrl';
 
 const statusSchema = z.preprocess(
   (val) => (val === '' ? undefined : val),
@@ -13,14 +14,9 @@ export const teamAppEditSchema = z.object({
   endpoint: z
     .string()
     .min(1, { message: 'APIエンドポイントを入力してください' })
-    .refine(
-      (value) => {
-        return value.match(/https:\/\/[\w!?/+\-_~;.,*&@#$%()'[\]]+/);
-      },
-      {
-        message: 'URLの形式が正しくありません。',
-      },
-    ),
+    .refine(isValidHttpsEndpointUrl, {
+      message: 'URLの形式が正しくありません。',
+    }),
   config: z
     .string()
     .optional()

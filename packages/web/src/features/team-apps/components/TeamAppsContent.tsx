@@ -3,11 +3,11 @@ import { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useParams } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { ErrorFallback } from '@/components/ui/ErrorFallback';
 import { Tabs } from '@/components/ui/Tabs';
 import { APP_TITLE } from '@/constants';
 import { useSelectedTeam } from '@/features/team-apps/hooks/useSelectedTeam';
-import { BackButton } from './BackButton';
 import { Loading } from './Loading';
 import { TeamAppCreateButton } from './TeamAppCreateButton';
 import { TeamAppList } from './TeamAppList';
@@ -23,14 +23,19 @@ export const TeamAppsContent = ({ onOpenDeleteModal }: Props) => {
   return (
     <>
       <PageTitle title={`${pageTitle}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='mx-6 max-w-[calc(1024/16*1rem)] pt-6 pb-12 lg:mx-10 lg:pb-16'>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
+        <BreadcrumbsNav
+          items={[
+            { label: 'ホーム', to: '/' },
+            { label: 'チーム管理', to: '/teams' },
+            { label: `${selectedTeamName}（AIアプリ）` },
+          ]}
+          className='mb-4'
+        />
         <h1 className='flex justify-start text-std-20B-160 lg:text-std-24B-150'>
           {selectedTeamName}
           <span className='sr-only'>（AIアプリ）</span>
         </h1>
-        <div className='mt-2'>
-          <BackButton />
-        </div>
 
         <Tabs
           title='チーム詳細'

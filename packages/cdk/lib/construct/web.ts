@@ -4,7 +4,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { HiddenUseCases } from 'genai-web';
 import { z } from 'zod';
-import { govaiForHomepage, govaiForSidebar } from '../stack-input';
+import { govaiForHomepage } from '../stack-input';
 
 export interface WebProps {
   appEnv: string;
@@ -21,7 +21,8 @@ export interface WebProps {
   endpointNames: string[];
   hiddenUseCases: HiddenUseCases;
   govais_for_homepage: z.infer<typeof govaiForHomepage>[];
-  govais_for_sidebar: z.infer<typeof govaiForSidebar>[];
+  topChatSystemPrompt: string;
+  topChatSystemPromptTitle: string;
   // Closed Network: deploy frontend assets directly into the bucket served by ALB+ECS
   webBucket: s3.Bucket;
 }
@@ -81,7 +82,8 @@ export class Web extends Construct {
         VITE_APP_ENDPOINT_NAMES: JSON.stringify(props.endpointNames),
         VITE_APP_HIDDEN_USE_CASES: JSON.stringify(props.hiddenUseCases),
         VITE_APP_GOVAIS_FOR_HOMEPAGE: JSON.stringify(props.govais_for_homepage),
-        VITE_APP_GOVAIS_FOR_SIDEBAR: JSON.stringify(props.govais_for_sidebar),
+        VITE_APP_TOP_CHAT_SYSTEM_PROMPT: props.topChatSystemPrompt,
+        VITE_APP_TOP_CHAT_SYSTEM_PROMPT_TITLE: props.topChatSystemPromptTitle,
       },
     });
   }

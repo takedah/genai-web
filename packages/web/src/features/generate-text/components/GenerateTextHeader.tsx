@@ -1,9 +1,17 @@
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { Disclosure, DisclosureSummary } from '@/components/ui/dads/Disclosure';
 import { ModelSelector } from './ModelSelector';
 
 export const GenerateTextHeader = () => {
   return (
     <div className='mb-6 flex flex-col gap-4'>
+      <BreadcrumbsNav
+        items={[
+          { label: 'ホーム', to: '/' },
+          { label: 'AIアプリ', to: '/apps' },
+          { label: '文章を生成' },
+        ]}
+      />
       <h1 className='flex justify-start text-std-20B-160 lg:text-std-24B-150'>文章を生成</h1>
       <ModelSelector />
       <div className='prose prose-sm max-w-full'>
@@ -53,7 +61,7 @@ export const GenerateTextHeader = () => {
         </p>
         <h2>操作方法</h2>
         <p>
-          必要な情報を入力し、実行ボタンを押します。LLMのプルダウンより利用するLLMを選択してください。利用するLLMによって、生成結果が変わることがあります。
+          必要な情報を入力し、実行ボタンを押します。AIモデルのプルダウンより利用するAIモデルを選択してください。利用するAIモデルによって、生成結果が変わることがあります。
           <br />
           なお、情報が多すぎる場合は処理が著しく重くなる場合がありますので、その場合は情報を減らして入力してください。
         </p>
@@ -61,7 +69,7 @@ export const GenerateTextHeader = () => {
           <DisclosureSummary>仕組み</DisclosureSummary>
           <div className='pl-7'>
             <p>
-              LLM（Nova Lite、Claude Haiku 4.5、Claude Sonnet
+              AI（Nova Lite、Claude Haiku 4.5、Claude Sonnet
               4.5）の機能を活用し、文章の元になる情報および文章の形式に入力された情報を元に文章を生成するよう入力プロンプトに指示し、生成AIが生成した文章を返答させています。特別な文書は読み込ませていません。実行環境はガバメントクラウドのAWSのBedrockを利用しています。
             </p>
           </div>

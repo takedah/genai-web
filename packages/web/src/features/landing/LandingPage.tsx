@@ -3,9 +3,11 @@ import { PageTitle } from '@/components/PageTitle';
 import { Button } from '@/components/ui/dads/Button';
 import { APP_TITLE } from '@/constants';
 import { Card } from '@/features/landing/components/Card';
+import { TOP_CHAT_SYSTEM_PROMPT } from '@/features/landing/constants';
 import { RecommendedGovAI } from '@/features/landing/types';
 import { LayoutBody } from '@/layout/LayoutBody';
 import { isUseCaseEnabled } from '@/utils/isUseCaseEnabled';
+import { LandingForm } from './components/LandingForm';
 
 export const LandingPage = () => {
   // 各環境のGovAIの情報を取得
@@ -22,10 +24,12 @@ export const LandingPage = () => {
   return (
     <LayoutBody>
       <PageTitle title={APP_TITLE ? `${APP_TITLE} :` : 'トップページ'} />
-      <div className='mx-6 max-w-[calc(1120/16*1rem)] pb-24 lg:mx-10'>
+      <div className='mx-auto px-6 max-w-(--page-width) lg:px-8 pb-24'>
+        {TOP_CHAT_SYSTEM_PROMPT && <LandingForm />}
+
         <div className='mt-8 lg:mt-10'>
-          <h2 className='mb-6 flex justify-start text-std-24B-150'>おすすめ</h2>
-          <ul className='grid grid-cols-1 gap-2 md:grid-cols-2 lg:gap-3 xl:grid-cols-3'>
+          <h2 className='mb-6 flex justify-start text-std-24B-150'>おすすめアプリ</h2>
+          <ul className='grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4'>
             {recommendedGovAI && recommendedGovAI.length > 0 ? (
               recommendedGovAI.map((govAI) => (
                 <li key={govAI.exAppId}>
@@ -72,7 +76,7 @@ export const LandingPage = () => {
           </ul>
         </div>
         <div className='mt-8 flex justify-center'>
-          <Button className='inline-flex items-center px-8!' variant='text' size='lg' asChild>
+          <Button className='inline-flex items-center px-8!' variant='solid-fill' size='lg' asChild>
             <Link to='/apps'>すべてのAIアプリを見る</Link>
           </Button>
         </div>

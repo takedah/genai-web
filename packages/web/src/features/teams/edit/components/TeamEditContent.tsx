@@ -1,7 +1,7 @@
 import { PageTitle } from '@/components/PageTitle';
+import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { APP_TITLE } from '@/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { BackButton } from './BackButton';
 import { TeamEditForm } from './TeamEditForm';
 
 export const TeamEditContent = () => {
@@ -11,12 +11,16 @@ export const TeamEditContent = () => {
   return (
     <>
       <PageTitle title={`${pageTitle}${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='mx-6 max-w-[calc(928/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
-        <h1 className='flex justify-start text-std-20B-160 lg:text-std-24B-150'>{PAGE_TITLE}</h1>
-
-        <div className='mt-2 mb-6'>
-          <BackButton />
-        </div>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
+        <BreadcrumbsNav
+          items={[
+            { label: 'ホーム', to: '/' },
+            { label: 'チーム管理', to: '/teams' },
+            { label: PAGE_TITLE },
+          ]}
+          className='mb-4'
+        />
+        <h1 className='mb-6 text-std-20B-160 lg:text-std-24B-150'>{PAGE_TITLE}</h1>
 
         <TeamEditForm />
       </div>

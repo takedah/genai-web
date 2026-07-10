@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { ExApp } from 'genai-web';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { ExAppHeader } from '../../../../src/features/exapp/components/ExAppHeader';
 
@@ -18,7 +19,7 @@ describe('ExAppHeader', () => {
   };
 
   it('renders exAppName as h1', () => {
-    const { getByRole } = render(<ExAppHeader exApp={mockExApp} />);
+    const { getByRole } = render(<MemoryRouter><ExAppHeader exApp={mockExApp} /></MemoryRouter>);
 
     const heading = getByRole('heading', { level: 1 });
     expect(heading).toBeDefined();
@@ -26,14 +27,14 @@ describe('ExAppHeader', () => {
   });
 
   it('renders howToUse markdown content', () => {
-    const { getByText } = render(<ExAppHeader exApp={mockExApp} />);
+    const { getByText } = render(<MemoryRouter><ExAppHeader exApp={mockExApp} /></MemoryRouter>);
 
     expect(getByText(/これはテストアプリの使い方です。/)).toBeDefined();
   });
 
   it('does not render howToUse when empty string', () => {
     const exAppWithoutHowToUse = { ...mockExApp, howToUse: '' };
-    const { queryByText } = render(<ExAppHeader exApp={exAppWithoutHowToUse} />);
+    const { queryByText } = render(<MemoryRouter><ExAppHeader exApp={exAppWithoutHowToUse} /></MemoryRouter>);
 
     expect(queryByText(/これはテストアプリの使い方です。/)).toBeNull();
   });

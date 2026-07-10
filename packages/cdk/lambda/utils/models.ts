@@ -27,7 +27,7 @@ import { toSafeDocumentName } from './fileNameUtils';
 
 // Default Models
 
-const modelIds: string[] = (JSON.parse(process.env.MODEL_IDS || '[]') as string[])
+export const modelIds: string[] = (JSON.parse(process.env.MODEL_IDS || '[]') as string[])
   .map((modelId: string) => modelId.trim())
   .filter((modelId: string) => modelId);
 // 利用できるモデルの中で軽量モデルがあれば軽量モデルを優先する。
@@ -40,7 +40,7 @@ export const defaultModel: Model = {
   modelId: defaultModelId,
 };
 
-const imageGenerationModelIds: string[] = (
+export const imageGenerationModelIds: string[] = (
   JSON.parse(process.env.IMAGE_GENERATION_MODEL_IDS || '[]') as string[]
 )
   .map((name: string) => name.trim())
@@ -373,7 +373,7 @@ const createConverseStreamCommandInputWithoutSystemContext = (
 };
 
 const extractConverseOutputText = (output: ConverseCommandOutput): string => {
-  if (output.output && output.output.message && output.output.message.content) {
+  if (output.output?.message?.content) {
     // output.message.content は配列になっているが、基本的に要素は 1 個しか返ってこないため、join をする必要はない。
     // ただ、安全側に実装することを意識して、配列に複数の要素が来ても問題なく動作するように、join で改行を付けるよ実装にしておく。
     const responseText = output.output.message.content.map((block) => block.text).join('\n');
@@ -384,7 +384,7 @@ const extractConverseOutputText = (output: ConverseCommandOutput): string => {
 };
 
 const extractConverseStreamOutputText = (output: ConverseStreamOutput): string => {
-  if (output.contentBlockDelta && output.contentBlockDelta.delta?.text) {
+  if (output.contentBlockDelta?.delta?.text) {
     return output.contentBlockDelta.delta?.text;
   }
 
@@ -611,6 +611,7 @@ export const BEDROCK_TEXT_GEN_MODELS: {
   [key: string]: {
     defaultParams: ConverseInferenceParams;
     usecaseParams: UsecaseConverseInferenceParams;
+    promptCacheTtl?: 'none' | '5m' | '1h';
     createConverseCommandInput: (
       messages: UnrecordedMessage[],
       id: string,
@@ -632,6 +633,7 @@ export const BEDROCK_TEXT_GEN_MODELS: {
   'jp.anthropic.claude-haiku-4-5-20251001-v1:0': {
     defaultParams: CLAUDE_HAIKU_4_5_DEFAULT_PARAMS,
     usecaseParams: USECASE_DEFAULT_PARAMS,
+    promptCacheTtl: '1h',
     createConverseCommandInput: createConverseCommandInput,
     createConverseStreamCommandInput: createConverseStreamCommandInput,
     extractConverseOutputText: extractConverseOutputText,
@@ -640,6 +642,7 @@ export const BEDROCK_TEXT_GEN_MODELS: {
   'jp.anthropic.claude-sonnet-4-5-20250929-v1:0': {
     defaultParams: CLAUDE_SONNET_4_5_DEFAULT_PARAMS,
     usecaseParams: USECASE_DEFAULT_PARAMS,
+    promptCacheTtl: '1h',
     createConverseCommandInput: createConverseCommandInput,
     createConverseStreamCommandInput: createConverseStreamCommandInput,
     extractConverseOutputText: extractConverseOutputText,
@@ -648,6 +651,7 @@ export const BEDROCK_TEXT_GEN_MODELS: {
   'jp.anthropic.claude-sonnet-4-6': {
     defaultParams: CLAUDE_SONNET_4_6_DEFAULT_PARAMS,
     usecaseParams: USECASE_DEFAULT_PARAMS,
+    promptCacheTtl: '1h',
     createConverseCommandInput: createConverseCommandInput,
     createConverseStreamCommandInput: createConverseStreamCommandInput,
     extractConverseOutputText: extractConverseOutputText,
@@ -1017,6 +1021,7 @@ export const BEDROCK_TEXT_GEN_MODELS: {
   'amazon.nova-lite-v1:0': {
     defaultParams: NOVA_DEFAULT_PARAMS,
     usecaseParams: USECASE_DEFAULT_PARAMS,
+    promptCacheTtl: 'none',
     createConverseCommandInput: createConverseCommandInput,
     createConverseStreamCommandInput: createConverseStreamCommandInput,
     extractConverseOutputText: extractConverseOutputText,

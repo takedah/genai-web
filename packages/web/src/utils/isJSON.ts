@@ -1,5 +1,5 @@
 export const isJSON = (json: string): boolean => {
-  if (!json || !json.trim()) {
+  if (!json?.trim()) {
     return false;
   }
 

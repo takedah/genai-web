@@ -1,60 +1,92 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { useLocation } from 'react-router';
 import { AutoResizeTextarea } from '@/components/ui/AutoResizeTextarea';
+import { ErrorText } from '@/components/ui/dads/ErrorText';
+import { SendIcon } from '@/components/ui/icons/SendIcon';
+import { LoadingButton } from '@/components/ui/LoadingButton';
 import { useChat } from '@/hooks/useChat';
 import { isSubmitKey } from '@/utils/keyboard';
-import { SendButton } from './SendButton';
+import { type GenerateImageChatFormSchema, generateImageChatFormSchema } from '../schema';
 
 type Props = {
   textareaId: string;
   content: string;
-  placeholder?: string;
   loading?: boolean;
-  'aria-labelledby'?: string;
   onChangeContent: (content: string) => void;
   onSend: () => void;
 };
 
 export const GenerateImageInput = (props: Props) => {
-  const { textareaId, content, placeholder, onChangeContent, onSend } = props;
+  const { textareaId, content, onChangeContent, onSend } = props;
 
   const { pathname } = useLocation();
   const { loading: chatLoading } = useChat(pathname);
 
   const loading = props.loading === undefined ? chatLoading : props.loading;
 
-  const disabledSend = content.trim() === '';
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<GenerateImageChatFormSchema>({
+    mode: 'onSubmit',
+    resolver: zodResolver(generateImageChatFormSchema),
+    values: {
+      content,
+    },
+  });
+
+  const onSubmit = handleSubmit((data) => {
+    if (loading) return;
+    onChangeContent(data.content);
+    onSend();
+  });
 
   return (
-    <div className={`w-full px-6 py-4`}>
-      <div className='relative flex items-end bg-white'>
-        <div className='flex w-full flex-col-reverse'>
-          <div className='relative flex flex-col'>
-            <AutoResizeTextarea
-              id={textareaId}
-              className={`resize-none pr-14`}
-              placeholder={placeholder ?? '入力してください'}
-              value={content}
-              aria-labelledby={props['aria-labelledby']}
-              onChange={(e) => onChangeContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (isSubmitKey(e) && !disabledSend) {
-                  e.preventDefault();
-                  onSend();
-                }
-              }}
-            />
+    <form className='w-full' aria-labelledby={`${textareaId}-heading`} onSubmit={onSubmit}>
+      <h2 id={`${textareaId}-heading`} className='self-start my-1 text-std-16N-170'>
+        生成したい画像の内容を入力してみましょう
+      </h2>
+      <div className='flex w-full flex-col gap-2'>
+        <AutoResizeTextarea
+          id={textareaId}
+          className='resize-none'
+          required
+          aria-labelledby={`${textareaId}-heading`}
+          aria-describedby={`${textareaId}-error`}
+          onKeyDown={(e) => {
+            if (isSubmitKey(e)) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+          {...register('content', {
+            onChange: (e) => {
+              setValue('content', e.target.value);
+              onChangeContent(e.target.value);
+            },
+          })}
+        />
+        {errors.content && (
+          <ErrorText id={`${textareaId}-error`}>＊{errors.content.message}</ErrorText>
+        )}
 
-            <div>
-              <SendButton
-                className='absolute! right-2 bottom-[calc(7/16*1rem)]'
-                disabled={disabledSend}
-                loading={loading}
-                onClick={onSend}
-              />
-            </div>
-          </div>
+        <div className='flex w-full items-start justify-end'>
+          <LoadingButton
+            type='submit'
+            variant='solid-fill'
+            size='md'
+            disabled={loading}
+            onClick={() => {}}
+            className='shrink-0 inline-flex justify-center items-center gap-1 min-w-36'
+          >
+            <SendIcon aria-hidden={true} className='shrink-0' />
+            {loading ? '生成中...' : '送信'}
+          </LoadingButton>
         </div>
       </div>
-    </div>
+    </form>
   );
 };

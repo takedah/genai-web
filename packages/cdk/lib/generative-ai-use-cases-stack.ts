@@ -102,11 +102,7 @@ export class GenerativeAiUseCasesStack extends Stack {
 
       userPool: auth.userPool,
       authenticatedRole: auth.authenticatedRole,
-      systemAdminRole: auth.systemAdminRole,
-      teamAdminRole: auth.teamAdminRole,
-      userRole: auth.userRole,
       userPoolClient: auth.client,
-      identityPoolId: auth.idPool.ref,
       table: database.table,
       guardrailIdentify: props.guardrailIdentifier,
       guardrailVersion: props.guardrailVersion,
@@ -121,7 +117,6 @@ export class GenerativeAiUseCasesStack extends Stack {
     const teamAccessControl = new TeamAccessControlStack(this, `TeamAccessControlStack`, {
       encryptionKey: encryptionKey.key,
       userPool: auth.userPool,
-      identityPoolId: auth.idPool.ref,
       vpc: props.vpc,
       apiGatewayVpcEndpoint: props.apiGatewayVpcEndpoint,
       logLevel: params.logLevel,
@@ -267,21 +262,61 @@ export class GenerativeAiUseCasesStack extends Stack {
       // Frontend
       hiddenUseCases: params.hiddenUseCases,
       govais_for_homepage: params.govais_for_homepage,
-      govais_for_sidebar: params.govais_for_sidebar,
+      topChatSystemPrompt: params.top_chat_system_prompt,
+      topChatSystemPromptTitle: params.top_chat_system_prompt_title,
       // Closed Network Bucket
       webBucket: closedWeb.bucket,
     });
 
     // Transcribe
-    new Transcribe(this, 'Transcribe', {
+    const transcribe = new Transcribe(this, 'Transcribe', {
       encryptionKey: encryptionKey.key,
       vpc: props.vpc,
       userPool: auth.userPool,
-      idPool: auth.idPool,
       authenticatedRole: auth.authenticatedRole,
       api: api.api,
       appEnv: params.appEnv,
     });
+
+    const cognitoIdentityLambdas = [
+      teamAccessControl.invokeExAppFunction,
+      teamAccessControl.getArtifactFileFunction,
+      api.getSignedUrlFunction,
+      api.getFileDownloadSignedUrlFunction,
+      api.deleteFileFunction,
+      transcribe.getSignedUrlFunction,
+      transcribe.startTranscriptionFunction,
+    ];
+    const cognitoIdentityPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'cognito-identity:GetId',
+        'cognito-identity:ListIdentityPools',
+        'cognito-identity:DescribeIdentityPool',
+      ],
+      // ListIdentityPools does not support resource-level permissions.
+      // DescribeIdentityPool target ARN is not determinable at synth time.
+      resources: ['*'],
+    });
+    for (const fn of cognitoIdentityLambdas) {
+      fn.addToRolePolicy(cognitoIdentityPolicyStatement);
+      NagSuppressions.addResourceSuppressions(
+        fn.role!,
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason:
+              'cognito-identity:ListIdentityPools does not support resource-level permissions. DescribeIdentityPool target ARN is not determinable at synth time. Scope is limited to the current AWS account. No secrets or credentials are exposed through these read-only APIs.',
+            appliesTo: [
+              'Action::cognito-identity:ListIdentityPools',
+              'Action::cognito-identity:DescribeIdentityPool',
+              'Resource::*',
+            ],
+          },
+        ],
+        true,
+      );
+    }
 
     // Logging
     if (params.destination) {
@@ -394,6 +429,14 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new CfnOutput(this, 'GovaisForHomepage', {
       value: Buffer.from(JSON.stringify(params.govais_for_homepage)).toString('base64'),
+    });
+
+    new CfnOutput(this, 'TopChatSystemPrompt', {
+      value: Buffer.from(params.top_chat_system_prompt).toString('base64'),
+    });
+
+    new CfnOutput(this, 'TopChatSystemPromptTitle', {
+      value: Buffer.from(params.top_chat_system_prompt_title).toString('base64'),
     });
 
     // DynamoDB Table Names

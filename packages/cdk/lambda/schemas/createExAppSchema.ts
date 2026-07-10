@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseHttpsUrl } from '../utils/exAppUrlSecurity';
 
 const isValidJson = (value: string): boolean => {
   try {
@@ -9,7 +10,14 @@ const isValidJson = (value: string): boolean => {
   }
 };
 
-const httpsUrlPattern = /https:\/\/[\w!?/+\-_~;.,*&@#$%()'[\]]+/;
+const isValidHttpsUrl = (value: string): boolean => {
+  try {
+    parseHttpsUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const createExAppSchema = z.object({
   exAppName: z
@@ -17,8 +25,8 @@ export const createExAppSchema = z.object({
     .trim()
     .min(1, 'アプリ名は必須です。'),
   endpoint: z
-    .string({ error: 'エンドポイントの形式が不正です。' })
-    .regex(httpsUrlPattern, 'エンドポイントの形式が不正です。'),
+    .string({ error: 'APIエンドポイントの形式が不正です。' })
+    .refine(isValidHttpsUrl, 'APIエンドポイントの形式が不正です。'),
   config: z
     .string({ error: 'コンフィグの形式が不正です。' })
     .refine((val) => !val || isValidJson(val), 'コンフィグのJSON形式が不正です。')

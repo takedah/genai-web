@@ -8,6 +8,13 @@ import { findTeamById } from './repository/teamRepository';
 import { getApiKeyValue } from './utils/apiKey';
 import { resolveIdentityId } from './utils/cognitoIdentity';
 import { COMMON_TEAM_ID } from './utils/constants';
+import {
+  assertPublicEndpointUrl,
+  isExAppUrlValidationError,
+  requestValidatedExAppUrl,
+  resolveRelativeStatusUrl,
+  toRelativeStatusUrl,
+} from './utils/exAppUrlSecurity';
 import { createResponse } from './utils/http';
 import { HttpError } from './utils/httpError';
 import { classifyErrorType, publishErrorMetrics, publishSuccessMetrics } from './utils/monitoring';
@@ -24,6 +31,25 @@ const APP_ENV = process.env.APP_ENV || '';
 // UUID v4形式のバリデーション用正規表現
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const getStatusUrlFromResponse = (body: unknown): string | undefined => {
+  if (typeof body !== 'object' || body === null || !('status_url' in body)) {
+    return undefined;
+  }
+  const statusUrl = (body as { status_url?: unknown }).status_url;
+  return typeof statusUrl === 'string' ? statusUrl : undefined;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getErrorMessageFromResponse = (body: unknown): string => {
+  if (!isRecord(body)) {
+    return 'Unknown error';
+  }
+  const error = body.error ?? body.message;
+  return typeof error === 'string' ? error : 'Unknown error';
+};
+
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const userId: string = event.requestContext.authorizer!.claims['sub'];
 
@@ -38,8 +64,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   let teamId: string = '';
   let exAppId: string = '';
-  let inputs: Record<string, any> = {};
-  let responseBody: any = {};
+  let inputs: Record<string, unknown> = {};
+  let responseBody: unknown = {};
   let status: 'ACCEPTED' | 'COMPLETED' | 'ERROR' = 'COMPLETED';
   const createdDate = `${Date.now()}`;
   let dbId = '';
@@ -52,15 +78,19 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       throw new HttpError(400, 'Pathが不正か、bodyがありません');
     }
 
-    let parsedBody: Record<string, any>;
+    let parsedJson: unknown;
     try {
-      parsedBody = JSON.parse(event.body);
+      parsedJson = JSON.parse(event.body);
     } catch {
       throw new HttpError(400, 'リクエストボディのJSON形式が不正です。');
     }
-    teamId = parsedBody.teamId;
-    exAppId = parsedBody.exAppId;
-    inputs = parsedBody.inputs;
+    if (!isRecord(parsedJson)) {
+      throw new HttpError(400, 'パラメータが不正です。');
+    }
+    const parsedBody = parsedJson;
+    teamId = typeof parsedBody.teamId === 'string' ? parsedBody.teamId : '';
+    exAppId = typeof parsedBody.exAppId === 'string' ? parsedBody.exAppId : '';
+    const parsedInputs = parsedBody.inputs;
     dbId = `${teamId}#${exAppId}#${userId}`;
 
     const authHeader = event.headers?.Authorization ?? event.headers?.authorization;
@@ -81,9 +111,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       }
     }
 
-    if (!teamId || !exAppId || !inputs) {
+    if (!teamId || !exAppId || !isRecord(parsedInputs)) {
       throw new HttpError(400, 'パラメータが不正です。');
     }
+    inputs = parsedInputs;
 
     const isTeamUserResult = await isTeamUser(event, teamId);
     const isCommonOrTeamUser = teamId === COMMON_TEAM_ID || isTeamUserResult;
@@ -99,16 +130,18 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       throw new HttpError(404, 'リクエストされたAIアプリが見つかりませんでした。');
     }
 
+    const validatedEndpoint = await assertPublicEndpointUrl(res.endpoint);
+
     const apiKeyValue = await getApiKeyValue(teamId, exAppId, APP_ENV);
     if (!apiKeyValue) {
       throw new HttpError(404, 'リクエストされたAIアプリが見つかりませんでした。');
     }
 
-    const requestBody: { inputs: Record<string, any>; sessionId?: string } = { inputs };
+    const requestBody: { inputs: Record<string, unknown>; sessionId?: string } = { inputs };
     if (sessionId) {
       requestBody.sessionId = sessionId;
     }
-    const options: RequestInit = {
+    const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -118,7 +151,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       body: JSON.stringify(requestBody),
     };
 
-    const response = await fetch(res.endpoint, options);
+    const response = await requestValidatedExAppUrl(validatedEndpoint, options);
 
     try {
       responseBody = await response.json();
@@ -133,8 +166,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    if (response.status === 202 && responseBody.status_url) {
+    const statusUrl = getStatusUrlFromResponse(responseBody);
+    if (response.status === 202 && statusUrl) {
       status = 'ACCEPTED';
+      const validatedStatusUrl = resolveRelativeStatusUrl(statusUrl, validatedEndpoint);
+      const relativeStatusUrl = toRelativeStatusUrl(validatedStatusUrl.url);
 
       const sqsMessage = {
         dbId,
@@ -143,8 +179,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         exAppId,
         userId,
         stableUserId,
-        statusUrl: responseBody.status_url,
-        endpoint: res.endpoint,
+        statusUrl: relativeStatusUrl,
+        endpoint: validatedEndpoint.url.toString(),
         apiKeySecretId: `${teamId}/${exAppId}`,
         baseS3Prefix, // PrefixをSQSメッセージに追加
       };
@@ -156,7 +192,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         }),
       );
 
-      return createResponse(202, JSON.stringify(responseBody));
+      const asyncResponseBody = isRecord(responseBody) ? responseBody : {};
+      return createResponse(
+        202,
+        JSON.stringify({ ...asyncResponseBody, status_url: relativeStatusUrl }),
+      );
     } else {
       const requestEndTime = Date.now();
       const responseTime = requestEndTime - requestStartTime;
@@ -181,7 +221,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           endpoint: res.endpoint,
           errorType,
           responseTime,
-          errorMessage: responseBody?.error || responseBody?.message || 'Unknown error',
+          errorMessage: getErrorMessageFromResponse(responseBody),
           userId,
           requestId: event.requestContext.requestId,
         });
@@ -203,6 +243,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (error instanceof HttpError) {
       responseBody = { outputs: error.message };
       return createResponse(error.statusCode, JSON.stringify(responseBody));
+    } else if (isExAppUrlValidationError(error)) {
+      responseBody = {
+        outputs: 'AIアプリのAPIエンドポイントまたはステータスURLが安全ではないため実行できません。',
+      };
+      return createResponse(502, JSON.stringify(responseBody));
     } else {
       responseBody = { outputs: 'サーバ側でエラーが発生しました。管理者へご連絡ください。' };
       return createResponse(500, JSON.stringify(responseBody));

@@ -22,11 +22,11 @@
     "cdk:test:update-snapshot": "npm -w packages/cdk run test -- --update"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
+    "@biomejs/biome": "^2.4.14",
     "esbuild": "^0.28.0",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.4",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "workspaces": [
     "packages/*"

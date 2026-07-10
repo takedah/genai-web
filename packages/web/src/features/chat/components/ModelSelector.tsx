@@ -7,10 +7,10 @@ export const ModelSelector = () => {
   const { modelIds: availableModels } = MODELS;
 
   return (
-    <div className='mt-2 flex w-full items-end justify-start lg:mt-0 print:hidden'>
+    <div className='mt-0 flex w-fit items-end justify-start'>
       <CustomSelect
-        label='LLM：'
-        labelClassName='text-dns-14B-120'
+        label='AIモデル：'
+        buttonClassName='min-w-[calc(196/16*1rem)]'
         value={selectedModelId}
         onChange={setSelectedModelId}
         options={availableModels.map((m) => {

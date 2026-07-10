@@ -459,6 +459,24 @@ describe('TeamAppEditForm', () => {
       });
     });
 
+    it('rejects endpoint URLs with credentials in schema', () => {
+      const result = teamAppEditSchema.safeParse({
+        name: 'テストアプリ',
+        endpoint: 'https://user:pass@example.com/test',
+        uiFormat: '{}',
+        description: 'test',
+        howToUse: 'test',
+        copyable: false,
+        status: 'published',
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const endpointError = result.error.issues.find((issue) => issue.path.includes('endpoint'));
+        expect(endpointError?.message).toContain('URLの形式が正しくありません');
+      }
+    });
+
     it('shows error message for invalid JSON in UI format', async () => {
       const user = userEvent.setup();
       renderWithRouter();

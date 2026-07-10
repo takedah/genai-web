@@ -1,32 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 
-type UseLiveStatusMessageProps = {
-  isAssistant: boolean;
-  assistantName?: string;
-  loading?: boolean;
-  content?: string;
-  error?: string | null;
-  /** 開始アナウンスを遅らせるミリ秒数（ページタイトル読み上げとの競合を避けるため） */
-  startDelay?: number;
+type LiveStatusMessages = {
+  loading: string;
+  loadingContinue: string;
+  completed: string;
+  error?: string;
+  empty?: string;
 };
 
-// LLMの生成する回答の読み上げ用のカスタムフック
-// LLMの回答生成中の状態や、回答生成完了時に回答をスクリーンリーダーで通知するために使用します。
-// それ以外の画面更新の読み上げには useAccessibilityAnnouncer フックを使用してください。
+type UseLiveStatusMessageProps = {
+  active: boolean;
+  loading?: boolean;
+  /** 開始アナウンスを遅らせるミリ秒数（ページタイトル読み上げとの競合を避けるため） */
+  startDelay?: number;
+  messages: LiveStatusMessages;
+};
+
+// スクリーンリーダーによるステータス読み上げ用のカスタムフック
+// ローディング状態の変化に応じて、aria-live 領域にメッセージを設定します。
 export const useLiveStatusMessage = ({
-  isAssistant,
-  assistantName = 'LLM',
+  active,
   loading,
-  content,
-  error,
   startDelay = 0,
+  messages,
 }: UseLiveStatusMessageProps) => {
   const [liveStatusMessage, setLiveStatusMessage] = useState('');
 
-  // NOTE: この3つのrefは、aria-live属性を使用してスクリーンリーダーに通知するためのタイマーを管理
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // NOTE: aria-live属性を使用してスクリーンリーダーに通知するためのタイマーを管理
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // NOTE： 前回のローディング状態を保持するためのref
   // 初期値は false に固定し、loading の変化を正しく検出する
@@ -34,78 +36,98 @@ export const useLiveStatusMessage = ({
   const prevLoadingRef = useRef<boolean>(false);
 
   // タイマーのクリーンアップ関数
-  const clearTimeouts = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  const clearTimers = () => {
+    for (const id of timersRef.current) {
+      clearTimeout(id);
     }
-    if (longTimeoutRef.current) {
-      clearTimeout(longTimeoutRef.current);
-      longTimeoutRef.current = null;
+    timersRef.current = [];
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-    if (startDelayTimeoutRef.current) {
-      clearTimeout(startDelayTimeoutRef.current);
-      startDelayTimeoutRef.current = null;
-    }
+  };
+
+  // setTimeout のラッパー（クリーンアップ対象に自動登録）
+  const addTimeout = (fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
   };
 
   // メッセージを設定し、5秒後にクリアする共通関数
   const setMessageWithTimeout = (message: string) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
     setLiveStatusMessage(message);
-
-    timeoutRef.current = setTimeout(() => {
-      setLiveStatusMessage('');
-    }, 5000);
+    addTimeout(() => setLiveStatusMessage(''), 5000);
   };
 
   // コンポーネントのアンマウント時にすべてのタイマーをクリア
   useEffect(() => {
-    return clearTimeouts;
+    return clearTimers;
   }, []);
 
+  const prevActiveRef = useRef<boolean>(false);
+
   useEffect(() => {
-    if (!isAssistant) return;
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = active;
+
+    if (!active) {
+      if (wasActive) {
+        // active が false に切り替わった場合、タイマーを停止しメッセージをクリア
+        clearTimers();
+        setLiveStatusMessage('');
+        prevLoadingRef.current = false;
+      }
+      return;
+    }
 
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = loading ?? false;
 
     if (loading && !wasLoading) {
       // ローディング開始時（startDelay が指定されている場合は遅延させる）
-      clearTimeouts();
+      clearTimers();
 
       const announceStart = () => {
-        setMessageWithTimeout(`${assistantName}が回答を生成しています...`);
+        setMessageWithTimeout(messages.loading);
 
-        // 5秒後に継続メッセージを表示
-        longTimeoutRef.current = setTimeout(() => {
-          setMessageWithTimeout(`${assistantName}が引き続き回答を生成しています...`);
+        // 5秒おきに継続メッセージを繰り返し読み上げ
+        // 空文字→100ms後にテキスト設定→2秒後にクリア の流れで
+        // aria-live が確実に変化を検知できるようにする
+        const announceRepeat = () => {
+          setLiveStatusMessage('');
+          addTimeout(() => {
+            setLiveStatusMessage(messages.loadingContinue);
+            addTimeout(() => setLiveStatusMessage(''), 2000);
+          }, 100);
+        };
+
+        // 5秒後に最初の継続メッセージ、以降5秒間隔で繰り返し
+        addTimeout(() => {
+          announceRepeat();
+          intervalRef.current = setInterval(announceRepeat, 5000);
         }, 5000);
       };
 
       if (startDelay > 0) {
-        startDelayTimeoutRef.current = setTimeout(announceStart, startDelay);
+        addTimeout(announceStart, startDelay);
       } else {
         announceStart();
       }
     } else if (!loading && wasLoading) {
       // ローディング完了時
-      clearTimeouts();
+      clearTimers();
 
-      if (error) {
-        setMessageWithTimeout(`${assistantName}のエラー：${error}`);
-      } else if (content) {
-        setMessageWithTimeout(`${assistantName}の回答：${content}`);
-      } else {
-        setMessageWithTimeout(`${assistantName}の回答がありません。`);
+      if (messages.error) {
+        setMessageWithTimeout(messages.error);
+      } else if (messages.completed) {
+        setMessageWithTimeout(messages.completed);
+      } else if (messages.empty) {
+        setMessageWithTimeout(messages.empty);
       }
     }
     // loading 中の再レンダリングではタイマーをクリアしない（cleanup を返さない）
-  }, [loading, content, error, isAssistant, assistantName, startDelay]);
+  }, [loading, active, startDelay, messages]);
 
   return { liveStatusMessage };
 };

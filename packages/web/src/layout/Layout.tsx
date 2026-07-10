@@ -1,33 +1,25 @@
 import { Outlet, useLocation } from 'react-router';
-import { Drawer } from '@/components/ui/Drawer';
+import { Footer } from '@/components/ui/Footer';
 import { Header } from '@/components/ui/Header';
-import { MobileMenuDrawer } from '@/components/ui/MobileMenuDrawer';
-import { useMobileMenuHandler } from '@/layout/hooks/useMobileMenuHandler';
-import { GEN_U_MENU_ITEMS } from './constants';
+import { useScrollRestoration } from '@/layout/hooks/useScrollRestoration';
+
+const FOOTER_HIDDEN_PATHS = ['/chat', '/image'];
 
 export const Layout = () => {
   const { pathname } = useLocation();
-  const { mobileMenuRef } = useMobileMenuHandler();
+  const hideFooter = FOOTER_HIDDEN_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+
+  useScrollRestoration();
 
   return (
-    <>
-      <div className="relative grid h-screen w-screen grid-cols-[auto_1fr] grid-rows-[auto_minmax(0,1fr)] overflow-clip [grid-template-areas:'header_header''side-menu_main']">
-        <Header
-          className='[grid-area:header]'
-          isLandingPage={pathname === '/'}
-          onClickMenuToggleForMobile={() => mobileMenuRef.current?.showModal()}
-        />
-        <div id='main-menu-container' className='hidden [grid-area:side-menu] lg:block'>
-          <Drawer items={GEN_U_MENU_ITEMS} />
-        </div>
-        <main id='mainContents' className='[grid-area:main]'>
-          <Outlet />
-        </main>
-      </div>
-
-      <MobileMenuDrawer ref={mobileMenuRef} onClose={() => mobileMenuRef.current?.close()}>
-        <Drawer items={GEN_U_MENU_ITEMS} />
-      </MobileMenuDrawer>
-    </>
+    <div id='layoutRoot' className='flex min-h-dvh w-screen flex-col'>
+      <Header className='sticky top-0 z-10' isLandingPage={pathname === '/'} />
+      <main id='mainContents' className='flex-1'>
+        <Outlet />
+      </main>
+      {!hideFooter && <Footer />}
+    </div>
   );
 };

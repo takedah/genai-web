@@ -81,7 +81,7 @@ const CodeRenderer = ({ className, children, node }: ComponentProps<'code'> & Ex
       <>
         <div className='flex'>
           <span className='flex-auto'>{language} </span>
-          <ButtonCopy className='mr-2 justify-end text-gray-400' text={codeText} />
+          <ButtonCopy className='text-solid-gray-50' text={codeText} />
         </div>
         <CodeBlock lang={language as BundledLanguage}>{codeText}</CodeBlock>
       </>
@@ -105,7 +105,7 @@ const components: ComponentProps<typeof ReactMarkdown>['components'] = {
 export const Markdown = React.memo(({ className, prefix, children }: Props) => {
   return (
     <ErrorBoundary fallback={<ErrorText>コンテンツの表示中にエラーが発生しました。</ErrorText>}>
-      <div className={`prose max-w-full ${className ?? ''}`}>
+      <div className={`prose prose-sm max-w-full ${className ?? ''}`}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks]}
           remarkRehypeOptions={{ clobberPrefix: prefix }}

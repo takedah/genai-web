@@ -6,6 +6,7 @@ import {
   CustomDialogPanel,
 } from '@/components/ui/CustomDialog';
 import { useChat } from '@/hooks/useChat';
+import { useChatStore } from '../stores/useChatStore';
 import { ChatPageQueryParams } from '../types';
 import { ExamplePromptList } from './ExamplePromptList';
 import { SavedSystemContextItem } from './SavedSystemContextItem';
@@ -22,6 +23,7 @@ type Props = {
 export const DialogPromptList = (props: Props) => {
   const { isOpen, onClick, onClickDeleteSystemContext, onClickUpdateSystemContext, onClose } =
     props;
+  const { setSystemContextTitle } = useChatStore();
   // PromptList はチャットのページでの利用に固定
   const { getModelId } = useChat('/chat');
   const modelId = getModelId();
@@ -50,6 +52,7 @@ export const DialogPromptList = (props: Props) => {
                         systemContext={item.systemContext}
                         systemContextId={item.systemContextId}
                         onClick={(params) => {
+                          setSystemContextTitle(item.systemContextTitle);
                           onClick(params);
                           onClose();
                         }}
@@ -67,7 +70,8 @@ export const DialogPromptList = (props: Props) => {
               <h3 className='mb-2 flex items-center text-std-17B-170'>プロンプト例から選択</h3>
               <ExamplePromptList
                 modelId={modelId}
-                onClick={(params) => {
+                onClick={(params, title) => {
+                  setSystemContextTitle(title);
                   onClick(params);
                   onClose();
                 }}

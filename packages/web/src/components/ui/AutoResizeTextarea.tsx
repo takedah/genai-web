@@ -45,7 +45,7 @@ export const AutoResizeTextarea = (props: Props) => {
   const uncontrolledValue = internalRef.current?.value ?? '';
   useLayoutEffect(() => {
     handleResize();
-  }, [handleResize, rest.value, uncontrolledValue]);
+  }, [handleResize, rest.value, uncontrolledValue, rows]);
 
   return (
     <DadsTextarea

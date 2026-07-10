@@ -15,8 +15,10 @@ interface ImportMetaEnv {
   readonly VITE_APP_MODEL_IDS: string;
   readonly VITE_APP_IMAGE_MODEL_IDS: string;
   readonly VITE_APP_ENDPOINT_NAMES: string;
-  readonly VITE_APP_USE_CASE_BUILDER_ENABLED: string;
   readonly VITE_APP_HIDDEN_USE_CASES: string;
+  readonly VITE_APP_GOVAIS_FOR_HOMEPAGE: string;
+  readonly VITE_APP_TOP_CHAT_SYSTEM_PROMPT: string;
+  readonly VITE_APP_TOP_CHAT_SYSTEM_PROMPT_TITLE: string;
 }
 
 interface ImportMeta {

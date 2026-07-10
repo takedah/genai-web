@@ -5,6 +5,7 @@ import { AutoResizeTextarea } from '@/components/ui/AutoResizeTextarea';
 import { ButtonIcon } from '@/components/ui/ButtonIcon';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Disclosure, DisclosureSummary } from '@/components/ui/dads/Disclosure';
+import { Divider } from '@/components/ui/dads/Divider';
 import { Input } from '@/components/ui/dads/Input';
 import { Label } from '@/components/ui/dads/Label';
 import { RequirementBadge } from '@/components/ui/dads/RequirementBadge';
@@ -91,6 +92,14 @@ export const ImageGeneratorForm = (props: Props) => {
     resolutionPresets,
   } = useGenerateImageStore();
 
+  const SEED_MIN = 0;
+  const SEED_MAX = 4294967295;
+  const parseSeed = (value: string): number | undefined => {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return undefined;
+    return Math.round(Math.max(SEED_MIN, Math.min(SEED_MAX, parsed)));
+  };
+
   const colorList = colors ? colors.split(',').map((color) => color.trim()) : [];
 
   const { imageGenModelIds } = MODELS;
@@ -143,12 +152,14 @@ export const ImageGeneratorForm = (props: Props) => {
               onChange={(e) => setPrompt(e.target.value)}
               maxHeight={80}
               rows={2}
+              required
             />
           </div>
 
           <div className='flex flex-col gap-1.5'>
             <Label htmlFor='generate-image-negative-prompt-input' size='sm'>
               ネガティブプロンプト
+              <RequirementBadge>※必須</RequirementBadge>
             </Label>
             <SupportText
               className='text-dns-14N-130!'
@@ -163,6 +174,7 @@ export const ImageGeneratorForm = (props: Props) => {
               onChange={(e) => setNegativePrompt(e.target.value)}
               maxHeight={80}
               rows={2}
+              required
             />
           </div>
         </div>
@@ -203,23 +215,57 @@ export const ImageGeneratorForm = (props: Props) => {
       {generationMode !== 'BACKGROUND_REMOVAL' && (
         <div className='mb-6 grid w-full grid-cols-1 gap-4'>
           <div className='relative col-span-2 flex flex-col items-start lg:col-span-1'>
-            <RangeSlider
-              className='w-full'
-              label='シード値'
-              id='generate-image-seed'
-              min={0}
-              max={4294967295}
-              value={seed[selectedImageIndex]}
-              onChange={(n) => {
-                setSeed(n, selectedImageIndex);
-              }}
-              help='乱数のシード値です。同じシード値を指定すると同じ画像が生成されます。'
-              helpTextClass='!text-dns-14N-130'
-            />
-            <LoadingButton size='xs' variant='outline' onClick={onClickRandomSeed}>
-              <PiDiceFive className='mr-1 text-lg' />
-              ランダムなシード値を指定
-            </LoadingButton>
+            <div className='w-full'>
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex items-center'>
+                  <Label size='sm' id='generate-image-seed-label' htmlFor='generate-image-seed'>
+                    シード値
+                  </Label>
+                </div>
+                <SupportText className='text-dns-14N-130!' id='generate-image-seed-support'>
+                  乱数のシード値です。同じシード値を指定すると同じ画像が生成されます。
+                </SupportText>
+                <LoadingButton size='xs' variant='outline' onClick={onClickRandomSeed}>
+                  <PiDiceFive className='mr-1 text-lg' />
+                  ランダムなシード値を指定
+                </LoadingButton>
+                <Input
+                  blockSize='sm'
+                  className='my-1 self-start'
+                  type='number'
+                  id='generate-image-seed'
+                  aria-describedby='generate-image-seed-support'
+                  min={SEED_MIN}
+                  max={SEED_MAX}
+                  step={1}
+                  value={seed[selectedImageIndex]}
+                  onChange={(e) => {
+                    const value = parseSeed(e.target.value);
+                    if (value !== undefined) {
+                      setSeed(value, selectedImageIndex);
+                    }
+                  }}
+                />
+              </div>
+              <div className='mt-2 flex'>
+                <input
+                  type='range'
+                  aria-labelledby='generate-image-seed-label'
+                  aria-describedby='generate-image-seed-support'
+                  className='mb-6 h-1 w-full cursor-pointer'
+                  value={seed[selectedImageIndex]}
+                  min={SEED_MIN}
+                  max={SEED_MAX}
+                  step={1}
+                  onChange={(e) => {
+                    const value = parseSeed(e.target.value);
+                    if (value !== undefined) {
+                      setSeed(value, selectedImageIndex);
+                    }
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           <RangeSlider
@@ -236,8 +282,10 @@ export const ImageGeneratorForm = (props: Props) => {
         </div>
       )}
 
+      <Divider className='my-4' />
+
       <div className='flex flex-col gap-3'>
-        <h2 className='mb-2 text-std-16B-170 lg:text-std-18B-160'>詳細パラメーター設定</h2>
+        <h4 className='mb-2 text-std-17B-170'>パラメーター設定</h4>
         <div>
           <CustomSelect
             label='GenerationMode'
@@ -270,6 +318,7 @@ export const ImageGeneratorForm = (props: Props) => {
                 画像生成の初期状態となる画像を設定できます。初期画像を設定することで、初期画像に近い画像を生成するように誘導できます。
               </SupportText>
               <Base64Image
+                alt='初期画像'
                 className='my-3 size-32 self-center'
                 imageBase64={initImage.imageBase64}
                 format={'image/png'}
@@ -305,6 +354,7 @@ export const ImageGeneratorForm = (props: Props) => {
                 画像のマスクを設定できます。マスク画像を設定することで、マスクされた領域（Inpaint）もしくは外側の領域（Outpaint）を生成できます。マスクプロンプトと併用はできません。
               </SupportText>
               <Base64Image
+                alt='マスク画像'
                 className='my-3 size-32 self-center'
                 imageBase64={maskImage.imageBase64}
                 format={'image/png'}
@@ -524,7 +574,7 @@ export const ImageGeneratorForm = (props: Props) => {
           loading={generating || loadingChat}
           disabled={
             (generationMode !== AMAZON_ADVANCED_GENERATION_MODE.BACKGROUND_REMOVAL &&
-              prompt.length === 0) ||
+              (prompt.length === 0 || negativePrompt.length === 0)) ||
             (generationMode !== GENERATION_MODES.TEXT_IMAGE &&
               generationMode !== AMAZON_ADVANCED_GENERATION_MODE.COLOR_GUIDED_GENERATION &&
               !initImage.imageBase64) ||
@@ -535,7 +585,7 @@ export const ImageGeneratorForm = (props: Props) => {
             (generationMode === AMAZON_ADVANCED_GENERATION_MODE.COLOR_GUIDED_GENERATION && !colors)
           }
         >
-          生成
+          実行
         </LoadingButton>
 
         <LoadingButton

@@ -1,5 +1,5 @@
-import { Slot } from './Slot';
 import type { ComponentProps } from 'react';
+import { Slot } from './Slot';
 
 export const linkDefaultStyle = 'text-blue-1000 underline underline-offset-[calc(3/16*1rem)]';
 export const linkVisitedStyle = 'visited:text-magenta-900';

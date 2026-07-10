@@ -53,7 +53,7 @@ export const CustomDialogPanel = (props: CustomDialogPanelProps) => {
 
   return (
     <DialogPanel
-      className={`w-full max-w-2xl rounded-8 border border-transparent bg-white p-6 text-left align-middle shadow-xl ${className ?? ''}`}
+      className={`w-full max-w-2xl rounded-8 border border-solid-gray-420 bg-white p-6 text-left align-middle shadow-xl ${className ?? ''}`}
     >
       {children}
     </DialogPanel>

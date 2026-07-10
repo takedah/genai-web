@@ -2,6 +2,12 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { SQSEvent, SQSRecord } from 'aws-lambda';
 import { updateInvokeExAppHistory } from './repository/invokeHistoryRepository';
 import { getApiKeyValue } from './utils/apiKey';
+import {
+  assertPublicStatusUrl,
+  requestValidatedExAppUrl,
+  UnsafeExAppUrlError,
+  type ValidatedExAppUrl,
+} from './utils/exAppUrlSecurity';
 import { changeMessageVisibility } from './utils/sqsApi';
 import { truncate } from './utils/truncate';
 
@@ -54,6 +60,34 @@ export const handler = async (event: SQSEvent): Promise<void> => {
       const { dbId, createdDate, statusUrl, endpoint, apiKeySecretId, baseS3Prefix, stableUserId } =
         sqsMessage;
 
+      let validatedStatusUrl: ValidatedExAppUrl;
+      try {
+        validatedStatusUrl = await assertPublicStatusUrl(statusUrl, endpoint);
+      } catch (error) {
+        if (error instanceof UnsafeExAppUrlError) {
+          logger.warn('Rejected unsafe ExApp status URL', {
+            dbId,
+            createdDate,
+            reason: error.message,
+          });
+          await updateInvokeExAppHistory(
+            dbId,
+            createdDate,
+            'ERROR',
+            {
+              status: 'ERROR',
+              error: {
+                message: 'ステータスURLが安全ではないため処理を中断しました。',
+                reason: 'unsafe_status_url',
+              },
+            },
+            baseS3Prefix,
+          );
+          continue;
+        }
+        throw error;
+      }
+
       // apiKeySecretId は内部識別子として "teamId/exAppId" の形式でinvokeExAppからSQS経由で渡される
       // 実際のSecrets Manager名は getApiKeyValue() 内で命名規則に従って組み立てられる
       const [teamId, exAppId] = apiKeySecretId.split('/');
@@ -67,19 +101,15 @@ export const handler = async (event: SQSEvent): Promise<void> => {
         'x-api-key': apiKey,
         'x-user-id': stableUserId,
       };
-      // statusUrlが相対パスの場合、フルURLを組み立てる
-      const fullStatusUrl = statusUrl.startsWith('/')
-        ? `${new URL(endpoint).origin}${statusUrl}`
-        : statusUrl;
 
-      const response = await fetch(fullStatusUrl, { headers });
+      const response = await requestValidatedExAppUrl(validatedStatusUrl, { headers });
 
       if (!response.ok) {
         const responseBody = await response.text();
         logger.error(`Failed to poll status. Status: ${response.status}`, {
           dbId,
           createdDate,
-          statusUrl: fullStatusUrl,
+          statusUrl: validatedStatusUrl.url.toString(),
           responseStatus: response.status,
           responseBody: truncate(responseBody),
         });
@@ -88,7 +118,13 @@ export const handler = async (event: SQSEvent): Promise<void> => {
       }
 
       const result = await response.json();
-      const status = result.status; // PENDING, IN_PROGRESS, COMPLETED, ERROR
+      if (typeof result !== 'object' || result === null || !('status' in result)) {
+        throw new Error('Polling response status is missing');
+      }
+      const status = (result as { status: unknown }).status; // PENDING, IN_PROGRESS, COMPLETED, ERROR
+      if (typeof status !== 'string') {
+        throw new Error('Polling response status is invalid');
+      }
 
       if (status === 'COMPLETED' || status === 'ERROR') {
         // 終了状態ならDynamoDBを更新 (ファイル保存はリポジトリ層に委譲)

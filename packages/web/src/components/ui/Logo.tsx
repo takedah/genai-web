@@ -4,13 +4,12 @@ type Props = {
   isLandingPage?: boolean;
 };
 
-const logoTypographyStyles =
-  'text-std-18B-160 leading-120! text-solid-gray-900 lg:text-std-22B-150';
+const logoTypographyStyles = 'text-std-20B-150 leading-120! text-black';
 
 export const Logo = (props: Props) => {
   const { isLandingPage } = props;
   return (
-    <div className='relative flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-4'>
+    <div className='relative flex gap-2 md:gap-1 items-center lg:gap-4'>
       {isLandingPage ? (
         <h1 className={`${logoTypographyStyles}`}>ここにロゴが入る</h1>
       ) : (

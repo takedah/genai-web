@@ -43,7 +43,10 @@ export const RangeSlider = (props: Props) => {
           step={props.step}
           value={props.value}
           onChange={(e) => {
-            props.onChange(Number.parseFloat(e.target.value));
+            const parsed = Number.parseFloat(e.target.value);
+            if (!Number.isNaN(parsed)) {
+              props.onChange(parsed);
+            }
           }}
         />
       </div>

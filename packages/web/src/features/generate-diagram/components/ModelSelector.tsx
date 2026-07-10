@@ -9,8 +9,8 @@ export const ModelSelector = () => {
   return (
     <div className='flex w-full'>
       <CustomSelect
-        label='LLM：'
-        labelClassName='text-dns-14B-120'
+        label='AIモデル：'
+        buttonClassName='min-w-[calc(196/16*1rem)]'
         value={selectedModelId}
         onChange={setSelectedModelId}
         options={availableModels.map((m) => ({

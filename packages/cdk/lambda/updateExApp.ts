@@ -7,6 +7,8 @@ import { updateExApp } from './repository/exAppRepository';
 import { updateExAppSchema } from './schemas/updateExAppSchema';
 import { setApiKey } from './utils/apiKey';
 import { createApiHandler } from './utils/createApiHandler';
+import { assertPublicEndpointUrl, isExAppUrlValidationError } from './utils/exAppUrlSecurity';
+import { HttpError } from './utils/httpError';
 import { parseRequestBody } from './utils/parseRequestBody';
 import { requirePathParam } from './utils/requirePathParam';
 import { requireTeamAdminOrSystemAdmin } from './utils/requireTeamAdminOrSystemAdmin';
@@ -19,6 +21,14 @@ export const handler = createApiHandler(async (event) => {
   await requireTeamAdminOrSystemAdmin(event, teamId);
 
   const req = parseRequestBody(updateExAppSchema, event.body!);
+  try {
+    await assertPublicEndpointUrl(req.endpoint);
+  } catch (error) {
+    if (isExAppUrlValidationError(error)) {
+      throw new HttpError(400, 'APIエンドポイントには公開 HTTPS URL を指定してください。');
+    }
+    throw error;
+  }
 
   const exApp = await updateExApp(teamId, exAppId, req);
 

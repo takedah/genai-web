@@ -12,13 +12,7 @@ import {
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import {
-  AnyPrincipal,
-  Effect,
-  PolicyDocument,
-  PolicyStatement,
-  Role,
-} from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -50,11 +44,7 @@ export interface BackendApiProps {
   // Resource
   userPool: UserPool;
   authenticatedRole: Role;
-  systemAdminRole: Role;
-  teamAdminRole: Role;
-  userRole: Role;
   // idPool: IdentityPool;
-  identityPoolId: string;
   userPoolClient: UserPoolClient;
   table: Table;
   guardrailIdentify?: string;
@@ -69,7 +59,10 @@ export class Api extends Construct {
   readonly imageGenerationModelIds: string[];
   readonly endpointNames: string[];
   readonly fileBucket: Bucket;
+  /** 親スタックから cognito-identity:* の IAM を付与するため公開する */
+  readonly getSignedUrlFunction: NodejsFunction;
   readonly getFileDownloadSignedUrlFunction: IFunction;
+  readonly deleteFileFunction: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: BackendApiProps) {
     super(scope, id);
@@ -384,6 +377,8 @@ export class Api extends Construct {
     });
     table.grantReadWriteData(deleteSystemContextFunction);
 
+    // Cognito Identity Pool ID は Lambda が実行時に discovery で解決する。
+    // cognito-identity:* の IAM は親スタック側で付与する（循環依存回避）。
     const getSignedUrlFunction = new NodejsFunction(this, 'GetSignedUrl', {
       runtime: Runtime.NODEJS_22_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
@@ -391,20 +386,10 @@ export class Api extends Construct {
       ...lambdaVpcProps,
       environment: {
         BUCKET_NAME: fileBucket.bucketName,
-        IDENTITY_POOL_ID: props.identityPoolId,
         USER_POOL_ID: userPool.userPoolId,
       },
     });
     fileBucket.grantWrite(getSignedUrlFunction);
-    getSignedUrlFunction.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${props.identityPoolId}`,
-        ],
-      }),
-    );
 
     const getFileDownloadSignedUrlFunction = new NodejsFunction(
       this,
@@ -416,21 +401,11 @@ export class Api extends Construct {
         ...lambdaVpcProps,
         environment: {
           BUCKET_NAME: fileBucket.bucketName,
-          IDENTITY_POOL_ID: props.identityPoolId,
           USER_POOL_ID: userPool.userPoolId,
         },
       },
     );
     fileBucket.grantRead(getFileDownloadSignedUrlFunction);
-    getFileDownloadSignedUrlFunction.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${props.identityPoolId}`,
-        ],
-      }),
-    );
 
     const deleteFileFunction = new NodejsFunction(this, 'DeleteFileFunction', {
       runtime: Runtime.NODEJS_22_X,
@@ -439,20 +414,10 @@ export class Api extends Construct {
       ...lambdaVpcProps,
       environment: {
         BUCKET_NAME: fileBucket.bucketName,
-        IDENTITY_POOL_ID: props.identityPoolId,
         USER_POOL_ID: userPool.userPoolId,
       },
     });
     fileBucket.grantDelete(deleteFileFunction);
-    deleteFileFunction.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-identity:GetId'],
-        resources: [
-          `arn:aws:cognito-identity:${Stack.of(this).region}:${Stack.of(this).account}:identitypool/${props.identityPoolId}`,
-        ],
-      }),
-    );
 
     // API Gateway
     const authorizer = new CognitoUserPoolsAuthorizer(this, 'Authorizer', {
@@ -647,7 +612,9 @@ export class Api extends Construct {
     this.imageGenerationModelIds = imageGenerationModelIds;
     this.endpointNames = endpointNames;
     this.fileBucket = fileBucket;
+    this.getSignedUrlFunction = getSignedUrlFunction;
     this.getFileDownloadSignedUrlFunction = getFileDownloadSignedUrlFunction;
+    this.deleteFileFunction = deleteFileFunction;
 
     // NagSuppressions for KMS wildcard permissions
     NagSuppressions.addStackSuppressions(

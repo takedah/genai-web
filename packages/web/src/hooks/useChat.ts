@@ -376,7 +376,7 @@ const useChatStore = create<{
       model.type = overrideModelType;
     }
 
-    // Agent 用の対応
+    // session continuity
     if (sessionId) {
       model.sessionId = sessionId;
     }
@@ -720,7 +720,7 @@ export const useChat = (id: string, chatId?: string) => {
     if (!isLoadingMessage && messagesData && !isLoadingChat && chatData) {
       restore(id, messagesData.messages, chatData.chat);
     }
-  }, [isLoadingMessage, isLoadingChat]);
+  }, [isLoadingMessage, isLoadingChat, id]);
 
   const filteredMessages = useMemo(() => {
     return chats[id]?.messages.filter((chat) => chat.role !== 'system') ?? [];
@@ -764,6 +764,7 @@ export const useChat = (id: string, chatId?: string) => {
     retryGeneration: (options?: GenerateOptions) => {
       return retryGeneration(id, mutateChatList, options);
     },
+    chatTitle: chats[id]?.chat?.title,
     getStopReason: () => {
       return getStopReason(id);
     },

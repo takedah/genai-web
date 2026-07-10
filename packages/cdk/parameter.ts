@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
+import { selfHostingProdParams } from './env-parameters/self-hosting-prod';
 import { preprocessContextValues, StackInput, stackInputSchema } from './lib/stack-input';
-import { selfHostingProdParams } from './env-parameters/self-hosting-dev';
 
 // CDK Context からパラメータを取得する場合
 const getContext = (app: cdk.App): StackInput => {
@@ -24,7 +24,7 @@ const deploy_envs: Record<string, Partial<StackInput>> = {
   //     'arn:aws:acm:ap-northeast-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   // },
   // 他環境も必要に応じて定義を追加可能
-  '-selfHostingDev': selfHostingProdParams,
+  '-selfHostingProd': selfHostingProdParams,
 };
 
 // 後方互換性のため、CDK Context > parameter.ts の順でパラメータを取得する

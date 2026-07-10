@@ -30,17 +30,21 @@ export const GenerateDiagramPage = () => {
   const assistantContent = isAssistantMessage ? lastMessage.content : '';
   const diagramCode = extractDiagramCode(assistantContent);
   const diagramSentence = isAssistantMessage ? extractDiagramSentence(assistantContent) : '';
-
+  const diagramContent = lastMessage?.content ? diagramSentence : '';
   const { liveStatusMessage } = useLiveStatusMessage({
-    isAssistant: isAssistantMessage,
+    active: isAssistantMessage,
     loading: loading,
-    content: lastMessage?.content ? extractDiagramSentence(lastMessage.content) : undefined,
+    messages: {
+      loading: 'AIが回答を生成しています...',
+      loadingContinue: 'AIが引き続き回答を生成しています...',
+      completed: diagramContent ? `AIの回答：${diagramContent}` : 'AIの回答がありません。',
+    },
   });
 
   return (
     <LayoutBody>
       <PageTitle title={`ダイアグラムを生成${APP_TITLE ? ` | ${APP_TITLE}` : ''}`} />
-      <div className='mx-6 max-w-[calc(1120/16*1rem)] py-6 lg:mx-10 lg:pb-8'>
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
         <DiagramHeader />
         <Divider className='my-6' />
         <DiagramGenerateForm />

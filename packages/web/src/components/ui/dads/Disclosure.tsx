@@ -19,12 +19,12 @@ export const DisclosureSummary = (props: DisclosureSummaryProps) => {
 
   return (
     <summary
-      className={`group/summary flex w-fit cursor-default items-start justify-start gap-2 marker:[content:''] hover:underline hover:underline-offset-[calc(3/16*1rem)] focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid [&::-webkit-details-marker]:hidden ${className ?? ''}`}
+      className={`group/summary flex w-fit cursor-default items-start justify-start gap-2  marker:[content:''] hover:underline hover:underline-offset-[calc(3/16*1rem)] focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:outline-black focus-visible:outline-solid [&::-webkit-details-marker]:hidden ${className ?? ''}`}
       {...rest}
     >
       <svg
         aria-hidden={true}
-        className={`pointer-events-none mt-[calc((1lh-20px)/2)] size-5 flex-none text-blue-1000 group-open/disclosure:rotate-180 forced-colors:text-inherit`}
+        className={`pointer-events-none mt-[calc((1lh-20px)/2)] size-5 flex-none text-blue-1000 [details[open]>summary>&]:rotate-180 forced-colors:text-inherit`}
         width='24'
         height='24'
         viewBox='0 0 24 24'

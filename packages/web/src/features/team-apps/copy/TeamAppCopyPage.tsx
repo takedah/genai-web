@@ -25,7 +25,7 @@ export const TeamAppCopyPage = () => {
       <ErrorBoundary fallbackRender={ErrorFallback}>
         <Suspense
           fallback={
-            <div className='mx-6 pt-6 lg:mx-10'>
+            <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
               <ProgressIndicator label='AIアプリ情報を読み込み中...' />
             </div>
           }

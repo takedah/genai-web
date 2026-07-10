@@ -21,7 +21,7 @@ export const Title = (props: Props) => {
   const { chatId } = useParams();
   const { pathname } = useLocation();
   const { loadingMessages, isEmpty } = useChat(pathname, chatId);
-  const { getChatTitle, updateChatTitle, deleteChat } = useChatList();
+  const { updateChatTitle, deleteChat } = useChatList();
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -88,12 +88,12 @@ export const Title = (props: Props) => {
   return (
     <>
       {!isEditing && (
-        <div className='mb-2 flex min-h-[calc(38/16*1rem)] items-start gap-x-2 gap-y-2'>
-          <h1 className='flex items-center justify-start text-std-20B-150 text-pretty lg:h-min lg:text-std-24B-150 print:visible print:my-5 print:h-min'>
+        <div className='flex items-start gap-x-1'>
+          <h1 className='flex items-center justify-start text-std-20B-150 h-min min-h-9 text-pretty lg:text-std-24B-150 print:visible print:my-5 print:h-min'>
             {title}
           </h1>
           {!isEmpty && !loadingMessages && chatId && (
-            <div className='group relative mt-0.5 ml-1 flex-none'>
+            <div className='group relative ml-1 flex-none mt-0.5'>
               <Menu>
                 <Tooltip placement='bottom'>
                   <TooltipTrigger asChild>
@@ -101,7 +101,7 @@ export const Title = (props: Props) => {
                       id={`${chatId}-menu-button`}
                       className={`flex size-9 items-center justify-center rounded-4 after:absolute after:-inset-full after:m-auto after:h-11 after:w-11 hover:bg-solid-gray-50 hover:-outline-offset-[calc(2/16*1rem)] hover:outline-black hover:outline-solid focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:ring-inset`}
                     >
-                      <MoreVertIcon aria-label='チャットの操作' role='img' className='mt-0.5' />
+                      <MoreVertIcon aria-label='チャットの操作' role='img' className='lg:mt-0.5' />
                     </MenuButton>
                   </TooltipTrigger>
                   <TooltipContent aria-hidden={true}>チャットの操作</TooltipContent>
@@ -149,11 +149,11 @@ export const Title = (props: Props) => {
       )}
 
       {isEditing && (
-        <div className='mb-2.5 grid w-fit max-w-full grid-cols-[1fr] grid-rows-[auto_auto] items-center justify-start py-0 pr-0 pl-1 md:grid-cols-[1fr_auto] md:grid-rows-[auto]'>
+        <div className='grid w-fit grid-cols-[1fr_auto] grid-rows-[auto] max-w-[calc(1056/16*1rem)] items-center justify-start py-0 pr-0 pl-1'>
           <div className='relative min-w-0 pr-4'>
             <span
               aria-hidden={true}
-              className='invisible flex max-w-full items-center justify-start overflow-hidden text-std-20B-150 text-nowrap lg:text-std-24B-150'
+              className='invisible flex max-w-full items-center justify-start overflow-hidden text-std-20B-150 min-h-9 text-nowrap lg:text-std-24B-150'
             >
               {tempTitle}
             </span>
@@ -161,7 +161,7 @@ export const Title = (props: Props) => {
               ref={editInputRef}
               type='text'
               blockSize='sm'
-              className='absolute -inset-x-1 inset-y-0 -mt-1 text-std-18N-160 leading-100! md:-inset-x-4'
+              className='absolute -inset-x-1 inset-y-0 text-std-18N-160 leading-100! lg:-inset-x-4'
               value={tempTitle}
               aria-label='チャット名を変更'
               onChange={(e) => {
@@ -170,7 +170,7 @@ export const Title = (props: Props) => {
               onKeyDown={handleEditingKeyDown}
             />
           </div>
-          <div className='mt-4 flex flex-none flex-row-reverse justify-center gap-x-1.5 pr-1 pl-2 md:mt-0 md:justify-start'>
+          <div className='flex flex-none flex-row-reverse justify-start gap-x-1.5 pr-1 pl-2'>
             <Button variant='solid-fill' size='sm' onClick={() => handleUpdateTitle()}>
               確定
             </Button>
@@ -187,7 +187,6 @@ export const Title = (props: Props) => {
           isOpen={openDeleteDialog}
           isDeleting={isDeleting}
           chatId={chatId}
-          chatTitle={getChatTitle(chatId) ?? ''}
           onDelete={() => {
             onDeleteChat(chatId);
           }}

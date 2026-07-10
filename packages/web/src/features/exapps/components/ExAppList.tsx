@@ -78,7 +78,7 @@ export const ExAppList = (props: Props) => {
             <h2 className='mt-8 mb-4 flex justify-start text-std-18B-160'>
               {teamData.teamName}（{filteredExApps.length}）
             </h2>
-            <ul className='grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-2 lg:gap-3 xl:grid-cols-3 2xl:grid-cols-4'>
+            <ul className='grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4'>
               {filteredExApps.map((exApp) => (
                 <li key={`${teamIdKey}-${exApp.value}`}>
                   <ExAppListCard

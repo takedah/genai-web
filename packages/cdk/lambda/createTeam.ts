@@ -14,8 +14,6 @@ export const handler = createApiHandler(async (event) => {
 
   const req = parseRequestBody(createTeamSchema, event.body!);
 
-  const team = await createTeam(req.teamName);
-
   const { teamAdminEmail } = req;
   const user = await findUserByEmail(teamAdminEmail);
   if (!user) {
@@ -25,6 +23,8 @@ export const handler = createApiHandler(async (event) => {
     );
   }
   await addUserToGroup(user.userId!, GROUP_NAME.TeamAdminGroup as GroupName);
+
+  const team = await createTeam(req.teamName);
 
   const teamUser = await createTeamUser(team.teamId, user.userId, user.email, true);
 

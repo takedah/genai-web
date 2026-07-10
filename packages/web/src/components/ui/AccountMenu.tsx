@@ -21,7 +21,7 @@ export const AccountMenu = (props: Props) => {
           {({ active }) => (
             <>
               <AccountIcon isFilled={active} />
-              <span className='sr-only lg:not-sr-only'>アカウント</span>
+              <span>アカウント</span>
               <ArrowDownIcon className={`mt-0.5 ${active ? 'rotate-180' : ''}`} />
             </>
           )}

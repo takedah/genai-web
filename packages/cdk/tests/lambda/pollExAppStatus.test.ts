@@ -1,12 +1,10 @@
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockSqsSend, mockFetch } = vi.hoisted(() => ({
+const { mockSqsSend, mockRequestValidatedExAppUrl } = vi.hoisted(() => ({
   mockSqsSend: vi.fn(),
-  mockFetch: vi.fn(),
+  mockRequestValidatedExAppUrl: vi.fn(),
 }));
-
-global.fetch = mockFetch;
 
 vi.mock('../../lambda/repository/invokeHistoryRepository', () => ({
   updateInvokeExAppHistory: vi.fn(),
@@ -15,6 +13,15 @@ vi.mock('../../lambda/repository/invokeHistoryRepository', () => ({
 vi.mock('../../lambda/utils/apiKey', () => ({
   getApiKeyValue: vi.fn(),
 }));
+
+vi.mock('../../lambda/utils/exAppUrlSecurity', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lambda/utils/exAppUrlSecurity')>();
+  return {
+    ...actual,
+    assertPublicStatusUrl: vi.fn(),
+    requestValidatedExAppUrl: mockRequestValidatedExAppUrl,
+  };
+});
 
 vi.mock('@aws-sdk/client-sqs', () => ({
   SQSClient: class {
@@ -26,6 +33,11 @@ vi.mock('@aws-sdk/client-sqs', () => ({
 import { handler } from '../../lambda/pollExAppStatus';
 import { updateInvokeExAppHistory } from '../../lambda/repository/invokeHistoryRepository';
 import { getApiKeyValue } from '../../lambda/utils/apiKey';
+import {
+  assertPublicStatusUrl,
+  requestValidatedExAppUrl,
+  UnsafeExAppUrlError,
+} from '../../lambda/utils/exAppUrlSecurity';
 
 describe('pollExAppStatus Lambda handler', () => {
   const mockDbId = 'team#test-team-id#exapp#test-exapp-id#user#test-user-id';
@@ -36,6 +48,9 @@ describe('pollExAppStatus Lambda handler', () => {
   const mockBaseS3Prefix = 'artifacts/test-prefix';
   const mockStableUserId = 'stable-user-id-123';
   const mockApiKey = 'test-api-key';
+  const mockValidatedStatusUrl = {
+    url: new URL('https://api.example.com/status/12345'),
+  };
 
   const createSqsRecord = (
     overrides?: Partial<{
@@ -80,10 +95,18 @@ describe('pollExAppStatus Lambda handler', () => {
     Records: records,
   });
 
+  const createMockResponse = (status: number, body: unknown) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+    text: vi.fn().mockResolvedValue(typeof body === 'string' ? body : JSON.stringify(body)),
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getApiKeyValue).mockResolvedValue(mockApiKey);
     vi.mocked(updateInvokeExAppHistory).mockResolvedValue(undefined);
+    vi.mocked(assertPublicStatusUrl).mockResolvedValue(mockValidatedStatusUrl);
     mockSqsSend.mockResolvedValue({});
   });
 
@@ -94,17 +117,15 @@ describe('pollExAppStatus Lambda handler', () => {
         outputs: { result: 'success' },
         progress: '100',
       };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord()]);
       await handler(event);
 
       expect(getApiKeyValue).toHaveBeenCalledWith('test-team-id', 'test-exapp-id', '');
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${new URL(mockEndpoint).origin}${mockStatusUrl}`,
+      expect(assertPublicStatusUrl).toHaveBeenCalledWith(mockStatusUrl, mockEndpoint);
+      expect(requestValidatedExAppUrl).toHaveBeenCalledWith(
+        mockValidatedStatusUrl,
         expect.objectContaining({
           headers: {
             'x-api-key': mockApiKey,
@@ -126,10 +147,7 @@ describe('pollExAppStatus Lambda handler', () => {
         status: 'ERROR',
         outputs: { error: 'Something went wrong' },
       };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord()]);
       await handler(event);
@@ -143,13 +161,11 @@ describe('pollExAppStatus Lambda handler', () => {
       );
     });
 
-    it('statusUrlが絶対URLの場合、そのまま使用する', async () => {
+    it('statusUrlが絶対URLの場合、APIキーを取得せずERROR履歴を記録する', async () => {
       const absoluteStatusUrl = 'https://other-api.example.com/status/12345';
-      const mockResponse = { status: 'COMPLETED', outputs: {} };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      vi.mocked(assertPublicStatusUrl).mockRejectedValue(
+        new UnsafeExAppUrlError('ステータスURLには同一オリジンの相対パスを指定してください。'),
+      );
 
       const event = createSqsEvent([
         createSqsRecord({
@@ -166,9 +182,18 @@ describe('pollExAppStatus Lambda handler', () => {
       ]);
       await handler(event);
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        absoluteStatusUrl,
-        expect.any(Object),
+      expect(assertPublicStatusUrl).toHaveBeenCalledWith(absoluteStatusUrl, mockEndpoint);
+      expect(getApiKeyValue).not.toHaveBeenCalled();
+      expect(requestValidatedExAppUrl).not.toHaveBeenCalled();
+      expect(updateInvokeExAppHistory).toHaveBeenCalledWith(
+        mockDbId,
+        mockCreatedDate,
+        'ERROR',
+        expect.objectContaining({
+          status: 'ERROR',
+          error: expect.objectContaining({ reason: 'unsafe_status_url' }),
+        }),
+        mockBaseS3Prefix,
       );
     });
   });
@@ -180,10 +205,7 @@ describe('pollExAppStatus Lambda handler', () => {
         outputs: { partial: 'data' },
         progress: '50',
       };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord()]);
 
@@ -203,10 +225,7 @@ describe('pollExAppStatus Lambda handler', () => {
       const mockResponse = {
         status: 'PENDING',
       };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord()]);
 
@@ -220,10 +239,7 @@ describe('pollExAppStatus Lambda handler', () => {
   describe('バックオフ処理', () => {
     it('receiveCountが240以下の場合、可視性タイムアウトを変更しない', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord({ receiveCount: '100' })]);
 
@@ -233,10 +249,7 @@ describe('pollExAppStatus Lambda handler', () => {
 
     it('receiveCountが241～480の場合、可視性タイムアウトを60秒に設定する', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord({ receiveCount: '300' })]);
 
@@ -246,10 +259,7 @@ describe('pollExAppStatus Lambda handler', () => {
 
     it('receiveCountが481～720の場合、可視性タイムアウトを300秒に設定する', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord({ receiveCount: '500' })]);
 
@@ -259,10 +269,7 @@ describe('pollExAppStatus Lambda handler', () => {
 
     it('receiveCountが720を超える場合、可視性タイムアウトを900秒に設定する', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const event = createSqsEvent([createSqsRecord({ receiveCount: '800' })]);
 
@@ -272,10 +279,7 @@ describe('pollExAppStatus Lambda handler', () => {
 
     it('可視性タイムアウトの変更に失敗してもエラーハンドリングを継続する', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
       mockSqsSend.mockRejectedValue(new Error('SQS error'));
 
       const event = createSqsEvent([createSqsRecord({ receiveCount: '500' })]);
@@ -296,15 +300,11 @@ describe('pollExAppStatus Lambda handler', () => {
       await expect(handler(event)).rejects.toThrow(
         /API Key not found for secret/,
       );
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(requestValidatedExAppUrl).not.toHaveBeenCalled();
     });
 
     it('ポーリングリクエストが失敗した場合、エラーをスローする', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: vi.fn().mockResolvedValue('Internal Server Error'),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(500, 'Internal Server Error'));
 
       const event = createSqsEvent([createSqsRecord()]);
 
@@ -315,11 +315,7 @@ describe('pollExAppStatus Lambda handler', () => {
     });
 
     it('ポーリングリクエストが404を返した場合、エラーをスローする', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        text: vi.fn().mockResolvedValue('Not Found'),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(404, 'Not Found'));
 
       const event = createSqsEvent([createSqsRecord()]);
 
@@ -343,10 +339,7 @@ describe('pollExAppStatus Lambda handler', () => {
   describe('ヘルパー関数', () => {
     it('QueueURLがARNから正しく生成される', async () => {
       const mockResponse = { status: 'PENDING' };
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockResponse),
-      });
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
 
       const customArn = 'arn:aws:sqs:us-east-1:987654321098:my-queue';
       const event = createSqsEvent([
