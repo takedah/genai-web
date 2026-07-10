@@ -1,6 +1,12 @@
 [日本語](README.md) | English
 
-# GENAI Web (AI Interface)
+# AI Interface (ガバメント AI 源内 Fork)
+
+This software is a derivative work based on "ガバメント AI 源内" (https://www.digital.go.jp/policies/genai) published by the Digital Agency. It is not endorsed, certified, or guaranteed by the Digital Agency.
+
+## License and Brand Elements
+
+This project is released under the MIT License. Please refer to the LICENSE file for details. Note that the license for the code does not include permission to use brand elements such as the official logo.
 
 ## Deployment to Closed Network for Genai-Web
 
@@ -29,7 +35,12 @@ Additionally, for the team management feature that was added in genai-web (absen
 
 The documentation in this project is a modified version based on the Digital Agency's [genai-web](https://github.com/digital-go-jp/genai-web) and is provided under the CC BY 4.0 license.
 
+- The contents of the [Prerequisites](./docs/事前準備.md) and [Deployment Guide](./docs/デプロイ手順.md) have been partially modified to enable operation within a closed network environment.
+- [Custom Domain Configuration](./docs/カスタムドメイン設定.md) and [SAML Authentication Guide](./docs/SAML認証手順.md) are features that cannot be used in this modified project.
+
 The following is the content from the Digital Agency's original documentation.
+
+___
 
 ## Overview
 
