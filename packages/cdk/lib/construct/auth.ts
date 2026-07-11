@@ -1,3 +1,4 @@
+import type { PasswordPolicySettings } from '@genai-web/common';
 import { Duration, Fn, Stack } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import {
@@ -31,6 +32,7 @@ export interface AuthProps {
     sesConfigurationSetName?: string;
   } | null;
   emailMfaRequired: boolean;
+  passwordPolicy: PasswordPolicySettings;
   reauthenticationIntervalDays: number;
   appEnv: string;
 }
@@ -66,12 +68,7 @@ export class Auth extends Construct {
         username: false,
         email: true,
       },
-      passwordPolicy: {
-        requireUppercase: true,
-        requireSymbols: true,
-        requireDigits: true,
-        minLength: 8,
-      },
+      passwordPolicy: props.passwordPolicy,
       autoVerify: { email: true },
       // Custom Email Sender Lambda 利用時は、Cognito がコードを暗号化するための KMS キーを設定
       ...(props.customEmailSender ? { customSenderKmsKey: props.encryptionKey } : {}),

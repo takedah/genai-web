@@ -56,6 +56,7 @@ export const createStacks = (app: cdk.App, params: StackInput) => {
           account: params.account,
           region: params.modelRegion,
         },
+        params: params,
       })
     : null;
 

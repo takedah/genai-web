@@ -17,6 +17,8 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
     "types": ["node"]
   },
   "exclude": ["node_modules", "cdk.out", "tests"]

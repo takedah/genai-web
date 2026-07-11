@@ -66,13 +66,80 @@ describe('predictStream Lambda handler', () => {
     );
 
     expect(context.callbackWaitsForEmptyEventLoop).toBe(false);
+    // identity 未設定の context なので identityId は undefined で渡る
     expect(mockInvokeStream).toHaveBeenCalledWith(
       { type: 'bedrock', modelId: 'test-model' },
       [{ role: 'user', content: 'hello' }],
       'req-1',
+      undefined,
     );
     expect(responseStream.write).toHaveBeenNthCalledWith(1, '{"text":"hello"}\n');
     expect(responseStream.write).toHaveBeenNthCalledWith(2, '{"text":" world"}\n');
+    expect(responseStream.end).toHaveBeenCalledTimes(1);
+  });
+
+  test('context.identity.cognitoIdentityId を invokeStream に渡す', async () => {
+    mockInvokeStream.mockImplementation(async function* () {
+      yield '{"text":"hi"}\n';
+    });
+
+    const { predictStreamHandler } = await import('../../lambda/predictStream');
+    const responseStream = {
+      write: vi.fn(),
+      end: vi.fn(),
+    };
+    const context = {
+      callbackWaitsForEmptyEventLoop: true,
+      identity: {
+        cognitoIdentityId: 'ap-northeast-1:owner-1',
+        cognitoIdentityPoolId: 'ap-northeast-1:pool-1',
+      },
+    } as Context;
+
+    await predictStreamHandler(
+      {
+        messages: [{ role: 'user', content: 'hello' }],
+        id: 'req-2',
+      },
+      responseStream,
+      context,
+    );
+
+    expect(mockInvokeStream).toHaveBeenCalledWith(
+      { type: 'bedrock', modelId: 'test-model' },
+      [{ role: 'user', content: 'hello' }],
+      'req-2',
+      'ap-northeast-1:owner-1',
+    );
+  });
+
+  test('metadata 付き chunk を responseStream にそのまま流す（usage 透過）', async () => {
+    const metadataChunk =
+      '{"text":"","metadata":{"usage":{"model":"test-model","provider":"bedrock","inputTokens":10,"outputTokens":5,"totalTokens":15}}}\n';
+    mockInvokeStream.mockImplementation(async function* () {
+      yield '{"text":"hello"}\n';
+      yield '{"text":"","stopReason":"end_turn"}\n';
+      yield metadataChunk;
+    });
+
+    const { predictStreamHandler } = await import('../../lambda/predictStream');
+    const responseStream = {
+      write: vi.fn(),
+      end: vi.fn(),
+    };
+
+    await predictStreamHandler(
+      {
+        messages: [{ role: 'user', content: 'hello' }],
+        id: 'req-meta',
+      },
+      responseStream,
+      { callbackWaitsForEmptyEventLoop: true } as Context,
+    );
+
+    expect(responseStream.write).toHaveBeenNthCalledWith(1, '{"text":"hello"}\n');
+    expect(responseStream.write).toHaveBeenNthCalledWith(2, '{"text":"","stopReason":"end_turn"}\n');
+    expect(responseStream.write).toHaveBeenNthCalledWith(3, metadataChunk);
     expect(responseStream.end).toHaveBeenCalledTimes(1);
   });
 

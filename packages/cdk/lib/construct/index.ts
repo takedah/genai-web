@@ -6,6 +6,8 @@ export * from './database';
 export * from './guardrail';
 export * from './logging';
 export * from './monitoring';
+export * from './password-reset-api';
+export * from './password-reset-database';
 export * from './team-access-control';
 export * from './transcribe';
 export * from './web';

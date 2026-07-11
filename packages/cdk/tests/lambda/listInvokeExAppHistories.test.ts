@@ -235,4 +235,43 @@ describe('listInvokeExAppHistories Lambda handler', () => {
     const body = JSON.parse(result.body);
     expect(body.error).toBe('サーバ側でエラーが発生しました。管理者へご連絡ください。');
   });
+
+  it('repository が usageMetadata と totalEstimatedCost を返した場合、各 history に同梱される', async () => {
+    const historiesWithCost = {
+      history: [
+        {
+          ...mockHistories.history[0],
+          usageMetadata: [
+            {
+              estimatedCostInfo: { estimatedCost: 0.1, currency: 'USD' },
+              modelVersion: 'm',
+              requestCount: 1,
+              tokens: { candidatesTokenCount: 0, promptTokenCount: 0, totalTokenCount: 0 },
+            },
+          ],
+          totalEstimatedCost: { totalCost: 0.1, currency: 'USD' },
+        },
+        // 旧アイテム（usageMetadata なし）も混在し得る
+        mockHistories.history[1],
+      ],
+      lastEvaluatedKey: undefined,
+    };
+    vi.mocked(findTeamById).mockResolvedValue(mockTeam);
+    vi.mocked(findExAppById).mockResolvedValue(mockExApp);
+    vi.mocked(listInvokeExAppHistories).mockResolvedValue(historiesWithCost);
+
+    const event = createEvent({
+      teamId: mockTeamId,
+      exAppId: mockExAppId,
+    });
+
+    const result: APIGatewayProxyResult = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body.history[0].totalEstimatedCost).toEqual({ totalCost: 0.1, currency: 'USD' });
+    expect(body.history[0].usageMetadata).toBeDefined();
+    expect(body.history[1].totalEstimatedCost).toBeUndefined();
+    expect(body.history[1].usageMetadata).toBeUndefined();
+  });
 });

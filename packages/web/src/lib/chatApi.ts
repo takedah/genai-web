@@ -1,5 +1,5 @@
 import { InvokeWithResponseStreamCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   CreateChatResponse,

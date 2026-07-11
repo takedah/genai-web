@@ -102,8 +102,26 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
   /**
    * カスタムメール送信設定（Same-Account SES + Tenant）
    * オプション
-   * 同一アカウントの検証済み SES Domain Identity を利用してメールを送信します。
+   * デフォルト: null (Cognito デフォルトメール)
+   * 同一アカウントの検証済み SES Domain Identity を利用してメールを送信する設定
+   * SES Tenant によるレピュテーション分離、Cognito Custom Email Sender Lambda Trigger を利用
    * SES は VPC エンドポイント経由で到達可能です。
+   *
+   * sesIdentityName: 同一アカウントの検証済み SES Domain Identity 名
+   * fromAddress: 送信元メールアドレス（SES で検証済みのドメイン）
+   *
+   * SES Tenant 名は appEnv から自動生成されます（genai-${appEnv} 形式）
+   *
+   * 設定パターン:
+   * - 既存動作維持: コメントアウトのまま（customEmailSender 未設定）
+   * - Custom Sender のみ: customEmailSender を設定、emailMfaRequired は false
+   * - フル構成: customEmailSender + emailMfaRequired: true
+   *
+   * 注意: emailMfaRequired を true にする場合は customEmailSender が必須です
+   *
+   * 前提条件:
+   * - SES Domain Identity が同一アカウントで検証済みであること
+   * - 本番環境では SES サンドボックス解除が必要
    */
   // customEmailSender: {
   //   sesIdentityName: 'example.go.jp',
@@ -114,6 +132,8 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * Email MFA 必須化
    * オプション
    * デフォルト: false
+   * true にすると userid/password ユーザーのログイン時に Email MFA を必須化
+   * 注意: true にする場合は customEmailSender の設定が必須です
    */
   // emailMfaRequired: true,
 
@@ -124,6 +144,20 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
    * 設定可能範囲: 1〜365日
    */
   // reauthenticationIntervalDays: 7,
+
+  /**
+   * パスワードポリシー
+   * オプション
+   * デフォルト: minLength 8 / lowercase, uppercase, digits, symbols 全て必須
+   * Cognito User Pool とカスタムパスワード再設定画面の両方に反映されます
+   */
+  // passwordPolicy: {
+  //   minLength: 8,
+  //   requireLowercase: true,
+  //   requireUppercase: true,
+  //   requireDigits: true,
+  //   requireSymbols: true,
+  // },
 
   // ============================================================================
   // フロントエンド設定

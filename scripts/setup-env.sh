@@ -21,6 +21,7 @@ function extract_value {
 }
 
 stack_output=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --output json)
+default_password_policy='{"minLength":8,"requireLowercase":true,"requireUppercase":true,"requireDigits":true,"requireSymbols":true}'
 
 export VITE_APP_API_ENDPOINT=$(extract_value "$stack_output" 'ApiEndpoint')
 export VITE_APP_REGION=$(extract_value "$stack_output" 'Region')
@@ -34,6 +35,8 @@ export VITE_APP_RAG_ENABLED=$(extract_value "$stack_output" RagEnabled)
 export VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED=$(extract_value "$stack_output" RagKnowledgeBaseEnabled)
 export VITE_APP_AGENT_ENABLED=$(extract_value "$stack_output" AgentEnabled)
 export VITE_APP_SELF_SIGN_UP_ENABLED=$(extract_value "$stack_output" SelfSignUpEnabled)
+export VITE_APP_EMAIL_MFA_REQUIRED=$(email_mfa_required=$(extract_value "$stack_output" EmailMfaRequired); echo "${email_mfa_required:-${VITE_APP_EMAIL_MFA_REQUIRED:-false}}")
+export VITE_APP_PASSWORD_POLICY=$(password_policy=$(extract_value "$stack_output" PasswordPolicy); echo "${password_policy:-${VITE_APP_PASSWORD_POLICY:-$default_password_policy}}")
 export VITE_APP_MODEL_REGION=$(extract_value "$stack_output" ModelRegion)
 export VITE_APP_MODEL_IDS=$(extract_value "$stack_output" ModelIds)
 export VITE_APP_IMAGE_MODEL_IDS=$(extract_value "$stack_output" ImageGenerateModelIds)
@@ -50,3 +53,4 @@ export VITE_APP_ENV=$(extract_value "$stack_output" AppEnv)
 export VITE_APP_GOVAIS_FOR_HOMEPAGE=$(extract_value "$stack_output" GovaisForHomepage | base64 -d)
 export VITE_APP_TOP_CHAT_SYSTEM_PROMPT=$(extract_value "$stack_output" TopChatSystemPrompt | base64 -d)
 export VITE_APP_TOP_CHAT_SYSTEM_PROMPT_TITLE=$(extract_value "$stack_output" TopChatSystemPromptTitle | base64 -d)
+export VITE_APP_RECENTLY_USED_APPS_ENABLED=$(extract_value "$stack_output" RecentlyUsedAppsEnabled)

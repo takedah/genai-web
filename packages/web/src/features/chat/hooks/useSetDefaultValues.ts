@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'react-router';
 import { TOP_CHAT_SYSTEM_PROMPT, TOP_CHAT_SYSTEM_PROMPT_TITLE } from '@/features/landing/constants';
 import { useChat } from '@/hooks/useChat';
-import { MODELS } from '@/models';
+import { MODELS, resolveDefaultModelId } from '@/models';
 import { useChatStore } from '../stores/useChatStore';
 import { ChatPageQueryParams } from '../types';
 
@@ -42,7 +42,7 @@ export const useSetDefaultValues = (systemContextList: SystemContext[]) => {
       hasProcessedStateRef.current = false;
       prevChatIdRef.current = chatId;
     }
-    const defaultModelId = !modelId ? availableModels[0] : modelId;
+    const defaultModelId = !modelId ? resolveDefaultModelId() : modelId;
     const locationState = state as LocationState | undefined;
 
     // state が処理済みで、かつ state が失われた場合はスキップ

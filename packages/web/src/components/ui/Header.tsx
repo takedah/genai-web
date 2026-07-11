@@ -41,7 +41,7 @@ export const Header = (props: Props) => {
     >
       <div className='flex justify-start items-center gap-2 mx-auto w-full h-full px-6 max-w-(--page-width) lg:gap-6 lg:px-8'>
         <Logo isLandingPage={isLandingPage} />
-        <nav className='hidden md:block'>
+        <nav className='hidden lg:block'>
           <ul className='flex items-center gap-1.5'>
             <li>
               <GlobalMenuLink to='/chat' state={{ shouldReset: true }}>
@@ -54,7 +54,7 @@ export const Header = (props: Props) => {
           </ul>
         </nav>
 
-        <div className='hidden ml-auto md:flex h-full'>
+        <div className='hidden ml-auto lg:flex h-full'>
           <AccountMenu
             onClickSignout={onClickSignout}
             isShowTeamManagementMenu={
@@ -64,7 +64,7 @@ export const Header = (props: Props) => {
         </div>
         {/* For Mobile view */}
         <HamburgerMenuButton
-          className={`relative ml-auto md:hidden rounded-infinity`}
+          className={`relative ml-auto lg:hidden rounded-infinity`}
           aria-controls='mobile-menu'
           aria-haspopup='dialog'
           onClick={() => mobileMenuRef.current?.showModal()}

@@ -85,5 +85,6 @@ export type ConversationHistory = {
 };
 
 export type FileInputItem = {
+  key?: string;
   files: { filename: string }[];
 };

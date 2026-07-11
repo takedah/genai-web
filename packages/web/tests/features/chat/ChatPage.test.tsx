@@ -3,14 +3,13 @@ import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPage } from '../../../src/features/chat/ChatPage';
 
-const mockPostChat = vi.fn();
+const mockPostChat = vi.fn().mockResolvedValue(undefined);
 const mockSetShouldAutoSubmit = vi.fn();
 const mockSetContent = vi.fn();
 const mockSetInputSystemContext = vi.fn();
 const mockUpdateSystemContext = vi.fn();
 const mockSetFollowing = vi.fn();
 const mockClearFiles = vi.fn();
-let mockIsSticky = false;
 
 let mockStoreState = {
   content: '',
@@ -61,6 +60,18 @@ vi.mock('@/hooks/useChat', () => ({
   }),
 }));
 
+const mockRecordRecentlyUsedApp = vi.fn();
+vi.mock('@/hooks/useRecentlyUsedApps', () => ({
+  useRecordRecentlyUsedApp: () => mockRecordRecentlyUsedApp,
+  isRecentlyUsedAppsEnabled: false,
+}));
+
+vi.mock('@/utils/getAvailableGenuApps', () => ({
+  GENU_APP_METAS: {
+    chat: { kind: 'chat', label: 'チャット', description: '着想や整理のための壁打ち' },
+  },
+}));
+
 vi.mock('@/hooks/useFiles', () => ({
   useFiles: () => ({
     clear: mockClearFiles,
@@ -103,10 +114,6 @@ vi.mock('@/features/chat/hooks/useFileUploadable', () => ({
     accept: '',
     fileUploadable: false,
   }),
-}));
-
-vi.mock('@/features/chat/hooks/useStickyHeader', () => ({
-  useStickyHeader: () => mockIsSticky,
 }));
 
 vi.mock('@/features/chat/hooks/useReset', () => ({
@@ -183,7 +190,6 @@ describe('ChatPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsSticky = false;
     mockStoreState = {
       content: '',
       inputSystemContext: '',
@@ -340,5 +346,4 @@ describe('ChatPage', () => {
       });
     });
   });
-
 });

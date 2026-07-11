@@ -45,7 +45,10 @@ export const ChatHistorySidebar = () => {
                     aria-current={isCurrent ? 'page' : undefined}
                     className="group/history flex flex-col gap-1 items-start py-3 pl-2 pr-1.5 hover:bg-solid-gray-50 aria-[current='page']:bg-blue-50 focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-black focus-visible:outline-solid focus-visible:rounded-4 focus-visible:bg-yellow-300 focus-visible:ring-[calc(6/16*1rem)] focus-visible:ring-yellow-300 focus-visible:ring-inset"
                   >
-                    <time dateTime={new Date(Number(chat.createdDate)).toISOString()}>
+                    <time
+                      dateTime={new Date(Number(chat.createdDate)).toISOString()}
+                      className='underline-offset-[calc(3/16*1rem)] group-hover/history:underline'
+                    >
                       {formatDateTime(chat.createdDate)}
                     </time>
                     <p

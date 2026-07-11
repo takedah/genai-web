@@ -81,7 +81,7 @@ export const UserMessage = ({ chatContent }: Props) => {
                 })}
               </div>
             )}
-            <div className='whitespace-pre-wrap'>{typingTextOutput}</div>
+            <div className='whitespace-pre-wrap wrap-break-word'>{typingTextOutput}</div>
           </div>
         </div>
       </div>

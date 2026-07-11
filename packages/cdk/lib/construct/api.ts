@@ -1,5 +1,5 @@
 import { BEDROCK_IMAGE_GEN_MODELS, BEDROCK_TEXT_MODELS } from '@genai-web/common';
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { ArnFormat, Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import {
   AuthorizationType,
   CognitoUserPoolsAuthorizer,
@@ -49,6 +49,12 @@ export interface BackendApiProps {
   table: Table;
   guardrailIdentify?: string;
   guardrailVersion?: string;
+
+  costConversion?: {
+    toCurrency: string;
+    rate: number;
+    allowedFromCurrencies: string[];
+  };
 }
 
 export class Api extends Construct {
@@ -84,6 +90,12 @@ export class Api extends Construct {
     const lambdaVpcProps: Pick<NodejsFunctionProps, 'vpc' | 'vpcSubnets'> = {
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    };
+
+    const costConversionEnv = {
+      COST_CONVERSION_TO_CURRENCY: props.costConversion?.toCurrency ?? '',
+      COST_CONVERSION_RATE: (props.costConversion?.rate ?? 0).toString(),
+      COST_CONVERSION_ALLOWED_FROM: (props.costConversion?.allowedFromCurrencies ?? []).join(','),
     };
 
     // Validate Model Names
@@ -131,6 +143,7 @@ export class Api extends Construct {
         MODEL_IDS: JSON.stringify(modelIds),
         IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
         CROSS_ACCOUNT_BEDROCK_ROLE_ARN: crossAccountBedrockRoleArn ?? '',
+        ...costConversionEnv,
         ...(props.guardrailIdentify ? { GUARDRAIL_IDENTIFIER: props.guardrailIdentify } : {}),
         ...(props.guardrailVersion ? { GUARDRAIL_VERSION: props.guardrailVersion } : {}),
         ...(props.inferenceProfileMap
@@ -153,6 +166,7 @@ export class Api extends Construct {
         IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
         CROSS_ACCOUNT_BEDROCK_ROLE_ARN: crossAccountBedrockRoleArn ?? '',
         BUCKET_NAME: fileBucket.bucketName,
+        ...costConversionEnv,
         ...(props.guardrailIdentify ? { GUARDRAIL_IDENTIFIER: props.guardrailIdentify } : {}),
         ...(props.guardrailVersion ? { GUARDRAIL_VERSION: props.guardrailVersion } : {}),
         ...(props.inferenceProfileMap
@@ -174,6 +188,7 @@ export class Api extends Construct {
         MODEL_IDS: JSON.stringify(modelIds),
         IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
         CROSS_ACCOUNT_BEDROCK_ROLE_ARN: crossAccountBedrockRoleArn ?? '',
+        ...costConversionEnv,
         ...(props.guardrailIdentify ? { GUARDRAIL_IDENTIFIER: props.guardrailIdentify } : {}),
         ...(props.guardrailVersion ? { GUARDRAIL_VERSION: props.guardrailVersion } : {}),
         ...(props.inferenceProfileMap
@@ -227,6 +242,28 @@ export class Api extends Construct {
       predictStreamFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
       predictTitleFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
       generateImageFunction.role?.addToPrincipalPolicy(bedrockInvokePolicy);
+
+      // Guardrail 有効時のみ、対象 Guardrail への ApplyGuardrail を許可する。
+      // Converse / ConverseStream の guardrailConfig 適用には ApplyGuardrail 権限が必要。
+      // https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-permissions.html
+      if (props.guardrailIdentify) {
+        const guardrailArn = Stack.of(this).formatArn({
+          service: 'bedrock',
+          region: modelRegion,
+          resource: 'guardrail',
+          resourceName: props.guardrailIdentify,
+          arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+        });
+        const applyGuardrailPolicy = new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock:ApplyGuardrail'],
+          resources: [guardrailArn],
+        });
+        predictFunction.role?.addToPrincipalPolicy(applyGuardrailPolicy);
+        predictStreamFunction.role?.addToPrincipalPolicy(applyGuardrailPolicy);
+        predictTitleFunction.role?.addToPrincipalPolicy(applyGuardrailPolicy);
+        generateImageFunction.role?.addToPrincipalPolicy(applyGuardrailPolicy);
+      }
     } else {
       const assumeRolePolicy = new PolicyStatement({
         effect: Effect.ALLOW,

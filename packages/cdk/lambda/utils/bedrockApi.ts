@@ -19,7 +19,13 @@ import {
   GenerateImageParams,
   UnrecordedMessage,
 } from 'genai-web';
-import { BEDROCK_IMAGE_GEN_MODELS, BEDROCK_TEXT_GEN_MODELS } from './models';
+import { estimateCost } from './costEstimator';
+import {
+  BEDROCK_IMAGE_GEN_MODELS,
+  BEDROCK_TEXT_GEN_MODELS,
+  extractConverseStreamUsage,
+} from './models';
+import { FileRetrievalError } from './s3Uri';
 import { streamingChunk } from './streamingChunk';
 
 /**
@@ -125,18 +131,20 @@ const appendCachePointToSystem = (
   return [...system, { cachePoint } as SystemContentBlock.CachePointMember];
 };
 
-const createConverseCommandInput = (
+const createConverseCommandInput = async (
   model: string,
   messages: UnrecordedMessage[],
   id: string,
-): ConverseCommandInput => {
+  identityId?: string,
+): Promise<ConverseCommandInput> => {
   const modelConfig = BEDROCK_TEXT_GEN_MODELS[model];
-  const input = modelConfig.createConverseCommandInput(
+  const input = await modelConfig.createConverseCommandInput(
     messages,
     id,
     model,
     modelConfig.defaultParams,
     modelConfig.usecaseParams,
+    identityId,
   );
   if (modelConfig.promptCacheTtl) {
     input.system = appendCachePointToSystem(input.system, modelConfig.promptCacheTtl);
@@ -144,18 +152,20 @@ const createConverseCommandInput = (
   return input;
 };
 
-const createConverseStreamCommandInput = (
+const createConverseStreamCommandInput = async (
   model: string,
   messages: UnrecordedMessage[],
   id: string,
-): ConverseStreamCommandInput => {
+  identityId?: string,
+): Promise<ConverseStreamCommandInput> => {
   const modelConfig = BEDROCK_TEXT_GEN_MODELS[model];
-  const input = modelConfig.createConverseStreamCommandInput(
+  const input = await modelConfig.createConverseStreamCommandInput(
     messages,
     id,
     model,
     modelConfig.defaultParams,
     modelConfig.usecaseParams,
+    identityId,
   );
   if (modelConfig.promptCacheTtl) {
     input.system = appendCachePointToSystem(input.system, modelConfig.promptCacheTtl);
@@ -184,10 +194,15 @@ const extractOutputImage = (model: string, response: BedrockImageGenerationRespo
 };
 
 const bedrockApi: Omit<ApiInterface, 'invokeFlow'> = {
-  invoke: async (model, messages, id) => {
+  invoke: async (model, messages, id, identityId) => {
     const client = getBedrockClient();
 
-    const converseCommandInput = createConverseCommandInput(model.modelId, messages, id);
+    const converseCommandInput = await createConverseCommandInput(
+      model.modelId,
+      messages,
+      id,
+      identityId,
+    );
     // Use inference profile ARN if available for cost allocation tagging
     converseCommandInput.modelId = getInferenceProfileArn(model.modelId);
     const command = new ConverseCommand(converseCommandInput);
@@ -195,14 +210,15 @@ const bedrockApi: Omit<ApiInterface, 'invokeFlow'> = {
 
     return extractConverseOutputText(model.modelId, output);
   },
-  invokeStream: async function* (model, messages, id) {
+  invokeStream: async function* (model, messages, id, identityId) {
     const client = getBedrockClient();
 
     try {
-      const converseStreamCommandInput = createConverseStreamCommandInput(
+      const converseStreamCommandInput = await createConverseStreamCommandInput(
         model.modelId,
         messages,
         id,
+        identityId,
       );
       // Use inference profile ARN if available for cost allocation tagging
       converseStreamCommandInput.modelId = getInferenceProfileArn(model.modelId);
@@ -215,6 +231,8 @@ const bedrockApi: Omit<ApiInterface, 'invokeFlow'> = {
         return;
       }
 
+      // Bedrock Converse Stream は `messageStop` の後に `metadata`（usage 含む）が届く。
+      // usage を取得するためここでは break せず、stream の自然終了までループを継続する。
       for await (const response of responseStream.stream) {
         if (!response) {
           break;
@@ -231,11 +249,55 @@ const bedrockApi: Omit<ApiInterface, 'invokeFlow'> = {
             text: '',
             stopReason: response.messageStop.stopReason,
           });
-          break;
+          // metadata 受信を待つため break しない。
+        }
+
+        if (response.metadata) {
+          // usage 抽出・コスト計算の失敗は応答本体を壊さないようにフェイルセーフ
+          // （warn ログのみ、metadata は省略）。
+          try {
+            const extracted = extractConverseStreamUsage(response);
+            if (extracted) {
+              let estimatedCost;
+              try {
+                estimatedCost = estimateCost(model.modelId, extracted.raw);
+              } catch (costError) {
+                console.warn('Failed to estimate cost', costError);
+                estimatedCost = undefined;
+              }
+              yield streamingChunk({
+                text: '',
+                metadata: {
+                  usage: {
+                    model: model.modelId,
+                    provider: 'bedrock',
+                    inputTokens: extracted.totals.inputTokens,
+                    outputTokens: extracted.totals.outputTokens,
+                    totalTokens: extracted.totals.totalTokens,
+                    ...(extracted.totals.cacheReadTokens !== undefined
+                      ? { cacheReadTokens: extracted.totals.cacheReadTokens }
+                      : {}),
+                    ...(extracted.totals.cacheWriteTokens !== undefined
+                      ? { cacheWriteTokens: extracted.totals.cacheWriteTokens }
+                      : {}),
+                  },
+                  ...(estimatedCost !== undefined ? { estimatedCost } : {}),
+                },
+              });
+            }
+          } catch (usageError) {
+            console.warn('Failed to extract Converse Stream usage', usageError);
+          }
         }
       }
     } catch (e) {
-      if (e instanceof ThrottlingException || e instanceof ServiceQuotaExceededException) {
+      if (e instanceof FileRetrievalError) {
+        console.error(e);
+        yield streamingChunk({
+          text: '添付ファイルの読み込みに失敗しました。ファイルを再度添付してお試しください。',
+          stopReason: 'error',
+        });
+      } else if (e instanceof ThrottlingException || e instanceof ServiceQuotaExceededException) {
         yield streamingChunk({
           text: 'ただいまアクセスが集中しているため時間をおいて試してみてください。',
           stopReason: 'error',

@@ -177,7 +177,7 @@ export const TooltipContent = ({
         ...context.floatingStyles,
         ...style,
       }}
-      className='z-10 w-max items-center justify-center rounded-4 border border-transparent bg-solid-gray-800 px-2 py-1.5 text-oln-14N-100 text-white'
+      className='z-10 w-max items-center justify-center rounded-4 border border-transparent bg-solid-gray-800 px-2 py-1.5 text-center text-oln-14N-100 text-white'
       {...context.getFloatingProps(props)}
     >
       {props.children}

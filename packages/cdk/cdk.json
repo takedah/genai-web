@@ -21,11 +21,16 @@
     "hiddenUseCases": {},
     "modelRegion": "ap-northeast-1",
     "modelIds": [
+      "jp.anthropic.claude-opus-4-8",
       "jp.anthropic.claude-sonnet-4-6",
-      "amazon.nova-lite-v1:0",
       "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
-      "jp.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      "amazon.nova-lite-v1:0"
     ],
+    "costConversion": {
+      "toCurrency": "JPY",
+      "rate": 150,
+      "allowedFromCurrencies": ["USD"]
+    },
     "imageGenerationModelIds": ["amazon.nova-canvas-v1:0"],
     "endpointNames": [],
     "crossAccountBedrockRoleArn": "",

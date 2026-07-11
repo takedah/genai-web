@@ -37,6 +37,7 @@ export const TeamMembersContent = ({ onOpenDeleteModal }: Props) => {
         </h1>
 
         <Tabs
+          className='mt-4 pb-3'
           title='チーム詳細'
           items={[
             {

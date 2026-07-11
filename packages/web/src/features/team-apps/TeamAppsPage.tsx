@@ -1,7 +1,10 @@
 import type { ExApp } from 'genai-web';
-import { Suspense, useState } from 'react';
+import { Suspense, useId, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
+import {
+  ProgressIndicator,
+  ProgressIndicatorSpinner,
+} from '@/components/ui/dads/ProgressIndicator';
 import { ErrorFallback } from '@/components/ui/ErrorFallback';
 import { DialogDeleteTeamApp } from '@/features/team-apps/components/DialogDeleteTeamApp';
 import { LayoutBody } from '@/layout/LayoutBody';
@@ -10,6 +13,7 @@ import { TeamAppsContent } from './components/TeamAppsContent';
 export const TeamAppsPage = () => {
   const [showDialogDeleteExApp, setShowDialogDeleteExApp] = useState(false);
   const [selectedTeamApp, setSelectedTeamApp] = useState<ExApp | undefined>(undefined);
+  const loadingId = useId();
 
   const reset = () => {
     setSelectedTeamApp(undefined);
@@ -22,7 +26,10 @@ export const TeamAppsPage = () => {
         <Suspense
           fallback={
             <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
-              <ProgressIndicator label='チームを読み込み中...' />
+              <ProgressIndicator type='inlined' aria-labelledby={loadingId}>
+                <ProgressIndicatorSpinner size='sm' />
+                <span id={loadingId}>チームを読み込み中...</span>
+              </ProgressIndicator>
             </div>
           }
         >

@@ -1,0 +1,128 @@
+import { useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router';
+import { PageTitle } from '@/components/PageTitle';
+import { APP_TITLE } from '@/constants';
+import { useChat } from '@/hooks/useChat';
+import { useLiveStatusMessage } from '@/hooks/useLiveStatusMessage';
+import { useLocalStorageBoolean } from '@/hooks/useLocalStorageBoolean';
+import { usePrompter } from '@/hooks/usePrompter';
+import { isRecentlyUsedAppsEnabled, useRecordRecentlyUsedApp } from '@/hooks/useRecentlyUsedApps';
+import { useResolveAppPath } from '@/hooks/useResolveAppPath';
+import { useTyping } from '@/hooks/useTyping';
+import { LayoutBody } from '@/layout/LayoutBody';
+import { debounce } from '@/utils/debounce';
+import { GENU_APP_METAS } from '@/utils/getAvailableGenuApps';
+import { DefaultInvokeCheckbox } from './components/DefaultInvokeCheckbox';
+import { TranslateForm } from './components/TranslateForm';
+import { TranslateHeader } from './components/TranslateHeader';
+import { useReset } from './hooks/useReset';
+import { useSetDefaultValues } from './hooks/useSetDefaultValues';
+import { useTranslateStore } from './stores/useTranslateStore';
+
+export const TranslateInvokePage = () => {
+  const { sentence, additionalContext, language } = useTranslateStore();
+
+  const { pathname } = useLocation();
+  const { loading, messages, postChat, clear } = useChat(pathname);
+
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const translatedSentence = lastMessage?.role === 'assistant' ? lastMessage.content.trim() : '';
+
+  const { typingTextOutput } = useTyping(loading, translatedSentence);
+  const [auto, setAuto] = useLocalStorageBoolean('Auto_Translate', false);
+
+  const { prompter } = usePrompter();
+  const recordRecentlyUsedApp = useRecordRecentlyUsedApp();
+  const { resolveGenUAppPath } = useResolveAppPath();
+
+  useReset();
+
+  useSetDefaultValues();
+
+  // 文章の更新時にコメントを更新
+  useEffect(() => {
+    if (auto) {
+      // debounce した後翻訳
+      onSentenceChange(sentence, additionalContext, language, loading);
+    }
+  }, [sentence, language]);
+
+  // debounce した後翻訳
+  // 入力を止めて1秒ほど待ってから翻訳リクエストを送信
+  const onSentenceChange = useCallback(
+    debounce(
+      (_sentence: string, _additionalContext: string, _language: string, _loading: boolean) => {
+        if (_sentence === '') {
+          clear();
+        }
+
+        if (_sentence !== '' && !_loading) {
+          getTranslation(_sentence, _language, _additionalContext);
+        }
+      },
+      1000,
+    ),
+    [prompter],
+  );
+
+  const getTranslation = async (sentence: string, language: string, context: string) => {
+    await postChat(
+      prompter.translatePrompt({
+        sentence,
+        language,
+        context: context === '' ? undefined : context,
+      }),
+      { ignoreHistory: true },
+    );
+    if (isRecentlyUsedAppsEnabled) {
+      const meta = GENU_APP_METAS.translate;
+      recordRecentlyUsedApp({
+        kind: 'genu',
+        genuKind: 'translate',
+        title: meta.label,
+        path: resolveGenUAppPath('translate'),
+      });
+    }
+  };
+
+  const { liveStatusMessage } = useLiveStatusMessage({
+    active: lastMessage?.role === 'assistant',
+    loading: loading,
+    messages: {
+      loading: 'AIが回答を生成しています...',
+      loadingContinue: 'AIが引き続き回答を生成しています...',
+      completed: lastMessage?.content
+        ? `AIの回答：${lastMessage.content}`
+        : 'AIの回答がありません。',
+    },
+  });
+
+  return (
+    <LayoutBody>
+      <PageTitle title={`翻訳（実行） | ${APP_TITLE}`} />
+      <div className='mx-auto p-6 max-w-(--page-width) lg:p-8'>
+        <TranslateHeader />
+
+        <div className='flex flex-col py-4 lg:pt-4.5 lg:pb-6'>
+          <div className='pb-4'>
+            <DefaultInvokeCheckbox storageKey='translate' />
+          </div>
+          <TranslateForm
+            typingTextOutput={typingTextOutput}
+            translatedSentence={translatedSentence}
+            getTranslation={getTranslation}
+            loading={loading}
+            auto={auto}
+            setAuto={setAuto}
+            usageCostHistory={
+              lastMessage?.role === 'assistant' ? lastMessage.usageCostHistory : undefined
+            }
+          />
+        </div>
+      </div>
+      <div aria-live='assertive' aria-atomic='true' className='sr-only'>
+        {liveStatusMessage}
+      </div>
+    </LayoutBody>
+  );
+};

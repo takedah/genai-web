@@ -60,9 +60,21 @@ vi.mock('@/hooks/useChat', () => ({
   useChat: () => ({}),
 }));
 
+const mockRecordRecentlyUsedApp = vi.fn();
+vi.mock('@/hooks/useRecentlyUsedApps', () => ({
+  useRecordRecentlyUsedApp: () => mockRecordRecentlyUsedApp,
+  isRecentlyUsedAppsEnabled: false,
+}));
+
+vi.mock('@/utils/getAvailableGenuApps', () => ({
+  GENU_APP_METAS: {
+    chat: { kind: 'chat', label: 'チャット', description: '着想や整理のための壁打ち' },
+  },
+}));
+
 const createDefaultProps = () => ({
   pathname: '/chat',
-  postChat: vi.fn(),
+  postChat: vi.fn().mockResolvedValue(undefined),
   retryGeneration: vi.fn(),
   updateSystemContext: vi.fn(),
   getCurrentSystemContext: vi.fn().mockReturnValue('system-context'),
@@ -252,6 +264,23 @@ describe('useChatSubmit', () => {
 
       expect(props.setFollowing).toHaveBeenCalledWith(true);
     });
+
+    it('should call postChat with sendFilesAsS3: true (chat sends files as S3 URI)', () => {
+      mockStoreState.content = 'hello';
+
+      const props = createDefaultProps();
+
+      const { result } = renderHook(() => useChatSubmit(props));
+
+      act(() => {
+        result.current.onSend();
+      });
+
+      expect(props.postChat).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ sendFilesAsS3: true }),
+      );
+    });
   });
 
   describe('onRetry', () => {
@@ -265,6 +294,20 @@ describe('useChatSubmit', () => {
       });
 
       expect(props.retryGeneration).toHaveBeenCalled();
+    });
+
+    it('should call retryGeneration with sendFilesAsS3: true', () => {
+      const props = createDefaultProps();
+
+      const { result } = renderHook(() => useChatSubmit(props));
+
+      act(() => {
+        result.current.onRetry();
+      });
+
+      expect(props.retryGeneration).toHaveBeenCalledWith(
+        expect.objectContaining({ sendFilesAsS3: true }),
+      );
     });
   });
 });

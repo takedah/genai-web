@@ -49,10 +49,10 @@ export const GenerateImageInput = (props: Props) => {
       <h2 id={`${textareaId}-heading`} className='self-start my-1 text-std-16N-170'>
         生成したい画像の内容を入力してみましょう
       </h2>
-      <div className='flex w-full flex-col gap-2'>
+      <div className='grid w-full grid-cols-[minmax(0,1fr)_auto] items-end gap-x-2'>
         <AutoResizeTextarea
           id={textareaId}
-          className='resize-none'
+          className='resize-none col-start-1 row-start-1 py-[calc(11/16*1rem)]!'
           required
           aria-labelledby={`${textareaId}-heading`}
           aria-describedby={`${textareaId}-error`}
@@ -69,23 +69,24 @@ export const GenerateImageInput = (props: Props) => {
             },
           })}
         />
+
         {errors.content && (
-          <ErrorText id={`${textareaId}-error`}>＊{errors.content.message}</ErrorText>
+          <ErrorText id={`${textareaId}-error`} className='col-span-full row-start-2 mt-2'>
+            ＊{errors.content.message}
+          </ErrorText>
         )}
 
-        <div className='flex w-full items-start justify-end'>
-          <LoadingButton
-            type='submit'
-            variant='solid-fill'
-            size='md'
-            disabled={loading}
-            onClick={() => {}}
-            className='shrink-0 inline-flex justify-center items-center gap-1 min-w-36'
-          >
-            <SendIcon aria-hidden={true} className='shrink-0' />
-            {loading ? '生成中...' : '送信'}
-          </LoadingButton>
-        </div>
+        <LoadingButton
+          type='submit'
+          variant='solid-fill'
+          size='md'
+          disabled={loading}
+          onClick={() => {}}
+          className='col-start-2 row-start-1 shrink-0 inline-flex justify-center items-center gap-1 min-w-32'
+        >
+          <SendIcon aria-hidden={true} className='shrink-0' />
+          {loading ? '生成中' : '送信'}
+        </LoadingButton>
       </div>
     </form>
   );

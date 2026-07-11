@@ -5,8 +5,10 @@ cdk.out/
 ToDo.md
 !.gitkeep
 .env
+.env.*
 .claude
 security-report/
+tmp/
 
 
 # MkDocs documentation

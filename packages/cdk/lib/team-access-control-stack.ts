@@ -27,6 +27,15 @@ interface TeamAccessControlStackProps extends NestedStackProps {
   dynamoDbTtlDays: number;
   envName?: string;
   removalPolicy?: cdk.RemovalPolicy;
+  modelRegion: string;
+  modelIds: string[];
+  crossAccountBedrockRoleArn?: string | null;
+  inferenceProfileMap?: { [modelId: string]: string };
+  costConversion?: {
+    toCurrency: string;
+    rate: number;
+    allowedFromCurrencies: string[];
+  };
 }
 
 export class TeamAccessControlStack extends NestedStack {
@@ -57,6 +66,11 @@ export class TeamAccessControlStack extends NestedStack {
       dynamoDbTtlDays: props.dynamoDbTtlDays,
       envName: props.envName,
       removalPolicy: props.removalPolicy,
+      modelRegion: props.modelRegion,
+      modelIds: props.modelIds,
+      crossAccountBedrockRoleArn: props.crossAccountBedrockRoleArn,
+      inferenceProfileMap: props.inferenceProfileMap,
+      costConversion: props.costConversion,
     });
     this.api = teamAccessControl.api;
     this.table = teamAccessControl.table;

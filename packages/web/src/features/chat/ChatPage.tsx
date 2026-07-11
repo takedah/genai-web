@@ -1,20 +1,26 @@
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { PageTitle } from '@/components/PageTitle';
 import { BreadcrumbsNav } from '@/components/ui/BreadcrumbsNav';
 import { Button } from '@/components/ui/dads/Button';
-import { ProgressIndicator } from '@/components/ui/dads/ProgressIndicator';
+import {
+  ProgressIndicator,
+  ProgressIndicatorSpinner,
+} from '@/components/ui/dads/ProgressIndicator';
 import { APP_TITLE } from '@/constants';
 import { ChatHints } from '@/features/chat/components/ChatHints';
 import { ChatHistorySidebar } from '@/features/chat/components/ChatHistorySidebar';
 import { ChatInput } from '@/features/chat/components/ChatInput';
 import { ChatMessage } from '@/features/chat/components/ChatMessage';
 import { ChatNotificationDialog } from '@/features/chat/components/ChatNotificationDialog';
-import { ChatStickyHeader } from '@/features/chat/components/ChatStickyHeader';
+import { ChatNotificationDialogButton } from '@/features/chat/components/ChatNotificationDialogButton';
+import { ConversationTotalCost } from '@/features/chat/components/ConversationTotalCost';
 import { DialogPromptList } from '@/features/chat/components/DialogPromptList';
 import { DialogSaveSystemContext } from '@/features/chat/components/DialogSaveSystemContext';
 import { FileDrop } from '@/features/chat/components/FileDrop';
+import { ModelSelector } from '@/features/chat/components/ModelSelector';
+import { SystemPrompt } from '@/features/chat/components/SystemPrompt';
 import { Title } from '@/features/chat/components/Title';
 import { useChatAnnouncementDelay } from '@/features/chat/hooks/useChatAnnouncementDelay';
 import { useChatSubmit } from '@/features/chat/hooks/useChatSubmit';
@@ -22,12 +28,12 @@ import { useChatTitle } from '@/features/chat/hooks/useChatTitle';
 import { useFileUploadable } from '@/features/chat/hooks/useFileUploadable';
 import { useReset } from '@/features/chat/hooks/useReset';
 import { useSetDefaultValues } from '@/features/chat/hooks/useSetDefaultValues';
+import { useSystemContext } from '@/features/chat/hooks/useSystemContext';
 import { useChatStore } from '@/features/chat/stores/useChatStore';
 import { useChat } from '@/hooks/useChat';
 import { useFollow } from '@/hooks/useFollow';
 import { useLiveStatusMessage } from '@/hooks/useLiveStatusMessage';
 import { useScreen } from '@/hooks/useScreen';
-import { useSystemContext } from './hooks/useSystemContext';
 import { ChatPageQueryParams } from './types';
 
 export const ChatPage = () => {
@@ -68,6 +74,7 @@ export const ChatPage = () => {
   } = useChat(pathname, chatId);
 
   const { scrollableContainer, setFollowing } = useFollow();
+  const chatLoadingId = useId();
 
   useReset();
 
@@ -198,20 +205,32 @@ export const ChatPage = () => {
 
         <div className='flex justify-between gap-10 xl:gap-16'>
           <div className='flex min-w-0 flex-1 max-w-[calc(1056/16*1rem)] flex-col'>
-            <ChatStickyHeader
-              title={title}
-              currentSystemContext={currentSystemContext}
-              onOpenNotificationDialog={() => setIsNotificationDialogOpen(true)}
-              onOpenSystemContextDialog={() => setShowSystemContextDialog(true)}
-              onOpenPromptListDialog={() => setShowPromptListDialog(true)}
-            />
+            <div className='min-w-0 shrink-0 flex flex-col gap-2 pt-2.5'>
+              <div className='flex items-center justify-start flex-wrap gap-y-2 gap-x-4 lg:gap-x-6'>
+                <div className='shrink-0'>
+                  <ModelSelector />
+                </div>
+                <ChatNotificationDialogButton
+                  className='shrink-0'
+                  onClick={() => setIsNotificationDialogOpen(true)}
+                />
+              </div>
+              <SystemPrompt
+                currentSystemContext={currentSystemContext}
+                setShowSystemContextDialog={() => setShowSystemContextDialog(true)}
+                setShowPromptListDialog={() => setShowPromptListDialog(true)}
+              />
+            </div>
 
-            <div className='flex-1 py-4 px-2 lg:pb-6'>
+            <div className='flex-1 py-4 px-2'>
               <div ref={scrollTopAnchorRef} />
 
               {loadingMessages && (
                 <div className='relative grid min-h-[50vh] w-full place-content-center'>
-                  <ProgressIndicator isLarge={true} label='読み込み中...' />
+                  <ProgressIndicator type='stacked' aria-labelledby={chatLoadingId}>
+                    <ProgressIndicatorSpinner size='lg' />
+                    <span id={chatLoadingId}>読み込み中...</span>
+                  </ProgressIndicator>
                 </div>
               )}
 
@@ -232,6 +251,7 @@ export const ChatPage = () => {
                       retryGeneration={onRetry}
                     />
                   ))}
+                {!isEmpty && <ConversationTotalCost messages={messages} />}
               </div>
 
               <div ref={scrollBottomAnchorRef} />

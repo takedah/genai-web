@@ -4,7 +4,7 @@
   "repository": "https://github.com/digital-go-jp/genai-web/",
   "private": true,
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.3.10",
   "scripts": {
     "format": "npm run web:format && npm run cdk:format",
     "web:devw": "source ./scripts/setup-env.sh ${npm_config_env} && VITE_APP_VERSION=${npm_package_version} npm -w packages/web run dev",
@@ -19,24 +19,28 @@
     "cdk:format": "npm -w packages/cdk run format",
     "cdk:lint": "npm -w packages/cdk run lint",
     "cdk:test": "npm -w packages/cdk run test",
-    "cdk:test:update-snapshot": "npm -w packages/cdk run test -- --update"
+    "cdk:test:update-snapshot": "npm -w packages/cdk run test -- --update",
+    "common:test": "npm -w packages/common run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
-    "esbuild": "^0.28.0",
+    "@biomejs/biome": "^2.5.0",
+    "esbuild": "^0.28.1",
+    "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.4",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9",
     "zod": "^4.4.3"
   },
   "workspaces": [
     "packages/*"
   ],
   "engines": {
-    "node": "22.22.2"
+    "node": "22.22.2",
+    "npm": "11.11.0"
   },
   "engineStrict": true,
   "overrides": {
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   }
 }

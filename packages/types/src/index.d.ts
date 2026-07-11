@@ -1,6 +1,7 @@
 export * from './agent';
 export * from './base';
 export * from './chat';
+export * from './cost';
 export * from './exApp';
 export * from './image';
 export * from './invokeExApp';

@@ -3,13 +3,17 @@ import { PageTitle } from '@/components/PageTitle';
 import { Button } from '@/components/ui/dads/Button';
 import { APP_TITLE } from '@/constants';
 import { Card } from '@/features/landing/components/Card';
+import { RecentlyUsedAppsSection } from '@/features/landing/components/RecentlyUsedAppsSection';
 import { TOP_CHAT_SYSTEM_PROMPT } from '@/features/landing/constants';
 import { RecommendedGovAI } from '@/features/landing/types';
+import { useResolveAppPath } from '@/hooks/useResolveAppPath';
 import { LayoutBody } from '@/layout/LayoutBody';
 import { isUseCaseEnabled } from '@/utils/isUseCaseEnabled';
 import { LandingForm } from './components/LandingForm';
 
 export const LandingPage = () => {
+  const { resolveGenUAppPath, resolveExAppPath } = useResolveAppPath();
+
   // 各環境のGovAIの情報を取得
   const recommendedGovAI: RecommendedGovAI[] = (() => {
     try {
@@ -27,8 +31,10 @@ export const LandingPage = () => {
       <div className='mx-auto px-6 max-w-(--page-width) lg:px-8 pb-24'>
         {TOP_CHAT_SYSTEM_PROMPT && <LandingForm />}
 
+        <RecentlyUsedAppsSection />
+
         <div className='mt-8 lg:mt-10'>
-          <h2 className='mb-6 flex justify-start text-std-24B-150'>おすすめアプリ</h2>
+          <h2 className='mb-6 flex justify-start text-std-24B-150'>おすすめAIアプリ</h2>
           <ul className='grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4'>
             {recommendedGovAI && recommendedGovAI.length > 0 ? (
               recommendedGovAI.map((govAI) => (
@@ -36,7 +42,7 @@ export const LandingPage = () => {
                   <Card
                     title={govAI.title}
                     className='h-full'
-                    to={`/apps/${govAI.teamId}/${govAI.exAppId}`}
+                    to={resolveExAppPath(govAI.teamId, govAI.exAppId)}
                     description={govAI.description}
                   />
                 </li>
@@ -56,7 +62,7 @@ export const LandingPage = () => {
                     <Card
                       title='文章を生成'
                       className='h-full'
-                      to='/generate'
+                      to={resolveGenUAppPath('generate')}
                       description='手元の情報をもとに文章を作成'
                     />
                   </li>
@@ -66,7 +72,7 @@ export const LandingPage = () => {
                     <Card
                       title='翻訳'
                       className='h-full'
-                      to='/translate'
+                      to={resolveGenUAppPath('translate')}
                       description='手元の文章を他の言語に翻訳'
                     />
                   </li>

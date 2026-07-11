@@ -7,12 +7,14 @@ import { CopyIcon } from './icons/CopyIcon';
 type Props = {
   className?: string;
   text: string;
+  label?: string;
+  copiedLabel?: string;
   disabled?: boolean;
   targetRef?: React.RefObject<HTMLElement | null>;
 };
 
 export const ButtonCopy = (props: Props) => {
-  const { className, text, disabled, targetRef } = props;
+  const { className, text, label = 'コピー', copiedLabel = '完了', disabled, targetRef } = props;
   const [isShowsCheck, setIsShowsCheck] = useState(false);
 
   const copyMessage = async (message: string) => {
@@ -62,12 +64,12 @@ export const ButtonCopy = (props: Props) => {
       {isShowsCheck ? (
         <>
           <CheckmarkIcon className='-ml-1 shrink-0' aria-hidden={true} />
-          完了
+          {copiedLabel}
         </>
       ) : (
         <>
           <CopyIcon className='shrink-0' aria-hidden={true} />
-          コピー
+          {label}
         </>
       )}
     </Button>

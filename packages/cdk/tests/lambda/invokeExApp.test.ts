@@ -17,6 +17,11 @@ vi.mock('../../lambda/repository/exAppRepository', () => ({
 
 vi.mock('../../lambda/repository/invokeHistoryRepository', () => ({
   createInvokeExAppHistory: vi.fn(),
+  updateInvokeExAppHistoryTitle: vi.fn(),
+}));
+
+vi.mock('../../lambda/utils/predictExAppTitle', () => ({
+  predictExAppTitle: vi.fn(),
 }));
 
 vi.mock('../../lambda/repository/teamRepository', () => ({
@@ -75,7 +80,11 @@ vi.mock('@aws-sdk/client-cloudwatch', () => ({
 
 import { handler } from '../../lambda/invokeExApp';
 import { findExAppById } from '../../lambda/repository/exAppRepository';
-import { createInvokeExAppHistory } from '../../lambda/repository/invokeHistoryRepository';
+import {
+  createInvokeExAppHistory,
+  updateInvokeExAppHistoryTitle,
+} from '../../lambda/repository/invokeHistoryRepository';
+import { predictExAppTitle } from '../../lambda/utils/predictExAppTitle';
 import { findTeamById } from '../../lambda/repository/teamRepository';
 import { isSystemAdmin, isTeamUser } from '../../lambda/utils/teamRole';
 import { getApiKeyValue } from '../../lambda/utils/apiKey';
@@ -183,6 +192,9 @@ describe('invokeExApp Lambda handler', () => {
     vi.mocked(isSystemAdmin).mockReturnValue(false);
     vi.mocked(isTeamUser).mockResolvedValue(true);
     vi.mocked(createInvokeExAppHistory).mockResolvedValue({} as any);
+    vi.mocked(predictExAppTitle).mockResolvedValue('テストタイトル');
+    vi.mocked(updateInvokeExAppHistoryTitle).mockResolvedValue(undefined);
+    mockSqsSend.mockResolvedValue({});
     vi.mocked(classifyErrorType).mockReturnValue('CLIENT_ERROR');
     vi.mocked(publishErrorMetrics).mockResolvedValue(undefined);
     vi.mocked(publishSuccessMetrics).mockResolvedValue(undefined);
@@ -492,6 +504,51 @@ describe('invokeExApp Lambda handler', () => {
     expect(body.outputs).toBe('サーバ側でエラーが発生しました。管理者へご連絡ください。');
   });
 
+  it('COMPLETED時にタイトル予測が実行され結果が保存される', async () => {
+    const mockResponse = { outputs: 'AI response' };
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+    const event = createEvent(createValidBody());
+    await handler(event);
+
+    expect(predictExAppTitle).toHaveBeenCalledWith({ prompt: 'test input' }, 'AI response');
+    expect(updateInvokeExAppHistoryTitle).toHaveBeenCalled();
+  });
+
+  it('ERRORの場合、タイトル予測が実行されない', async () => {
+    const mockErrorResponse = { error: 'Bad Request' };
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(400, mockErrorResponse));
+
+    const event = createEvent(createValidBody());
+    await handler(event);
+
+    expect(predictExAppTitle).not.toHaveBeenCalled();
+  });
+
+  it('非同期レスポンス（202）の場合、タイトル予測が実行されない', async () => {
+    const mockResponse = { status_url: '/status/123' };
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(202, mockResponse));
+
+    const event = createEvent(createValidBody());
+    await handler(event);
+
+    expect(predictExAppTitle).not.toHaveBeenCalled();
+  });
+
+  it('タイトル予測が失敗しても正常レスポンスが返る', async () => {
+    const mockResponse = { outputs: 'AI response' };
+    mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+    vi.mocked(predictExAppTitle).mockRejectedValueOnce(new Error('Bedrock error'));
+
+    const event = createEvent(createValidBody());
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body.outputs).toBe('AI response');
+  });
+
   it('エラー発生時もcreateInvokeExAppHistoryが呼ばれる', async () => {
     vi.mocked(findExAppById)
       .mockResolvedValueOnce(null)
@@ -501,5 +558,102 @@ describe('invokeExApp Lambda handler', () => {
     await handler(event);
 
     expect(createInvokeExAppHistory).toHaveBeenCalled();
+  });
+
+  // 同期成功レスポンスに totalEstimatedCost を同梱する。
+  describe('totalEstimatedCost 同梱', () => {
+    it('外部アプリが usageMetadata を返した場合、totalEstimatedCost が同梱される', async () => {
+      const mockResponse = {
+        outputs: 'AI response',
+        usageMetadata: [
+          {
+            estimatedCostInfo: { estimatedCost: 0.5, currency: 'USD' },
+            modelVersion: 'gemini-2',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 50, promptTokenCount: 100, totalTokenCount: 150 },
+          },
+          {
+            estimatedCostInfo: { estimatedCost: 0.25, currency: 'USD' },
+            modelVersion: 'gemini-2',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 30, promptTokenCount: 80, totalTokenCount: 110 },
+          },
+        ],
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createEvent(createValidBody());
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body);
+      expect(body.totalEstimatedCost).toEqual({
+        totalCost: 0.75,
+        currency: 'USD',
+      });
+      // 既存 usageMetadata は変わらず透過される（回帰なし）
+      expect(body.usageMetadata).toEqual(mockResponse.usageMetadata);
+    });
+
+    it('usageMetadata 不在では totalEstimatedCost も付かない（後方互換）', async () => {
+      const mockResponse = { outputs: 'AI response' };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createEvent(createValidBody());
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body);
+      expect(body.totalEstimatedCost).toBeUndefined();
+    });
+
+    it('currency 混在エントリでは totalEstimatedCost は undefined', async () => {
+      const mockResponse = {
+        outputs: 'AI response',
+        usageMetadata: [
+          {
+            estimatedCostInfo: { estimatedCost: 0.5, currency: 'USD' },
+            modelVersion: 'm',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 0, promptTokenCount: 0, totalTokenCount: 0 },
+          },
+          {
+            estimatedCostInfo: { estimatedCost: 100, currency: 'JPY' },
+            modelVersion: 'm',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 0, promptTokenCount: 0, totalTokenCount: 0 },
+          },
+        ],
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(200, mockResponse));
+
+      const event = createEvent(createValidBody());
+      const result = await handler(event);
+
+      const body = JSON.parse(result.body);
+      expect(body.totalEstimatedCost).toBeUndefined();
+    });
+
+    it('202（async）パスでは totalEstimatedCost は付与されない', async () => {
+      const mockResponse = {
+        status_url: '/status/123',
+        usageMetadata: [
+          {
+            estimatedCostInfo: { estimatedCost: 0.5, currency: 'USD' },
+            modelVersion: 'm',
+            requestCount: 1,
+            tokens: { candidatesTokenCount: 0, promptTokenCount: 0, totalTokenCount: 0 },
+          },
+        ],
+      };
+      mockRequestValidatedExAppUrl.mockResolvedValue(createMockResponse(202, mockResponse));
+
+      const event = createEvent(createValidBody());
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(202);
+      const body = JSON.parse(result.body);
+      expect(body.totalEstimatedCost).toBeUndefined();
+    });
   });
 });

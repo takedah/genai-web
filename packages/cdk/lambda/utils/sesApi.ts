@@ -15,9 +15,11 @@ export const sendEmail = async (
   subject: string,
   bodyHtml: string,
   bodyText?: string,
+  configurationSetName?: string,
 ): Promise<void> => {
   const command = new SendEmailCommand({
     FromEmailAddress: SES_FROM_ADDRESS,
+    ...(configurationSetName ? { ConfigurationSetName: configurationSetName } : {}),
     Destination: {
       ToAddresses: [to],
     },
@@ -50,7 +52,7 @@ export const sendEmail = async (
       lastError = error;
       console.error(`SES SendEmail attempt ${attempt}/${MAX_RETRIES} failed:`, error);
       if (attempt < MAX_RETRIES) {
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        const delay = BASE_DELAY_MS * 2 ** (attempt - 1);
         await sleep(delay);
       }
     }

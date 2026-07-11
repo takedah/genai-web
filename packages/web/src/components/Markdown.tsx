@@ -1,13 +1,15 @@
-import React, { ComponentProps, useEffect, useState } from 'react';
+import React, { ComponentProps, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ExtraProps, default as ReactMarkdown } from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { BundledLanguage, codeToHtml } from 'shiki';
 import { Link } from '@/components/ui/dads/Link';
-import { MermaidRenderer } from '@/features/exapp/components/MermaidRenderer';
+import { MermaidRenderer } from '@/features/exapp/invoke/components/MermaidRenderer';
 import { ButtonCopy } from './ui/ButtonCopy';
+import { Disclosure, DisclosureSummary } from './ui/dads/Disclosure';
 import { ErrorText } from './ui/dads/ErrorText';
+import { OverflowShadow } from './ui/OverflowShadow';
 
 type Props = {
   className?: string;
@@ -43,7 +45,7 @@ function CodeBlock(props: CodeBlockProps) {
     let isMounted = true;
     codeToHtml(props.children, {
       lang: props.lang,
-      theme: 'github-dark-high-contrast',
+      theme: 'github-light-high-contrast',
     }).then((result) => {
       if (isMounted) {
         setHtml(result);
@@ -66,30 +68,75 @@ const SupRenderer = ({ children }: ComponentProps<'sup'>) => (
   <sup className='m-0.5 rounded-full bg-gray-200 px-1'>{children}</sup>
 );
 
-const CodeRenderer = ({ className, children, node }: ComponentProps<'code'> & ExtraProps) => {
-  const language = /language-(\w+)/.exec(className || '')?.[1];
-  const isCodeBlock = !!language;
-  const codeText = String(children).replace(/\n$/, '');
+const TableRenderer = ({ children, node, ...rest }: ComponentProps<'table'> & ExtraProps) => (
+  <OverflowShadow>
+    <table {...rest}>{children}</table>
+  </OverflowShadow>
+);
 
-  if (className === 'language-mermaid' && node?.children[0]?.type === 'text') {
-    const textNode = node.children[0];
-    return <MermaidRenderer code={'value' in textNode ? String(textNode.value) : ''} />;
+const PreRenderer = ({ children, node, ...rest }: ComponentProps<'pre'> & ExtraProps) => {
+  const codeEl = node?.children[0];
+  if (codeEl?.type !== 'element' || codeEl.tagName !== 'code') {
+    return <pre {...rest}>{children}</pre>;
   }
 
-  if (isCodeBlock) {
-    return (
-      <>
-        <div className='flex'>
-          <span className='flex-auto'>{language} </span>
-          <ButtonCopy className='text-solid-gray-50' text={codeText} />
-        </div>
-        <CodeBlock lang={language as BundledLanguage}>{codeText}</CodeBlock>
-      </>
-    );
+  const classNameProp = codeEl.properties?.className;
+  const classNames = Array.isArray(classNameProp)
+    ? classNameProp.filter((c): c is string => typeof c === 'string')
+    : typeof classNameProp === 'string'
+      ? classNameProp.split(/\s+/)
+      : [];
+  const languageClass = classNames.find((c) => c.startsWith('language-'));
+  const language = languageClass?.slice('language-'.length);
+  const textNode = codeEl.children[0];
+  const codeText = textNode && 'value' in textNode ? String(textNode.value).replace(/\n$/, '') : '';
+
+  if (language === 'mermaid') {
+    return <MermaidRenderer code={codeText} />;
   }
 
+  if (!language) {
+    return <PlainCodeBlock codeText={codeText} />;
+  }
+
+  return <LanguageCodeBlock codeText={codeText} language={language} />;
+};
+
+const PlainCodeBlock = ({ codeText }: { codeText: string }) => {
+  const targetRef = useRef<HTMLDivElement>(null);
   return (
-    <span className='inline rounded-md border border-solid-gray-800/30 bg-solid-gray-800/10 px-1 py-0.5'>
+    <div className='my-4 px-4 pt-4 pb-2 border border-solid-gray-420 rounded-12 [&_pre]:bg-transparent!'>
+      <div ref={targetRef}>
+        <CodeBlock lang={'text' as BundledLanguage}>{codeText}</CodeBlock>
+      </div>
+      <div className='flex justify-end mt-2'>
+        <ButtonCopy text={codeText} targetRef={targetRef} />
+      </div>
+    </div>
+  );
+};
+
+const LanguageCodeBlock = ({ codeText, language }: { codeText: string; language: string }) => {
+  const targetRef = useRef<HTMLDivElement>(null);
+  return (
+    <Disclosure open className='my-4 border border-solid-gray-420 rounded-12'>
+      <DisclosureSummary className='px-4 py-3 w-full'>{language}</DisclosureSummary>
+      <div className='px-4 py-2 [&_pre]:bg-transparent!'>
+        <div ref={targetRef}>
+          <CodeBlock lang={language as BundledLanguage}>{codeText}</CodeBlock>
+        </div>
+        <div className='flex justify-end mt-2'>
+          <ButtonCopy text={codeText} targetRef={targetRef} />
+        </div>
+      </div>
+    </Disclosure>
+  );
+};
+
+const CodeRenderer = ({ children }: ComponentProps<'code'>) => {
+  const codeText = String(children).replace(/\n$/, '');
+  return (
+    <span className='inline rounded-4 border border-solid-gray-420 bg-solid-gray-50 px-1 py-0.5'>
       {codeText}
     </span>
   );
@@ -100,6 +147,8 @@ const components: ComponentProps<typeof ReactMarkdown>['components'] = {
   img: ImageRenderer,
   sup: SupRenderer,
   code: CodeRenderer,
+  pre: PreRenderer,
+  table: TableRenderer,
 };
 
 export const Markdown = React.memo(({ className, prefix, children }: Props) => {

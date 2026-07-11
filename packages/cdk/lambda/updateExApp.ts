@@ -3,7 +3,7 @@
  *  SPDX-License-Identifier: LicenseRef-.amazon.com.-AmznSL-1.0
  *  Licensed under the Amazon Software License  http://aws.amazon.com/asl/
  */
-import { updateExApp } from './repository/exAppRepository';
+import { findExAppById, updateExApp } from './repository/exAppRepository';
 import { updateExAppSchema } from './schemas/updateExAppSchema';
 import { setApiKey } from './utils/apiKey';
 import { createApiHandler } from './utils/createApiHandler';
@@ -28,6 +28,15 @@ export const handler = createApiHandler(async (event) => {
       throw new HttpError(400, 'APIエンドポイントには公開 HTTPS URL を指定してください。');
     }
     throw error;
+  }
+
+  const currentExApp = await findExAppById(teamId, exAppId);
+  if (!currentExApp) {
+    throw new HttpError(404, 'AIアプリが見つかりません。');
+  }
+
+  if (currentExApp.endpoint !== req.endpoint && !req.apiKey) {
+    throw new HttpError(400, 'APIエンドポイントを変更する場合はAPIキーを再入力してください。');
   }
 
   const exApp = await updateExApp(teamId, exAppId, req);

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/dads/Input';
 import { Label } from '@/components/ui/dads/Label';
 import { SearchIcon } from '@/components/ui/icons/SearchIcon';
 import { useAccessibilityAnnouncer } from '@/hooks/useAccessibilityAnnouncer';
+import { useResolveAppPath } from '@/hooks/useResolveAppPath';
 import { useFilteredTeams } from '../hooks/useFilteredTeams';
 import { ExAppOptions } from '../types';
 import { ExAppListCard } from './ExAppListCard';
@@ -16,6 +17,7 @@ type Props = {
 
 export const ExAppList = (props: Props) => {
   const { exAppOptions, setTeamId, setExAppId } = props;
+  const { resolveGenUAppPath, resolveExAppPath } = useResolveAppPath();
 
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
@@ -82,7 +84,11 @@ export const ExAppList = (props: Props) => {
               {filteredExApps.map((exApp) => (
                 <li key={`${teamIdKey}-${exApp.value}`}>
                   <ExAppListCard
-                    href={exApp.isDefault ? `/${exApp.value}` : `/apps/${teamIdKey}/${exApp.value}`}
+                    href={
+                      exApp.isDefault
+                        ? resolveGenUAppPath(exApp.value)
+                        : resolveExAppPath(teamIdKey, exApp.value)
+                    }
                     label={exApp.label}
                     description={exApp.description}
                     onClick={() => {
