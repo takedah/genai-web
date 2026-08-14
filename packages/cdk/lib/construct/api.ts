@@ -122,7 +122,7 @@ export class Api extends Construct {
 
     // Lambda
     const predictFunction = new NodejsFunction(this, 'Predict', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/predict.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -140,7 +140,7 @@ export class Api extends Construct {
     });
 
     const predictStreamFunction = new NodejsFunction(this, 'PredictStream', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/predictStream.ts',
       timeout: Duration.minutes(15),
       memorySize: 256,
@@ -164,7 +164,7 @@ export class Api extends Construct {
     authenticatedRole.grant(predictStreamFunction.role!, 'lambda:InvokeFunction');
 
     const predictTitleFunction = new NodejsFunction(this, 'PredictTitle', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/predictTitle.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -184,7 +184,7 @@ export class Api extends Construct {
     table.grantWriteData(predictTitleFunction);
 
     const generateImageFunction = new NodejsFunction(this, 'GenerateImage', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/generateImage.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -275,7 +275,7 @@ export class Api extends Construct {
     predictTitleFunction.role?.addToPrincipalPolicy(marketplacePolicy);
 
     const createChatFunction = new NodejsFunction(this, 'CreateChat', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/createChat.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -286,7 +286,7 @@ export class Api extends Construct {
     table.grantWriteData(createChatFunction);
 
     const deleteChatFunction = new NodejsFunction(this, 'DeleteChat', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/deleteChat.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -296,7 +296,7 @@ export class Api extends Construct {
     table.grantReadWriteData(deleteChatFunction);
 
     const createMessagesFunction = new NodejsFunction(this, 'CreateMessages', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/createMessages.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -308,7 +308,7 @@ export class Api extends Construct {
     table.grantReadWriteData(createMessagesFunction);
 
     const updateChatTitleFunction = new NodejsFunction(this, 'UpdateChatTitle', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/updateTitle.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -318,7 +318,7 @@ export class Api extends Construct {
     table.grantReadWriteData(updateChatTitleFunction);
 
     const listChatsFunction = new NodejsFunction(this, 'ListChats', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/listChats.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -328,7 +328,7 @@ export class Api extends Construct {
     table.grantReadData(listChatsFunction);
 
     const findChatbyIdFunction = new NodejsFunction(this, 'FindChatbyId', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/findChatById.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -338,7 +338,7 @@ export class Api extends Construct {
     table.grantReadData(findChatbyIdFunction);
 
     const listMessagesFunction = new NodejsFunction(this, 'ListMessages', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/listMessages.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -348,7 +348,7 @@ export class Api extends Construct {
     table.grantReadData(listMessagesFunction);
 
     const listSystemContextsFunction = new NodejsFunction(this, 'ListSystemContexts', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/listSystemContexts.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -358,7 +358,7 @@ export class Api extends Construct {
     table.grantReadData(listSystemContextsFunction);
 
     const createSystemContextFunction = new NodejsFunction(this, 'CreateSystemContexts', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/createSystemContext.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -368,7 +368,7 @@ export class Api extends Construct {
     table.grantWriteData(createSystemContextFunction);
 
     const updateSystemContextTitleFunction = new NodejsFunction(this, 'UpdateSystemContextTitle', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/updateSystemContextTitle.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -378,7 +378,7 @@ export class Api extends Construct {
     table.grantReadWriteData(updateSystemContextTitleFunction);
 
     const deleteSystemContextFunction = new NodejsFunction(this, 'DeleteSystemContexts', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/deleteSystemContext.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -390,7 +390,7 @@ export class Api extends Construct {
     // Cognito Identity Pool ID は Lambda が実行時に discovery で解決する。
     // cognito-identity:* の IAM は親スタック側で付与する（循環依存回避）。
     const getSignedUrlFunction = new NodejsFunction(this, 'GetSignedUrl', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
       environment: {
@@ -404,7 +404,7 @@ export class Api extends Construct {
       this,
       'GetFileDownloadSignedUrlFunction',
       {
-        runtime: Runtime.NODEJS_22_X,
+        runtime: Runtime.NODEJS_24_X,
         entry: './lambda/getFileDownloadSignedUrl.ts',
         timeout: Duration.minutes(15),
         environment: {
@@ -416,7 +416,7 @@ export class Api extends Construct {
     fileBucket.grantRead(getFileDownloadSignedUrlFunction);
 
     const deleteFileFunction = new NodejsFunction(this, 'DeleteFileFunction', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/deleteFile.ts',
       timeout: Duration.minutes(15),
       environment: {

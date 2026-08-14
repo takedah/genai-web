@@ -1,5 +1,72 @@
-import { describe, expect, it } from 'vitest';
-import { sanitizeUsageCostHistory } from '../../lambda/createMessages';
+import { vi } from 'vitest';
+vi.hoisted(() => {
+  process.env.BUCKET_NAME = 'test-bucket';
+  process.env.AWS_REGION = 'ap-northeast-1';
+  process.env.TABLE_NAME = 'test-table';
+  process.env.TTL_DAYS = '30';
+});
+
+import type { APIGatewayProxyEvent } from 'aws-lambda';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { mockClient } from 'aws-sdk-client-mock';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { handler, sanitizeUsageCostHistory } from '../../lambda/createMessages';
+
+const ddbMock = mockClient(DynamoDBDocumentClient);
+
+const makeEvent = (body: object): APIGatewayProxyEvent =>
+  ({
+    body: JSON.stringify(body),
+    pathParameters: { chatId: 'chat-1' },
+    requestContext: { authorizer: { claims: { sub: 'user-1' } } },
+  }) as unknown as APIGatewayProxyEvent;
+
+describe('handler: content size guard', () => {
+  beforeEach(() => {
+    ddbMock.reset();
+  });
+
+  it('400KB 以下の content は正常に処理される', async () => {
+    const { QueryCommand, BatchWriteCommand } = await import('@aws-sdk/lib-dynamodb');
+    ddbMock.on(QueryCommand).resolves({ Items: [{ id: 'user#user-1', chatId: 'chat-1' }] });
+    ddbMock.on(BatchWriteCommand).resolves({});
+
+    const content = 'a'.repeat(400 * 1024);
+    const event = makeEvent({ messages: [{ role: 'user', content, messageId: 'msg-1', usecase: '/chat' }] });
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(200);
+  });
+
+  it('400KB 超の content は 400 を返す', async () => {
+    const content = 'a'.repeat(400 * 1024 + 1);
+    const event = makeEvent({ messages: [{ role: 'user', content, messageId: 'msg-1', usecase: '/chat' }] });
+
+    const { QueryCommand } = await import('@aws-sdk/lib-dynamodb');
+    ddbMock.on(QueryCommand).resolves({ Items: [{ id: 'user#user-1', chatId: 'chat-1' }] });
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body).message).toBe(
+      'メッセージの内容が大きすぎます。内容を短くしてから送信してください。',
+    );
+  });
+
+  it('マルチバイト文字で 400KB 超になる場合も 400 を返す', async () => {
+    // 日本語1文字=3バイト。400KB+1バイト超になる文字数を用意する
+    const content = 'あ'.repeat(Math.ceil((400 * 1024 + 1) / 3));
+    const event = makeEvent({ messages: [{ role: 'user', content, messageId: 'msg-1', usecase: '/chat' }] });
+
+    const { QueryCommand } = await import('@aws-sdk/lib-dynamodb');
+    ddbMock.on(QueryCommand).resolves({ Items: [{ id: 'user#user-1', chatId: 'chat-1' }] });
+
+    const result = await handler(event);
+
+    expect(result.statusCode).toBe(400);
+  });
+});
 
 const validUsage = {
   model: 'jp.anthropic.claude-sonnet-4-6',

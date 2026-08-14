@@ -6,11 +6,11 @@ vi.hoisted(() => {
   process.env.TTL_DAYS = '30';
 });
 
-import { BatchWriteCommand, DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { BatchWriteCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import type { ToBeRecordedMessage, UsageCostEntry } from 'genai-web';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { batchCreateMessages } from '../../../lambda/repository/messageRepository';
+import { batchCreateMessages, listMessages } from '../../../lambda/repository/messageRepository';
 import { TABLE_NAME } from '../../../lambda/repository/client';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -31,6 +31,54 @@ const usageEntry: UsageCostEntry = {
   },
   estimatedCost: { totalCost: 0.01155, currency: 'USD' },
 };
+
+describe('messageRepository.listMessages', () => {
+  beforeEach(() => {
+    ddbMock.reset();
+  });
+
+  it('LastEvaluatedKey がない場合は 1 回のクエリで全件返す', async () => {
+    const page1 = [{ id: 'chat#chat-1', createdDate: '1000#0', role: 'user', content: 'hello' }];
+    ddbMock.on(QueryCommand).resolvesOnce({ Items: page1, LastEvaluatedKey: undefined });
+
+    const result = await listMessages('chat-1');
+
+    expect(result).toEqual(page1);
+    expect(ddbMock.commandCalls(QueryCommand).length).toBe(1);
+  });
+
+  it('LastEvaluatedKey がある場合は複数回クエリして全件結合して返す', async () => {
+    const page1 = [{ id: 'chat#chat-1', createdDate: '1000#0', role: 'user', content: 'p1' }];
+    const page2 = [{ id: 'chat#chat-1', createdDate: '2000#0', role: 'assistant', content: 'p2' }];
+    const paginationKey = { id: 'chat#chat-1', createdDate: '1000#0' };
+
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({ Items: page1, LastEvaluatedKey: paginationKey })
+      .resolvesOnce({ Items: page2, LastEvaluatedKey: undefined });
+
+    const result = await listMessages('chat-1');
+
+    expect(result).toEqual([...page1, ...page2]);
+    expect(ddbMock.commandCalls(QueryCommand).length).toBe(2);
+  });
+
+  it('2 回目のクエリに ExclusiveStartKey として LastEvaluatedKey が渡される', async () => {
+    const page1 = [{ id: 'chat#chat-1', createdDate: '1000#0', role: 'user', content: 'p1' }];
+    const paginationKey = { id: 'chat#chat-1', createdDate: '1000#0' };
+
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({ Items: page1, LastEvaluatedKey: paginationKey })
+      .resolvesOnce({ Items: [], LastEvaluatedKey: undefined });
+
+    await listMessages('chat-1');
+
+    const calls = ddbMock.commandCalls(QueryCommand);
+    expect(calls[0].args[0].input.ExclusiveStartKey).toBeUndefined();
+    expect(calls[1].args[0].input.ExclusiveStartKey).toEqual(paginationKey);
+  });
+});
 
 describe('messageRepository.batchCreateMessages', () => {
   beforeEach(() => {

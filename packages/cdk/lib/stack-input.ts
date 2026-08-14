@@ -60,8 +60,8 @@ export const stackInputSchema = z
     appEnv: z
       .string()
       .regex(
-        /^[a-zA-Z0-9/_+=.@-]*$/,
-        'appEnv must contain only characters allowed by Secrets Manager (a-zA-Z0-9/_+=.@-)',
+        /^[a-zA-Z0-9/_-]+$/,
+        'appEnv must contain only characters allowed by both Secrets Manager and KMS alias names, excluding "." (a-zA-Z0-9/_-), and must be non-empty',
       )
       .default(''),
     anonymousUsageTracking: z.boolean().default(true),

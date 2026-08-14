@@ -27,6 +27,7 @@ const FILE_LIMIT: FileLimit = {
   },
   maxFileCount: 5,
   maxFileSizeMB: 4.5,
+  maxPdfFileSizeMB: 15,
   maxImageFileCount: 20,
   maxImageFileSizeMB: 4.5,
   maxVideoFileCount: 1,
@@ -82,11 +83,44 @@ describe('useFiles - validateUploadedFiles (Base64 後サイズ検証)', () => {
     vi.clearAllMocks();
   });
 
-  it('doc は Base64 後サイズが上限ちょうどなら許可される', async () => {
+  it('PDF 以外の doc は Base64 後サイズが上限ちょうどなら許可される', async () => {
     const useFiles = await importUseFiles();
     const { result } = renderHook(() => useFiles('/chat'));
 
-    const file = createFile('exact.pdf', 'application/pdf', RAW_SIZE_AT_LIMIT);
+    const file = createFile('exact.txt', 'text/plain', RAW_SIZE_AT_LIMIT);
+    await act(async () => {
+      await result.current.uploadFiles([file], FILE_LIMIT, accept);
+    });
+
+    await waitFor(() => {
+      expect(result.current.errorMessages.some((m) => m.includes(sizeErrorOf('exact.txt')))).toBe(
+        false,
+      );
+    });
+  });
+
+  it('PDF 以外の doc は Base64 後サイズが上限を 1 バイト超えるとエラー', async () => {
+    const useFiles = await importUseFiles();
+    const { result } = renderHook(() => useFiles('/chat'));
+
+    const file = createFile('over.txt', 'text/plain', RAW_SIZE_AT_LIMIT + 1);
+    await act(async () => {
+      await result.current.uploadFiles([file], FILE_LIMIT, accept);
+    });
+
+    await waitFor(() => {
+      expect(result.current.errorMessages.some((m) => m.includes(sizeErrorOf('over.txt')))).toBe(
+        true,
+      );
+    });
+  });
+
+  it('PDF は Base64 後サイズ基準（MiB）で maxPdfFileSizeMB まで許可される', async () => {
+    const useFiles = await importUseFiles();
+    const { result } = renderHook(() => useFiles('/chat'));
+
+    const PDF_RAW_AT_LIMIT = ((15 * MiB) / 4) * 3;
+    const file = createFile('exact.pdf', 'application/pdf', PDF_RAW_AT_LIMIT);
     await act(async () => {
       await result.current.uploadFiles([file], FILE_LIMIT, accept);
     });
@@ -98,11 +132,12 @@ describe('useFiles - validateUploadedFiles (Base64 後サイズ検証)', () => {
     });
   });
 
-  it('doc は Base64 後サイズが上限を 1 バイト超えるとエラー', async () => {
+  it('PDF は Base64 後サイズが maxPdfFileSizeMB を超えるとエラー', async () => {
     const useFiles = await importUseFiles();
     const { result } = renderHook(() => useFiles('/chat'));
 
-    const file = createFile('over.pdf', 'application/pdf', RAW_SIZE_AT_LIMIT + 1);
+    const PDF_RAW_OVER = ((15 * MiB) / 4) * 3 + 3;
+    const file = createFile('over.pdf', 'application/pdf', PDF_RAW_OVER);
     await act(async () => {
       await result.current.uploadFiles([file], FILE_LIMIT, accept);
     });
@@ -110,6 +145,22 @@ describe('useFiles - validateUploadedFiles (Base64 後サイズ検証)', () => {
     await waitFor(() => {
       expect(result.current.errorMessages.some((m) => m.includes(sizeErrorOf('over.pdf')))).toBe(
         true,
+      );
+    });
+  });
+
+  it('PDF は従来の 4.5MB 上限を超える生サイズでも許可される', async () => {
+    const useFiles = await importUseFiles();
+    const { result } = renderHook(() => useFiles('/chat'));
+
+    const file = createFile('large.pdf', 'application/pdf', 10 * MiB);
+    await act(async () => {
+      await result.current.uploadFiles([file], FILE_LIMIT, accept);
+    });
+
+    await waitFor(() => {
+      expect(result.current.errorMessages.some((m) => m.includes(sizeErrorOf('large.pdf')))).toBe(
+        false,
       );
     });
   });

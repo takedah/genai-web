@@ -2,22 +2,32 @@ import { BatchWriteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { RecordedMessage, ToBeRecordedMessage } from 'genai-web';
 import { dynamoDbDocument, TABLE_NAME, TTL_DAYS } from './client';
 
+// フロントは GET /chats/:chatId/messages で全件を一括取得する設計のため、
+// 他リポジトリのような cursor-based pagination ではなくサーバー側で全ページを収集する。
 export const listMessages = async (_chatId: string): Promise<RecordedMessage[]> => {
   const chatId = `chat#${_chatId}`;
-  const res = await dynamoDbDocument.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: '#id = :id',
-      ExpressionAttributeNames: {
-        '#id': 'id',
-      },
-      ExpressionAttributeValues: {
-        ':id': chatId,
-      },
-    }),
-  );
+  const items: RecordedMessage[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
 
-  return res.Items as RecordedMessage[];
+  do {
+    const res = await dynamoDbDocument.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: '#id = :id',
+        ExpressionAttributeNames: {
+          '#id': 'id',
+        },
+        ExpressionAttributeValues: {
+          ':id': chatId,
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      }),
+    );
+    items.push(...(res.Items as RecordedMessage[]));
+    lastEvaluatedKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastEvaluatedKey !== undefined);
+
+  return items;
 };
 
 export const batchCreateMessages = async (

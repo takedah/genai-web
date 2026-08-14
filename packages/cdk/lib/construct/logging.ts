@@ -250,7 +250,7 @@ export class Logging extends Construct {
 
     const lambdaFunction = new cdk.aws_lambda_nodejs.NodejsFunction(this, lambdaFunctionName, {
       functionName: lambdaFunctionName,
-      runtime: cdk.aws_lambda.Runtime.NODEJS_22_X,
+      runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
       entry: './lambda/lambdaExportCognitoLogsToS3/index.ts',
       handler: 'handler',
       role: lambdaRole,
@@ -310,7 +310,7 @@ export class Logging extends Construct {
     // Lambda
     const lambdaFunction = new cdk.aws_lambda_nodejs.NodejsFunction(this, lambdaFunctionName, {
       functionName: lambdaFunctionName,
-      runtime: cdk.aws_lambda.Runtime.NODEJS_22_X,
+      runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
       entry: './lambda/lambdaDailyExportFromDynamoDbToS3/index.ts',
       handler: 'handler',
       role: lambdaRole,
@@ -415,7 +415,7 @@ export class Logging extends Construct {
 
     const lambdaFunction = new cdk.aws_lambda_nodejs.NodejsFunction(this, lambdaFunctionName, {
       functionName: lambdaFunctionName,
-      runtime: cdk.aws_lambda.Runtime.NODEJS_22_X,
+      runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
       entry: codePath + 'index.ts',
       handler: 'handler',
       role: lambdaRole,
@@ -543,7 +543,7 @@ export class Logging extends Construct {
     // Create Lambda function
     const lambdaFunction = new cdk.aws_lambda_nodejs.NodejsFunction(this, lambdaFunctionName, {
       functionName: lambdaFunctionName,
-      runtime: cdk.aws_lambda.Runtime.NODEJS_22_X,
+      runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
       entry: codePath + 'index.ts',
       handler: 'handler',
       role: lambdaRole,
