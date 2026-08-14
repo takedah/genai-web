@@ -45,7 +45,7 @@ export class PasswordResetApi extends Construct {
     };
 
     const requestPasswordResetFunction = new NodejsFunction(this, 'RequestPasswordReset', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/requestPasswordReset.ts',
       timeout: Duration.seconds(15),
       environment: {
@@ -55,7 +55,7 @@ export class PasswordResetApi extends Construct {
     this.requestPasswordResetFunction = requestPasswordResetFunction;
 
     const completePasswordResetFunction = new NodejsFunction(this, 'CompletePasswordReset', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/completePasswordReset.ts',
       timeout: Duration.seconds(15),
       environment: commonEnvironment,

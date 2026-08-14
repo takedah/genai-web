@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockSqsSend, mockCloudWatchSend, mockRequestValidatedExAppUrl, mockSendMessageCommand } =
   vi.hoisted(() => ({
@@ -10,6 +10,7 @@ const { mockSqsSend, mockCloudWatchSend, mockRequestValidatedExAppUrl, mockSendM
       return input;
     }),
   }));
+
 
 vi.mock('../../lambda/repository/exAppRepository', () => ({
   findExAppById: vi.fn(),
@@ -203,6 +204,10 @@ describe('invokeExApp Lambda handler', () => {
       ...endpoint,
       url: new URL(statusUrl, endpoint.url),
     }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('同期レスポンス（200）の場合、正常に結果を返す', async () => {

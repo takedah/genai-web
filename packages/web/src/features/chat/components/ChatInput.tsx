@@ -212,7 +212,7 @@ export const ChatInput = (props: Props) => {
                     onClick={handleClickFileUpload}
                   >
                     <AttachmentIcon
-                      aria-label={`添付するファイルを選択（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MBまで）`}
+                      aria-label={`添付するファイルを選択（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MB、PDF は${FILE_LIMIT.maxPdfFileSizeMB}MBまで）`}
                       role='img'
                       className='shrink-0'
                     />
@@ -221,7 +221,7 @@ export const ChatInput = (props: Props) => {
                 <TooltipContent aria-hidden={true}>
                   添付するファイルを選択
                   <br />
-                  {`（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MBまで）`}
+                  {`（1ファイルあたり${FILE_LIMIT.maxFileSizeMB}MB、PDF は${FILE_LIMIT.maxPdfFileSizeMB}MBまで）`}
                 </TooltipContent>
               </Tooltip>
 

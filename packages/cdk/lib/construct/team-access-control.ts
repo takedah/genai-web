@@ -362,7 +362,7 @@ export class TeamAccessControl extends Construct {
     // （NestedStack → 親スタック所属の CfnIdentityPool への依存による循環を回避するため、
     //  cognito-identity:* の IAM も親スタック側で付与する）
     const getArtifactFileFunction = new NodejsFunction(this, 'GetArtifactFile', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/getArtifactFile.ts',
       timeout: Duration.seconds(15),
       environment: {
@@ -451,7 +451,7 @@ export class TeamAccessControl extends Construct {
     });
 
     const pollExAppStatusFunction = new NodejsFunction(this, 'PollExAppStatus', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/pollExAppStatus.ts',
       timeout: Duration.seconds(15),
       vpc: vpcForLambda,
@@ -513,7 +513,7 @@ export class TeamAccessControl extends Construct {
 
     // POST /exapps/{id}
     const invokeExAppFunction = new NodejsFunction(this, 'InvokeExApp', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/invokeExApp.ts',
       timeout: Duration.seconds(props.exAppInvokeTimeoutSeconds),
       vpc: vpcForLambda,
@@ -884,7 +884,7 @@ export class TeamAccessControl extends Construct {
         {
           id: 'AwsSolutions-L1',
           reason:
-            'NODEJS_22_X is the latest runtime but cdk-nag has not yet been updated to recognize it.',
+            'NODEJS_24_X is the latest runtime but cdk-nag has not yet been updated to recognize it.',
         },
       ],
       true,
@@ -951,7 +951,7 @@ export class TeamAccessControl extends Construct {
     memorySize: number = 256,
   ): NodejsFunction {
     const lambdaFunc = new NodejsFunction(this, id, {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry,
       timeout: Duration.seconds(15),
       memorySize,

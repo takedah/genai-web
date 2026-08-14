@@ -16,7 +16,7 @@ export const useUpdateTeamApp = () => {
       await mutate(
         (key) => {
           if (typeof key === 'string') {
-            return key.startsWith(`teams/${teamId}/exapps`);
+            return key.includes(`teams/${teamId}/exapps`);
           }
           return false;
         },

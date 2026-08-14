@@ -77,6 +77,7 @@ export type FileLimit = {
   };
   maxFileCount: number;
   maxFileSizeMB: number;
+  maxPdfFileSizeMB?: number;
   maxImageFileCount: number;
   maxImageFileSizeMB: number;
   maxVideoFileCount: number;
