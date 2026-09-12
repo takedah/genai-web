@@ -57,14 +57,11 @@ describe('createStacks (synth smoke test)', () => {
     closedNetworkTemplate.resourceCountIs('AWS::Route53::HostedZone', 0);
 
     // ALB の A レコードは指定した既存ゾーンに作られる
-    Template.fromStack(generativeAiUseCasesStack).hasResourceProperties(
-      'AWS::Route53::RecordSet',
-      {
-        Type: 'A',
-        Name: 'genai.example.internal.',
-        HostedZoneId: 'Z0123456789ABCDEFGHIJ',
-      },
-    );
+    Template.fromStack(generativeAiUseCasesStack).hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'A',
+      Name: 'genai.example.internal.',
+      HostedZoneId: 'Z0123456789ABCDEFGHIJ',
+    });
   });
 
   test('env サフィックスがスタック名に反映される', () => {
@@ -73,9 +70,7 @@ describe('createStacks (synth smoke test)', () => {
     });
 
     expect(closedNetworkStack.stackName).toBe('ClosedNetworkStack-selfHostingDev');
-    expect(generativeAiUseCasesStack.stackName).toBe(
-      'GenerativeAiUseCasesStack-selfHostingDev',
-    );
+    expect(generativeAiUseCasesStack.stackName).toBe('GenerativeAiUseCasesStack-selfHostingDev');
   });
 
   test('アプリスタックは閉域ネットワークスタックに依存する', () => {

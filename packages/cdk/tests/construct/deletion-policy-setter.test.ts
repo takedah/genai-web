@@ -27,9 +27,7 @@ describe('DeletionPolicySetter Aspect', () => {
     );
 
     const resources = Template.fromStack(stack).toJSON().Resources;
-    const table = Object.values<any>(resources).find(
-      (r) => r.Type === 'AWS::DynamoDB::Table',
-    );
+    const table = Object.values<any>(resources).find((r) => r.Type === 'AWS::DynamoDB::Table');
     const bucket = Object.values<any>(resources).find((r) => r.Type === 'AWS::S3::Bucket');
 
     // databaseRemovalPolicy=RETAIN 相当の設定が Aspect に上書きされないこと
@@ -44,9 +42,7 @@ describe('DeletionPolicySetter Aspect', () => {
     cdk.Aspects.of(stack).add(new DeletionPolicySetter(cdk.RemovalPolicy.DESTROY));
 
     const resources = Template.fromStack(stack).toJSON().Resources;
-    const table = Object.values<any>(resources).find(
-      (r) => r.Type === 'AWS::DynamoDB::Table',
-    );
+    const table = Object.values<any>(resources).find((r) => r.Type === 'AWS::DynamoDB::Table');
 
     expect(table.DeletionPolicy).toBe('Delete');
   });
@@ -59,9 +55,7 @@ describe('DeletionPolicySetter Aspect', () => {
     );
 
     const resources = Template.fromStack(stack).toJSON().Resources;
-    const table = Object.values<any>(resources).find(
-      (r) => r.Type === 'AWS::DynamoDB::Table',
-    );
+    const table = Object.values<any>(resources).find((r) => r.Type === 'AWS::DynamoDB::Table');
 
     expect(table.DeletionPolicy).toBe('Delete');
   });

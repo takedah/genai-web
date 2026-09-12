@@ -49,18 +49,14 @@ describe('ClosedVpc Construct', () => {
     });
 
     const template = Template.fromStack(stack);
-    const endpoints = Object.values(
-      template.findResources('AWS::EC2::VPCEndpoint'),
-    ) as {
+    const endpoints = Object.values(template.findResources('AWS::EC2::VPCEndpoint')) as {
       Properties: { VpcEndpointType?: string; PrivateDnsEnabled?: boolean };
     }[];
 
     const interfaceEndpoints = endpoints.filter(
       (e) => e.Properties.VpcEndpointType === 'Interface',
     );
-    const gatewayEndpoints = endpoints.filter(
-      (e) => e.Properties.VpcEndpointType !== 'Interface',
-    );
+    const gatewayEndpoints = endpoints.filter((e) => e.Properties.VpcEndpointType !== 'Interface');
 
     // closed-vpc.ts の VPC_ENDPOINTS（15 サービス）。新しい AWS サービスを使う機能を追加した場合は
     // VPC_ENDPOINTS への追加とあわせてこの期待値を更新すること
