@@ -20,6 +20,7 @@
     "cdk:lint": "npm -w packages/cdk run lint",
     "cdk:test": "npm -w packages/cdk run test",
     "cdk:test:update-snapshot": "npm -w packages/cdk run test -- --update",
+    "cdk:typecheck:tests": "npm -w packages/cdk run typecheck:tests",
     "common:test": "npm -w packages/common run test"
   },
   "devDependencies": {

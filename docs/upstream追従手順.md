@@ -86,6 +86,7 @@ npm run common:test
 
 # packages/cdk で
 npx tsc --noEmit
+npm run typecheck:tests   # テストコードの型チェック（tsconfig.json が tests を除外しているため別設定）
 CDK_DEFAULT_ACCOUNT=123456789012 npx cdk synth --all --quiet --context env=-selfHostingProd
 
 # リポジトリルートで
@@ -155,6 +156,8 @@ PR レビューを挟む場合は、`git push origin merge-upstream-YYYYMMDD` �
 upstream と同一ファイルを維持するため、以下は放置する（upstream 側で直れば自然に解消）。いずれもマージ前から発生しているもので、追従作業では **件数が増えていないこと** だけを確認する。
 
 - `packages/cdk/lambda/invokeExApp.ts`: `npx tsc --noEmit` で型エラー 3 件（`responseBody: unknown` へのプロパティアクセス）。テスト（vitest）とデプロイには影響しない
+- **`packages/cdk/tests` は biome の対象外**。`biome.json` の `files.includes` が GenU 由来の `packages/cdk/test/**`（単数形）のままで、本リポジトリの `tests`（複数形）に一致しないため。`packages/cdk` の `format` スクリプトは `tests` を渡しているが黙って素通りする。upstream と同一の設定なので直すなら upstream 側に報告する
+- **テストコードは `tsconfig.json` の `exclude` で型チェックからも外れている。** その代替として `tsconfig.test.json` と `npm run typecheck:tests` を用意している。upstream 由来のテストのうち型エラーが出るものは `tsconfig.test.json` の `exclude` に列挙してあり、upstream 側で解消されたら除外を狭めること
 - `npm run cdk:lint`（`biome lint lib && biome lint lambda`）はエラーで終了する。2026-09 時点でエラー 4 件・警告 50 件・info 6 件。エラーの内訳は `lambda/createMessages.ts` の `noControlCharactersInRegex` 2 件、`lambda/utils/bedrockApi.ts` の `noImplicitAnyLet` 1 件、`lambda/utils/models.ts` の `noDoubleEquals` 1 件で、すべて upstream 由来のファイル。GitHub Actions の CI（`.github/genai-ci-cdk.yaml.example`）は lint を実行しないため、デプロイはブロックされない
 
 ## 取り込み履歴

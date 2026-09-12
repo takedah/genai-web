@@ -1,0 +1,29 @@
+{
+  // tsconfig.json は tests を exclude しており、vitest も esbuild でトランスパイルするだけで
+  // 型チェックを行わない。そのままだとテストコードの型エラーが誰にも検出されず、
+  // プロパティ名の打ち間違いなどで「何も検証していないテスト」が緑のまま残ってしまう。
+  // このファイルはテストコードを型チェックするための専用設定（npm run typecheck:tests）。
+  //
+  // exclude に並べているのは upstream と同一のテストファイルのうち、現時点で型エラーが出るもの。
+  // いずれも AWS SDK の部分モックが完全な型を満たさないことによるもので、テストの動作には影響しない。
+  // upstream ファイルは改変しない方針のため、ここで除外して「フォークが責任を持つ範囲」を緑に保つ。
+  // upstream 側で解消されたら、この行を削除して除外を狭めること。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["tests"],
+  "exclude": [
+    "node_modules",
+    "cdk.out",
+    "tests/lambda/predictStream.test.ts",
+    "tests/lambda/repository/invokeHistoryRepository.test.ts",
+    "tests/lambda/utils/bedrockApi.test.ts",
+    "tests/lambda/utils/bedrockApiS3Retrieve.test.ts",
+    "tests/lambda/utils/requireTeamAdminOrSystemAdmin.test.ts",
+    // このテスト自体に問題は無いが、import 先の本番コード lambda/invokeExApp.ts に
+    // upstream 由来の既知の型エラーがある。本番コードの型チェックは npx tsc --noEmit の
+    // 担当なので、ここでは二重に報告しないよう外す。
+    "tests/lambda/invokeExApp.test.ts"
+  ]
+}

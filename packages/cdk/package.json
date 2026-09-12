@@ -9,7 +9,8 @@
     "test:lambda:watch": "vitest watch --dir tests/lambda",
     "cdk": "cdk",
     "format": "biome format --write lib lambda env-parameters tests *config.* parameter* *.json",
-    "lint": "biome lint lib && biome lint lambda"
+    "lint": "biome lint lib && biome lint lambda",
+    "typecheck:tests": "tsc -p tsconfig.test.json"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",
