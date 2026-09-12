@@ -95,6 +95,16 @@ npm run web:build
 git diff upstream/main -- packages/web
 ```
 
+マージでテンプレートが変わると `tests/stacks.snapshot.test.ts` が落ちる。**これは想定どおり**で、差分こそがレビュー対象になる。内容を確認して意図した変更であれば更新する。
+
+```bash
+# packages/cdk で。差分を確認してから更新する
+npx vitest run tests/stacks.snapshot.test.ts   # 差分を表示
+npx vitest run tests/stacks.snapshot.test.ts -u # 妥当と判断したら更新
+```
+
+想定外のリソースが増減していないか（インターネット向けリソースが復活していないか、Lambda が VPC 外に出ていないか等）をここで確認する。
+
 `npx tsc --noEmit` と `npm run cdk:lint` はマージ前から失敗している（[upstream 由来の既知の問題](#upstream-由来の既知の問題追従しない修正もしない)）。**新しく増えていないこと** を確認できれば良い。判断に迷ったら、マージ前のコミットを別 worktree に取り出して同じコマンドを流し、件数を比較する。
 
 ```bash
