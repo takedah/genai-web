@@ -41,6 +41,13 @@ git merge upstream/main
 
 - **`packages/cdk/lib` 配下**: 本フォークの閉域対応（`vpc` / `lambdaVpcProps` / `closedWeb` など）を維持しつつ、upstream の新規追加を取り込む。
 - **upstream が新しい Lambda を追加した場合**: 閉域方針に合わせ、`lambdaVpcProps` パターン（`vpc` + `PRIVATE_ISOLATED` サブネット配置。`lib/construct/api.ts` 参照）を適用する。
+- **upstream が Lambda ランタイム（`Runtime.NODEJS_XX_X`）を上げた場合**: フォーク側で追加した construct にも取りこぼしがないか確認する。バージョンが 1 種類に揃っていれば OK。
+
+  ```bash
+  grep -rn 'NODEJS_[0-9]*_X' packages/cdk --include='*.ts' | grep -o 'NODEJS_[0-9]*_X' | sort | uniq -c
+  ```
+
+  `packages/cdk/fargate-s3-server/Dockerfile` のベースイメージ（`node:XX-slim`）はフォーク独自ファイルなので自動では追随しない。**Lambda ランタイムと同じメジャーバージョンに手動で合わせる**（ビルド／実行の 2 ステージとも）。併せて `docs/閉域ネットワーク対応の変更点.md` のベースイメージの記述も更新すること。変更すると次回 `cdk deploy` でコンテナイメージが再ビルドされる。
 - どちらの変更か迷ったら、前回マージ時点からの差分を両側で確認する。
 
   ```bash
@@ -49,17 +56,28 @@ git merge upstream/main
   git diff $MB upstream/main -- <file>  # upstream 側の変更
   ```
 
-### 4. 依存関係の更新
+### 4. ツールチェーン（Node / npm）の更新
+
+upstream は Node / npm の指定バージョンも上げてくる（`.node-version` / `mise.toml` / `package.json` の `engines` / `.github/*.yaml.example`）。`engineStrict: true` のため、指定と違うバージョンでは `npm install` 自体が失敗する。マージ後に必ずローカルのツールチェーンを入れ直す。
+
+```bash
+git diff HEAD^ HEAD -- .node-version mise.toml package.json   # バージョン変更の有無を確認
+mise install                                                  # mise.toml のバージョンを導入
+node -v && npm -v                                             # mise.toml と一致することを確認
+```
+
+### 5. 依存関係の更新
 
 `package.json` が変わっていた場合は lockfile を更新する。
 
 ```bash
 npm install
+git status --porcelain package-lock.json   # 差分が出なければ upstream の lockfile と整合している
 ```
 
-### 5. 検証
+### 6. 検証
 
-**必ず Node 22.22.2（`mise.toml` / `engines` の指定バージョン）で実行すること。** Node 26 などで web テストを実行すると、Node 本体の実験的 `localStorage` グローバルが jsdom のものを覆い隠し、コードと無関係に大量失敗する。
+**必ず `mise.toml` / `engines` の指定バージョンの Node で実行すること。** 指定より新しい Node（Node 26 など）で web テストを実行すると、Node 本体の実験的 `localStorage` グローバルが jsdom のものを覆い隠し、コードと無関係に大量失敗する。
 
 ```bash
 npm run cdk:test
@@ -72,9 +90,22 @@ CDK_DEFAULT_ACCOUNT=123456789012 npx cdk synth --all --quiet --context env=-self
 
 # リポジトリルートで
 npm run web:build
+
+# packages/web が upstream と完全一致していること（何も出力されなければ OK）
+git diff upstream/main -- packages/web
 ```
 
-### 6. コミット・main へのマージ・後片付け
+`npx tsc --noEmit` と `npm run cdk:lint` はマージ前から失敗している（[upstream 由来の既知の問題](#upstream-由来の既知の問題追従しない修正もしない)）。**新しく増えていないこと** を確認できれば良い。判断に迷ったら、マージ前のコミットを別 worktree に取り出して同じコマンドを流し、件数を比較する。
+
+```bash
+git worktree add /tmp/pre-merge <マージ前のコミット>
+(cd /tmp/pre-merge/packages/cdk && npx biome lint lib lambda --reporter=summary)
+git worktree remove /tmp/pre-merge --force
+```
+
+> **`npm run web:format` / `npm run web:format:test` は実行しない。** 名前に反して中身は `biome format --write` で、upstream の web 配下のファイルを書き換えてしまい「`packages/web` は差分ゼロ」の方針が壊れる。誤って実行したら `git checkout -- packages/web` で戻す。
+
+### 7. コミット・main へのマージ・後片付け
 
 ```bash
 git commit   # マージコミット。取り込んだ内容と採否の判断を本文に書いておくと次回の参考になる
@@ -111,10 +142,17 @@ PR レビューを挟む場合は、`git push origin merge-upstream-YYYYMMDD` �
 
 ### upstream 由来の既知の問題（追従しない・修正もしない）
 
-upstream と同一ファイルを維持するため、以下は放置する（upstream 側で直れば自然に解消）。
+upstream と同一ファイルを維持するため、以下は放置する（upstream 側で直れば自然に解消）。いずれもマージ前から発生しているもので、追従作業では **件数が増えていないこと** だけを確認する。
 
-- `packages/cdk/lambda/invokeExApp.ts`: `tsc --noEmit` で型エラー（`responseBody: unknown` へのプロパティアクセス）。CI（vitest）には影響しない
-- `packages/cdk/lib/construct/bedrock-inference-profiles.ts` / `invoke-exapp-lambda-vpc.ts`: biome lint の警告・エラー。CI の lint 対象外
+- `packages/cdk/lambda/invokeExApp.ts`: `npx tsc --noEmit` で型エラー 3 件（`responseBody: unknown` へのプロパティアクセス）。テスト（vitest）とデプロイには影響しない
+- `npm run cdk:lint`（`biome lint lib && biome lint lambda`）はエラーで終了する。2026-09 時点でエラー 4 件・警告 50 件・info 6 件。エラーの内訳は `lambda/createMessages.ts` の `noControlCharactersInRegex` 2 件、`lambda/utils/bedrockApi.ts` の `noImplicitAnyLet` 1 件、`lambda/utils/models.ts` の `noDoubleEquals` 1 件で、すべて upstream 由来のファイル。GitHub Actions の CI（`.github/genai-ci-cdk.yaml.example`）は lint を実行しないため、デプロイはブロックされない
+
+## 取り込み履歴
+
+| 日付 | upstream | 取り込み内容 | 備考 |
+|---|---|---|---|
+| 2026-07-06 | PR #31 | — | squash で取り込んでいた履歴を修復（`a7c0ca2`）。Bedrock Agents Classic の依存を削除 |
+| 2026-09-12 | PR #43（`v1.3.12`） | Node 24.18.0 / npm 12.0.1 への更新、Lambda ランタイム `NODEJS_24_X` 化、`appEnv` のバリデーション強化、`validationErrorMessage` ユーティリティ追加、依存パッケージ更新（jsdom 30 / biome 2.5.7 ほか） | 衝突なしで自動マージ。`packages/web` は差分ゼロを維持 |
 
 ## 関連ドキュメント
 

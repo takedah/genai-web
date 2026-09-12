@@ -1,5 +1,5 @@
 # ベースイメージはバージョンを固定する（latest はビルドのたびに Node のバージョンが変わり再現性がないため）
-FROM public.ecr.aws/docker/library/node:22-slim AS build
+FROM public.ecr.aws/docker/library/node:24-slim AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY app.ts ./
 
 RUN npm run bundle
 
-FROM public.ecr.aws/docker/library/node:22-slim
+FROM public.ecr.aws/docker/library/node:24-slim
 
 ENV NODE_ENV=production
 

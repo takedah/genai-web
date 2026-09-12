@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import { selfHostingDevParams } from './env-parameters/self-hosting-dev';
 import { selfHostingProdParams } from './env-parameters/self-hosting-prod';
 import { preprocessContextValues, StackInput, stackInputSchema } from './lib/stack-input';
 
@@ -24,6 +25,7 @@ const deploy_envs: Record<string, Partial<StackInput>> = {
   //     'arn:aws:acm:ap-northeast-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   // },
   // 他環境も必要に応じて定義を追加可能
+  '-selfHostingDev': selfHostingDevParams,
   '-selfHostingProd': selfHostingProdParams,
 };
 
