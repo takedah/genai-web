@@ -108,8 +108,13 @@ export class ClosedVpc extends Construct {
     if (props.domainName) {
       if (props.hostedZoneId) {
         // 既存のプライベートホストゾーンを取り込む。
-        // ゾーン名は domainName と一致している必要がある（ALB への A レコードはゾーン頂点に作成されるため）。
-        // また、利用者がアクセスしてくるネットワーク（VPC）にそのゾーンが関連付け済みであることが前提。
+        // A レコードは Name=domainName / HostedZoneId=hostedZoneId で作成されるため、
+        // domainName がそのゾーンに含まれる名前であればよい（ゾーン名と完全一致でも、
+        // domainName の親ゾーン（例: ゾーン genai.example.internal に
+        // web.genai.example.internal を作る）でもよい）。
+        // また、名前解決を行うネットワーク（VPC）にそのゾーンが関連付け済みであることが前提。
+        // 関連付けはこのスタックでは行わない。クロスアカウントの場合は
+        // create-vpc-association-authorization → associate-vpc-with-hosted-zone を別途実施する。
         this.hostedZone = HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
           hostedZoneId: props.hostedZoneId,
           zoneName: props.domainName,
