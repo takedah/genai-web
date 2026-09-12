@@ -11,6 +11,7 @@ import {
   ServiceQuotaExceededException,
   SystemContentBlock,
   ThrottlingException,
+  ValidationException,
 } from '@aws-sdk/client-bedrock-runtime';
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import {
@@ -27,6 +28,7 @@ import {
 } from './models';
 import { FileRetrievalError } from './s3Uri';
 import { streamingChunk } from './streamingChunk';
+import { mapValidationExceptionMessage } from './validationErrorMessage';
 
 /**
  * Get inference profile ARN for a model ID if available.
@@ -308,13 +310,18 @@ const bedrockApi: Omit<ApiInterface, 'invokeFlow'> = {
           text: `選択したモデルが有効化されていないようです。[Bedrock コンソールの Model Access 画面](${modelAccessURL})にて、利用したいモデルを有効化してください。`,
           stopReason: 'error',
         });
+      } else if (e instanceof ValidationException) {
+        console.error(e);
+        yield streamingChunk({
+          text:
+            mapValidationExceptionMessage(e.message) ??
+            'エラーが発生しました。管理者に以下のエラーを報告してください。\n' + e,
+          stopReason: 'error',
+        });
       } else {
         console.error(e);
-        const errorMessage = 'エラーが発生しました。管理者に以下のエラーを報告してください。\n' + e;
         yield streamingChunk({
-          text: errorMessage.includes('Unsupported MIME type')
-            ? 'エラーが発生しました。送信したファイルの文字コードがサポート外（Shift-JIS形式等）の可能性があります。\nファイルの文字コードを確認し、 UTF-8 形式に変換してから再度お試しください。'
-            : errorMessage,
+          text: 'エラーが発生しました。管理者に以下のエラーを報告してください。\n' + e,
           stopReason: 'error',
         });
       }

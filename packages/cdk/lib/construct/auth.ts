@@ -245,7 +245,7 @@ export class Auth extends Construct {
     // Lambda
     if (props.allowedSignUpEmailDomains) {
       const checkEmailDomainFunction = new NodejsFunction(this, 'CheckEmailDomain', {
-        runtime: Runtime.NODEJS_22_X,
+        runtime: Runtime.NODEJS_24_X,
         entry: './lambda/checkEmailDomain.ts',
         timeout: Duration.minutes(15),
         ...lambdaVpcProps,
@@ -258,7 +258,7 @@ export class Auth extends Construct {
     }
 
     const assignUserToDefaultGroupFunction = new NodejsFunction(this, 'AddTeamUserToUserGroup', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/assignUserToDefaultGroupOnSignUp.ts',
       timeout: Duration.minutes(15),
       ...lambdaVpcProps,
@@ -296,7 +296,7 @@ export class Auth extends Construct {
       this.sesTenantName = tenantName;
 
       const customEmailSenderFunction = new NodejsFunction(this, 'CustomEmailSender', {
-        runtime: Runtime.NODEJS_22_X,
+        runtime: Runtime.NODEJS_24_X,
         entry: './lambda/customEmailSender.ts',
         timeout: Duration.minutes(15),
         ...lambdaVpcProps,

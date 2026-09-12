@@ -1,5 +1,5 @@
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockSqsSend, mockRequestValidatedExAppUrl } = vi.hoisted(() => ({
   mockSqsSend: vi.fn(),
@@ -124,6 +124,10 @@ describe('pollExAppStatus Lambda handler', () => {
     vi.mocked(predictExAppTitle).mockResolvedValue('テストタイトル');
     vi.mocked(assertPublicStatusUrl).mockResolvedValue(mockValidatedStatusUrl);
     mockSqsSend.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe('正常系', () => {

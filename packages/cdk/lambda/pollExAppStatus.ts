@@ -62,8 +62,15 @@ export const handler = async (event: SQSEvent): Promise<void> => {
     try {
       const sqsMessage = JSON.parse(record.body);
 
-      const { dbId, createdDate, statusUrl, endpoint, apiKeySecretId, baseS3Prefix, stableUserId } =
-        sqsMessage;
+      const {
+        dbId,
+        createdDate,
+        statusUrl,
+        endpoint,
+        apiKeySecretId,
+        baseS3Prefix,
+        stableUserId,
+      } = sqsMessage;
 
       let validatedStatusUrl: ValidatedExAppUrl;
       try {

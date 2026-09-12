@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { TOP_CHAT_SYSTEM_PROMPT } from '@/features/landing/constants';
 import { getPrompter } from '@/prompts';
 
+const MAX_MESSAGE_CONTENT_BYTES = 400 * 1024;
+
 export const chatFormSchema = z.object({
   content: z
     .string()
@@ -12,6 +14,14 @@ export const chatFormSchema = z.object({
       },
       {
         message: 'メッセージは空白のみでは送信できません。',
+      },
+    )
+    .refine(
+      (value) => {
+        return new TextEncoder().encode(value).length <= MAX_MESSAGE_CONTENT_BYTES;
+      },
+      {
+        message: 'メッセージの内容が大きすぎます。内容を短くしてから送信してください。',
       },
     ),
 });

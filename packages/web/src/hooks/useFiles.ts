@@ -162,16 +162,20 @@ const useFilesState = create<{
         );
       }
 
-      // ファイルサイズによるフィルタリング
-      const getMaxFileSizeMB = (fileType: string) => {
-        if (fileType.includes('image')) return fileLimit.maxImageFileSizeMB;
-        if (fileType.includes('video')) return fileLimit.maxVideoFileSizeMB;
+      // ファイルサイズによるフィルタリング。
+      // doc・image は Base64 後サイズ、video は生サイズで比較する。PDF のみ上限を緩和する。
+      const isVideo = uploadedFile.file.type.includes('video');
+      const isImage = uploadedFile.file.type.includes('image');
+      const isPdf =
+        ('.' + uploadedFile.file.name.split('.').pop()).toLowerCase() === '.pdf' &&
+        (fileLimit.maxPdfFileSizeMB ?? 0) > 0;
+
+      const getMaxFileSizeMB = () => {
+        if (isImage) return fileLimit.maxImageFileSizeMB;
+        if (isPdf) return fileLimit.maxPdfFileSizeMB;
         return fileLimit.maxFileSizeMB;
       };
-      const maxSizeMB = getMaxFileSizeMB(uploadedFile.file.type) || 0;
-      const isVideo = uploadedFile.file.type.includes('video');
-      // doc・image は Base64 後サイズを MiB 基準（convertSizeToBytes('4.5MB') = 4,718,592 バイト）で、
-      // video は生サイズを従来どおり 10進 MB（maxSizeMB * 1e6）で比較する。
+      const maxSizeMB = (isVideo ? fileLimit.maxVideoFileSizeMB : getMaxFileSizeMB()) || 0;
       const sizeBytes = isVideo ? uploadedFile.file.size : toBase64Size(uploadedFile.file.size);
       const maxSizeBytes = isVideo ? maxSizeMB * 1e6 : convertSizeToBytes(`${maxSizeMB}MB`);
       if (sizeBytes > maxSizeBytes) {

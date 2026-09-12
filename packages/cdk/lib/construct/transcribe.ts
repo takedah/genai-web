@@ -64,7 +64,7 @@ export class Transcribe extends Construct {
     // Cognito Identity Pool ID は Lambda が実行時に discovery で解決する。
     // cognito-identity:* の IAM は親スタック側で付与する（循環依存回避）。
     const getSignedUrlFunction = new NodejsFunction(this, 'GetSignedUrl', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/getFileUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
       ...lambdaVpcProps,
@@ -76,7 +76,7 @@ export class Transcribe extends Construct {
     audioBucket.grantWrite(getSignedUrlFunction);
 
     const startTranscriptionFunction = new NodejsFunction(this, 'StartTranscription', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/startTranscription.ts',
       timeout: Duration.minutes(15),
       ...lambdaVpcProps,
@@ -98,7 +98,7 @@ export class Transcribe extends Construct {
     transcriptBucket.grantWrite(startTranscriptionFunction);
 
     const getTranscriptionFunction = new NodejsFunction(this, 'GetTranscription', {
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       entry: './lambda/getTranscription.ts',
       timeout: Duration.minutes(15),
       ...lambdaVpcProps,

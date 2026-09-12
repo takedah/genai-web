@@ -46,6 +46,24 @@ describe('StackInput databaseRemovalPolicy', () => {
   });
 });
 
+describe('StackInput appEnv', () => {
+  test('accepts characters allowed by both Secrets Manager and KMS alias names', () => {
+    const result = stackInputSchema.parse({ ...baseParams, appEnv: 'gss-prd_1/2' });
+    expect(result.appEnv).toBe('gss-prd_1/2');
+  });
+
+  test.each(['dev+1', 'dev=1', 'dev@1', 'dev.1'])(
+    'rejects appEnv containing KMS-alias-incompatible character (%s)',
+    (appEnv) => {
+      expect(() => stackInputSchema.parse({ ...baseParams, appEnv })).toThrow();
+    },
+  );
+
+  test('rejects empty appEnv', () => {
+    expect(() => stackInputSchema.parse({ ...baseParams, appEnv: '' })).toThrow();
+  });
+});
+
 describe('StackInput passwordPolicy', () => {
   test('applies current default password policy when omitted', () => {
     const result = stackInputSchema.parse(baseParams);
