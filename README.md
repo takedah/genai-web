@@ -100,6 +100,7 @@ Amazon Web Services (AWS) 社製オープンソース [Generative AI Use Cases (
 
 - [チーム管理権限表](./docs/チーム管理権限表.md)
 - [アーキテクチャ](./docs/アーキテクチャ.md)
+- [リージョンとモデルの制約](./docs/リージョンとモデルの制約.md)
 
 ## Issue / Pull Request の対応方針
 
