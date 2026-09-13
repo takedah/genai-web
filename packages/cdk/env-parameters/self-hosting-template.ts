@@ -72,6 +72,20 @@ export const selfHostingTemplateParams: Partial<StackInput> = {
   // closedNetworkPrivateHostedZoneId: 'Z1234567890ABC',
 
   /**
+   * 追加で許可する execute-api VPC エンドポイント ID（任意）
+   * オプション
+   * デフォルト: []（アプリ VPC のエンドポイントのみ許可）
+   *
+   * 本プロジェクトの REST API は Private API で、リソースポリシーにより
+   * アプリ VPC の execute-api エンドポイント経由のリクエストだけを許可しています。
+   * オンプレミスの名前解決を共有リソース VPC の Route 53 インバウンドリゾルバーで行い、
+   * かつ共有リソース VPC 側に execute-api エンドポイントを置く構成では、ブラウザからの
+   * リクエストがそちらを通るため、ここにそのエンドポイント ID を指定しないと 403 になります。
+   * 詳細は docs/オンプレミスからの名前解決設定.md を参照してください。
+   */
+  // closedNetworkAdditionalApiGatewayVpcEndpointIds: ['vpce-0123456789abcdef0'],
+
+  /**
    * 利用者端末（オンプレミス）側の CIDR リスト
    * 必須: 専用線/VPN 越しのオンプレミス端末から利用する場合は Yes
    * VPC エンドポイント共通 SG と ALB の SG の許可対象に追加されます。

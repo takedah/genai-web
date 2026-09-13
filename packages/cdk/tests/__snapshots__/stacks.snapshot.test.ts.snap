@@ -1344,7 +1344,7 @@ exports[`Stack templates (closed network) > GenerativeAiUseCasesStack matches th
       "Type": "AWS::IAM::Role",
       "UpdateReplacePolicy": "Delete",
     },
-    "APIApiDeployment3A5021232612f072b3504cc464ea97488fa8b857": {
+    "APIApiDeployment3A50212315f6526af8d97ea99c03221454cd9a5f": {
       "DeletionPolicy": "Delete",
       "DependsOn": [
         "APIApiApi4XXDCF913C8",
@@ -1428,7 +1428,7 @@ exports[`Stack templates (closed network) > GenerativeAiUseCasesStack matches th
       ],
       "Properties": {
         "DeploymentId": {
-          "Ref": "APIApiDeployment3A5021232612f072b3504cc464ea97488fa8b857",
+          "Ref": "APIApiDeployment3A50212315f6526af8d97ea99c03221454cd9a5f",
         },
         "RestApiId": {
           "Ref": "APIApiFFA96F67",
@@ -1464,9 +1464,11 @@ exports[`Stack templates (closed network) > GenerativeAiUseCasesStack matches th
               "Action": "execute-api:Invoke",
               "Condition": {
                 "StringEquals": {
-                  "aws:SourceVpce": {
-                    "Fn::ImportValue": "ClosedNetworkStack:ExportsOutputRefClosedVpcVpcEndpointApiGateway6200AA118EB915E2",
-                  },
+                  "aws:SourceVpce": [
+                    {
+                      "Fn::ImportValue": "ClosedNetworkStack:ExportsOutputRefClosedVpcVpcEndpointApiGateway6200AA118EB915E2",
+                    },
+                  ],
                 },
               },
               "Effect": "Allow",

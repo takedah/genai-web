@@ -28,6 +28,30 @@ const buildStacks = (overrides: Record<string, unknown> = {}) => {
   return createStacks(app, params);
 };
 
+// API Gateway のリソースポリシーが許可している VPC エンドポイントを、
+// 親スタックとネストスタック（チーム管理 API）の両方から集める。
+// 親スタックだけを見ると TeamAccessControl 側の API を見落とす。
+const collectApiSourceVpce = (stack: cdk.Stack): unknown[][] => {
+  const stacks: cdk.Stack[] = [
+    stack,
+    ...(stack.node.findAll().filter((c) => c instanceof cdk.NestedStack) as cdk.NestedStack[]),
+  ];
+
+  return stacks.flatMap((s) =>
+    (
+      Object.values(Template.fromStack(s).findResources('AWS::ApiGateway::RestApi')) as {
+        Properties: {
+          Policy?: {
+            Statement?: { Condition?: { StringEquals?: { 'aws:SourceVpce'?: unknown[] } } }[];
+          };
+        };
+      }[]
+    ).map((api) => api.Properties.Policy?.Statement?.[0]?.Condition?.StringEquals?.[
+      'aws:SourceVpce'
+    ] ?? []),
+  );
+};
+
 // construct 単位のテストでは拾えない「組み合わせて synth すると壊れる」を検知するための
 // スモークテスト。upstream 追従で construct 間の受け渡しが変わったときに気づけるようにする。
 describe('createStacks (synth smoke test)', () => {
@@ -90,6 +114,37 @@ describe('createStacks (synth smoke test)', () => {
       template.resourceCountIs('AWS::WAFv2::WebACL', 0);
       template.resourceCountIs('AWS::EC2::InternetGateway', 0);
       template.resourceCountIs('AWS::EC2::NatGateway', 0);
+    }
+  });
+
+  test('既定では API のリソースポリシーがアプリ VPC のエンドポイントのみを許可する', () => {
+    const { generativeAiUseCasesStack } = buildStacks();
+
+    const policies = collectApiSourceVpce(generativeAiUseCasesStack);
+    // メイン API とチーム管理 API（ネストスタック）の 2 つ
+    expect(policies).toHaveLength(2);
+    for (const allowed of policies) {
+      expect(allowed).toHaveLength(1);
+    }
+  });
+
+  test('closedNetworkAdditionalApiGatewayVpcEndpointIds が両方の API のリソースポリシーに追加される', () => {
+    // 共有リソース VPC 側の execute-api エンドポイント経由でも Private API を呼べるようにする。
+    // 反映されないとブラウザからのリクエストが 403 になる。
+    const { generativeAiUseCasesStack } = buildStacks({
+      closedNetworkAdditionalApiGatewayVpcEndpointIds: [
+        'vpce-0123456789abcdef0',
+        'vpce-abcdef0123456789a',
+      ],
+    });
+
+    const policies = collectApiSourceVpce(generativeAiUseCasesStack);
+    expect(policies).toHaveLength(2);
+    for (const allowed of policies) {
+      // アプリ VPC のエンドポイント + 追加 2 件
+      expect(allowed).toHaveLength(3);
+      expect(allowed).toContain('vpce-0123456789abcdef0');
+      expect(allowed).toContain('vpce-abcdef0123456789a');
     }
   });
 

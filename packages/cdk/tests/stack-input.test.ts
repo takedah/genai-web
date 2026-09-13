@@ -198,3 +198,41 @@ describe('StackInput closedNetworkAllowedClientCidrs', () => {
     expect(() => stackInputSchema.parse(input)).toThrow();
   });
 });
+
+describe('StackInput closedNetworkAdditionalApiGatewayVpcEndpointIds', () => {
+  const baseParams = {
+    account: '123456789012',
+    region: 'ap-northeast-1',
+    env: '-test',
+    appEnv: 'test',
+    allowedSignUpEmailDomains: null,
+    closedNetworkDomainName: 'test.internal',
+    closedNetworkCertificateArn:
+      'arn:aws:acm:ap-northeast-1:123456789012:certificate/00000000-0000-0000-0000-000000000000',
+  };
+
+  test('デフォルトは空配列（アプリ VPC のエンドポイントのみ許可）', () => {
+    const result = stackInputSchema.parse(baseParams);
+    expect(result.closedNetworkAdditionalApiGatewayVpcEndpointIds).toEqual([]);
+  });
+
+  test('VPC エンドポイント ID のリストを受け付ける', () => {
+    const result = stackInputSchema.parse({
+      ...baseParams,
+      closedNetworkAdditionalApiGatewayVpcEndpointIds: ['vpce-0123456789abcdef0', 'vpce-abcdef01'],
+    });
+    expect(result.closedNetworkAdditionalApiGatewayVpcEndpointIds).toEqual([
+      'vpce-0123456789abcdef0',
+      'vpce-abcdef01',
+    ]);
+  });
+
+  test('vpce- 形式でない値は拒否する', () => {
+    expect(() =>
+      stackInputSchema.parse({
+        ...baseParams,
+        closedNetworkAdditionalApiGatewayVpcEndpointIds: ['vpc-0123456789abcdef0'],
+      }),
+    ).toThrow();
+  });
+});

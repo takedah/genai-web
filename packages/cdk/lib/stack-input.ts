@@ -148,6 +148,21 @@ export const stackInputSchema = z
       .string()
       .min(1, 'closedNetworkCertificateArn is required (must be in app region, NOT us-east-1)'),
     closedNetworkPrivateHostedZoneId: z.string().nullish(),
+    // アプリ VPC 以外の execute-api VPC エンドポイント経由で Private API を呼ぶ場合に、
+    // その VPC エンドポイント ID を追加で許可する。
+    // オンプレミスの名前解決を共有リソース VPC の Route 53 インバウンドリゾルバーで行い、
+    // かつ共有リソース VPC 側に execute-api エンドポイントを置く構成では、ブラウザからの
+    // リクエストがそちらを通るため、指定しないと API Gateway のリソースポリシーで 403 になる。
+    closedNetworkAdditionalApiGatewayVpcEndpointIds: z
+      .array(
+        z
+          .string()
+          .regex(
+            /^vpce-[0-9a-f]{8,17}$/,
+            'closedNetworkAdditionalApiGatewayVpcEndpointIds must be VPC endpoint IDs (e.g., vpce-0123456789abcdef0)',
+          ),
+      )
+      .default([]),
 
     // Dashboard
     dashboard: z.boolean().default(false),

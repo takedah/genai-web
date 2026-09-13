@@ -27,6 +27,8 @@ export interface BackendApiProps {
   // Closed Network
   vpc: ec2.IVpc;
   apiGatewayVpcEndpoint: ec2.InterfaceVpcEndpoint;
+  // アプリ VPC 以外に、Private API の呼び出しを許可する execute-api VPC エンドポイント ID
+  additionalApiGatewayVpcEndpointIds?: string[];
 
   // Context Params
   modelRegion: string;
@@ -488,7 +490,11 @@ export class Api extends Construct {
             resources: ['execute-api:/*'],
             conditions: {
               StringEquals: {
-                'aws:SourceVpce': props.apiGatewayVpcEndpoint.vpcEndpointId,
+                // 配列を渡すと OR 条件になる（いずれかのエンドポイント経由なら許可）
+                'aws:SourceVpce': [
+                  props.apiGatewayVpcEndpoint.vpcEndpointId,
+                  ...(props.additionalApiGatewayVpcEndpointIds ?? []),
+                ],
               },
             },
           }),
