@@ -58,9 +58,9 @@ describe('ClosedVpc Construct', () => {
     );
     const gatewayEndpoints = endpoints.filter((e) => e.Properties.VpcEndpointType !== 'Interface');
 
-    // closed-vpc.ts の VPC_ENDPOINTS（15 サービス）。新しい AWS サービスを使う機能を追加した場合は
+    // closed-vpc.ts の VPC_ENDPOINTS（16 サービス）。新しい AWS サービスを使う機能を追加した場合は
     // VPC_ENDPOINTS への追加とあわせてこの期待値を更新すること
-    expect(interfaceEndpoints.length).toBe(15);
+    expect(interfaceEndpoints.length).toBe(16);
     // S3 + DynamoDB の Gateway 型
     expect(gatewayEndpoints.length).toBe(2);
 
@@ -104,6 +104,66 @@ describe('ClosedVpc Construct', () => {
       expect(rule.FromPort).toBe(443);
       expect(rule.ToPort).toBe(443);
     }
+  });
+
+  test('Lambda が使う AWS サービスのエンドポイントが揃っている', () => {
+    // エンドポイントが無いサービスを Lambda が呼ぶと、エラーにならず接続待ちで固まり
+    // Lambda のタイムアウトまで到達する（原因が非常に分かりにくい）。
+    // 2026-09-13 に monitoring（CloudWatch メトリクス）の取りこぼしで実際に発生した。
+    // lambda 配下の @aws-sdk/client-* に対応するサービスをここで押さえる。
+    const app = new cdk.App();
+    const stack = new cdk.Stack(app, 'TestStack');
+
+    new ClosedVpc(stack, 'ClosedVpc', { ipv4Cidr: '10.1.0.0/16' });
+
+    const template = Template.fromStack(stack);
+    const serviceNames = Object.values(template.findResources('AWS::EC2::VPCEndpoint')).map((e) =>
+      JSON.stringify((e as { Properties: { ServiceName?: unknown } }).Properties.ServiceName),
+    );
+    const hasService = (suffix: string) =>
+      serviceNames.some((n) => n.includes(`.${suffix}"`) || n.includes(`.${suffix}\\`));
+
+    // client-cloudwatch（PutMetricData）。logs とは別サービスである点に注意
+    expect(hasService('monitoring')).toBe(true);
+    // client-cloudwatch-logs
+    expect(hasService('logs')).toBe(true);
+    // その他、lambda 配下で使用している SDK クライアントに対応するもの
+    for (const svc of [
+      'bedrock-runtime',
+      'cognito-identity',
+      'cognito-idp',
+      'kms',
+      'secretsmanager',
+      'sqs',
+      'sts',
+      'transcribe',
+      'email',
+    ]) {
+      expect({ service: svc, present: hasService(svc) }).toEqual({ service: svc, present: true });
+    }
+  });
+
+  test('SageMaker のエンドポイントは endpointNames を使う場合のみ作成される', () => {
+    // 使わない環境で常時作ると無駄な課金になるため条件付き。
+    // ただし作り忘れると monitoring と同じ「固まる」不具合になるため、両方向を押さえる。
+    const withoutApp = new cdk.App();
+    const withoutStack = new cdk.Stack(withoutApp, 'WithoutStack');
+    new ClosedVpc(withoutStack, 'ClosedVpc', { ipv4Cidr: '10.1.0.0/16' });
+    const withoutNames = Object.values(
+      Template.fromStack(withoutStack).findResources('AWS::EC2::VPCEndpoint'),
+    ).map((e) => JSON.stringify((e as { Properties: { ServiceName?: unknown } }).Properties.ServiceName));
+    expect(withoutNames.some((n) => n.includes('sagemaker.runtime'))).toBe(false);
+
+    const withApp = new cdk.App();
+    const withStack = new cdk.Stack(withApp, 'WithStack');
+    new ClosedVpc(withStack, 'ClosedVpc', {
+      ipv4Cidr: '10.1.0.0/16',
+      sagemakerRuntimeRequired: true,
+    });
+    const withNames = Object.values(
+      Template.fromStack(withStack).findResources('AWS::EC2::VPCEndpoint'),
+    ).map((e) => JSON.stringify((e as { Properties: { ServiceName?: unknown } }).Properties.ServiceName));
+    expect(withNames.some((n) => n.includes('sagemaker.runtime'))).toBe(true);
   });
 
   test('domainName 未指定の場合は hostedZone を作成しない', () => {

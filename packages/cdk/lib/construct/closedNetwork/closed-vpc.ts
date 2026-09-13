@@ -22,6 +22,11 @@ const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
   Ecr: ec2.InterfaceVpcEndpointAwsService.ECR,
   EcrDocker: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
   CloudWatchLogs: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+  // CloudWatch メトリクス（monitoring）。invokeExApp が外部 AI アプリの応答を受けた直後に
+  // 必ず PutMetricData を呼ぶため必須。無いと成功・失敗を問わず接続待ちで固まり、
+  // エラーにならないまま Lambda がタイムアウトする（2026-09-13 に実際に発生）。
+  // CloudWatchLogs（logs）とは別サービスなので、両方必要。
+  CloudWatch: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_MONITORING,
   Sts: ec2.InterfaceVpcEndpointAwsService.STS,
   // Additional endpoints required for fork-specific features
   SecretsManager: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
@@ -30,12 +35,22 @@ const VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
   Ses: ec2.InterfaceVpcEndpointAwsService.EMAIL,
 };
 
+// endpointNames（SageMaker エンドポイント）を使う場合にのみ必要なエンドポイント。
+// 使わない環境で常時作ると無駄な課金になるため、条件付きで作成する。
+const OPTIONAL_VPC_ENDPOINTS: Record<string, ec2.InterfaceVpcEndpointAwsService> = {
+  SageMakerRuntime: ec2.InterfaceVpcEndpointAwsService.SAGEMAKER_RUNTIME,
+};
+
 export interface ClosedVpcProps {
   readonly ipv4Cidr: string;
   readonly domainName?: string | null;
   readonly hostedZoneId?: string | null;
   // 専用線/VPN 越しの利用者端末（オンプレミス）側の CIDR リスト
   readonly allowedClientCidrs?: string[];
+  // SageMaker エンドポイント（stack-input の endpointNames）を使う場合に true。
+  // lambda/utils/sagemakerApi.ts が sagemaker.runtime を呼ぶため、
+  // 未作成のまま使うと接続待ちで固まる（CloudWatch メトリクスと同じ失敗の仕方）。
+  readonly sagemakerRuntimeRequired?: boolean;
 }
 
 export class ClosedVpc extends Construct {
@@ -102,6 +117,20 @@ export class ClosedVpc extends Construct {
 
       if (name === 'ApiGateway') {
         this.apiGatewayVpcEndpoint = vpcEndpoint;
+      }
+    }
+
+    if (props.sagemakerRuntimeRequired) {
+      for (const [name, service] of Object.entries(OPTIONAL_VPC_ENDPOINTS)) {
+        new ec2.InterfaceVpcEndpoint(this, `VpcEndpoint${name}`, {
+          vpc,
+          service,
+          subnets: {
+            subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          },
+          securityGroups: [securityGroup],
+          privateDnsEnabled: true,
+        });
       }
     }
 

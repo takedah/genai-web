@@ -449,6 +449,39 @@ exports[`Stack templates (closed network) > ClosedNetworkStack matches the snaps
       },
       "Type": "AWS::EC2::VPCEndpoint",
     },
+    "ClosedVpcVpcEndpointCloudWatchF2B18FE9": {
+      "Properties": {
+        "PrivateDnsEnabled": true,
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "ClosedVpcSecurityGroup985DC3EC",
+              "GroupId",
+            ],
+          },
+        ],
+        "ServiceName": "com.amazonaws.ap-northeast-1.monitoring",
+        "SubnetIds": [
+          {
+            "Ref": "ClosedVpcisolatedSubnet1Subnet2EF6D3F3",
+          },
+          {
+            "Ref": "ClosedVpcisolatedSubnet2SubnetB169C8D3",
+          },
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "snapshot",
+          },
+        ],
+        "VpcEndpointType": "Interface",
+        "VpcId": {
+          "Ref": "ClosedVpcC15583C9",
+        },
+      },
+      "Type": "AWS::EC2::VPCEndpoint",
+    },
     "ClosedVpcVpcEndpointCloudWatchLogs8A2A4714": {
       "Properties": {
         "PrivateDnsEnabled": true,

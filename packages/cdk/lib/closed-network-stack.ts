@@ -36,6 +36,7 @@ export class ClosedNetworkStack extends Stack {
       domainName: closedNetworkDomainName,
       hostedZoneId: closedNetworkPrivateHostedZoneId,
       allowedClientCidrs: closedNetworkAllowedClientCidrs,
+      sagemakerRuntimeRequired: props.params.endpointNames.length > 0,
     });
 
     this.vpc = closedVpc.vpc;
