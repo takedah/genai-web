@@ -58,7 +58,9 @@ git merge upstream/main
 
 ### 4. ツールチェーン（Node / npm）の更新
 
-upstream は Node / npm の指定バージョンも上げてくる（`.node-version` / `mise.toml` / `package.json` の `engines` / `.github/*.yaml.example`）。`engineStrict: true` のため、指定と違うバージョンでは `npm install` 自体が失敗する。マージ後に必ずローカルのツールチェーンを入れ直す。
+upstream は Node / npm の指定バージョンも上げてくる（`.node-version` / `mise.toml` / `package.json` の `engines` / `.github/*.yaml.example`）。マージ後はローカルのツールチェーンを入れ直す。
+
+`package.json` に `engineStrict: true` があるが、`.npmrc` の `engine-strict=false` が優先されるため、**バージョンがずれていても `npm install` はエラーにならず素通りする**（実際、フロントエンドをビルドする CodeBuild は `nodejsVersion: 22`（`web.ts`）のまま `engines: 24.18.0` の `npm ci` を通している）。ずれに気づけないので、下記のコマンドで明示的に確認すること。
 
 ```bash
 git diff HEAD^ HEAD -- .node-version mise.toml package.json   # バージョン変更の有無を確認
@@ -158,6 +160,7 @@ upstream と同一ファイルを維持するため、以下は放置する（up
 - `packages/cdk/lambda/invokeExApp.ts`: `npx tsc --noEmit` で型エラー 3 件（`responseBody: unknown` へのプロパティアクセス）。テスト（vitest）とデプロイには影響しない
 - **`packages/cdk/tests` は biome の対象外**。`biome.json` の `files.includes` が GenU 由来の `packages/cdk/test/**`（単数形）のままで、本リポジトリの `tests`（複数形）に一致しないため。`packages/cdk` の `format` スクリプトは `tests` を渡しているが黙って素通りする。upstream と同一の設定なので直すなら upstream 側に報告する
 - **テストコードは `tsconfig.json` の `exclude` で型チェックからも外れている。** その代替として `tsconfig.test.json` と `npm run typecheck:tests` を用意している。upstream 由来のテストのうち型エラーが出るものは `tsconfig.test.json` の `exclude` に列挙してあり、upstream 側で解消されたら除外を狭めること
+- `scripts/create-common-app-team.sh` は `date +%s%3N`（GNU date 専用）を使っており、**macOS の BSD date では `createdDate` が `17892726683N` のような壊れた値になる**。Linux / CI では正常。macOS から実行する場合は GNU 互換の `date` を PATH の先に置くこと。フォークでは修正しない方針（2026-09-13 判断）
 - `npm run cdk:lint`（`biome lint lib && biome lint lambda`）はエラーで終了する。2026-09 時点でエラー 4 件・警告 50 件・info 6 件。エラーの内訳は `lambda/createMessages.ts` の `noControlCharactersInRegex` 2 件、`lambda/utils/bedrockApi.ts` の `noImplicitAnyLet` 1 件、`lambda/utils/models.ts` の `noDoubleEquals` 1 件で、すべて upstream 由来のファイル。GitHub Actions の CI（`.github/genai-ci-cdk.yaml.example`）は lint を実行しないため、デプロイはブロックされない
 
 ## 取り込み履歴
