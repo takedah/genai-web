@@ -170,6 +170,7 @@ upstream と同一ファイルを維持するため、以下は放置する（up
 |---|---|---|---|
 | 2026-07-06 | PR #31 | — | squash で取り込んでいた履歴を修復（`a7c0ca2`）。Bedrock Agents Classic の依存を削除 |
 | 2026-09-12 | PR #43（`v1.3.12`） | Node 24.18.0 / npm 12.0.1 への更新、Lambda ランタイム `NODEJS_24_X` 化、`appEnv` のバリデーション強化、`validationErrorMessage` ユーティリティ追加、依存パッケージ更新（jsdom 30 / biome 2.5.7 ほか） | 衝突なしで自動マージ。`packages/web` は差分ゼロを維持 |
+| 2026-10-25 | PR #54, #56 | Node 24.22.1 への更新、依存パッケージ更新（vitest 5 / mermaid 12 / aws-cdk-lib 2.272 ほか）、SAML 認証時の `Amplify.configure` 多重呼び出し防止、ユーザープール認証の `handleSignIn` を新シグネチャに対応 | 衝突なしで自動マージ。aws-cdk-lib 更新で ALB リスナーと ECS ScalableTarget にタグが付くようになり snapshot を更新。`packages/web` は差分ゼロを維持 |
 
 ## 関連ドキュメント
 

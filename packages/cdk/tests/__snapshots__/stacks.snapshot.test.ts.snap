@@ -10395,6 +10395,12 @@ exports[`Stack templates (closed network) > GenerativeAiUseCasesStack matches th
         },
         "Port": 443,
         "Protocol": "HTTPS",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "snapshot",
+          },
+        ],
       },
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
       "UpdateReplacePolicy": "Delete",
@@ -10712,6 +10718,12 @@ exports[`Stack templates (closed network) > GenerativeAiUseCasesStack matches th
         },
         "ScalableDimension": "ecs:service:DesiredCount",
         "ServiceNamespace": "ecs",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "snapshot",
+          },
+        ],
       },
       "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
       "UpdateReplacePolicy": "Delete",
